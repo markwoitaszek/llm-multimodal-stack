@@ -1,0 +1,80 @@
+# Enhanced PostgreSQL setup with Supabase-like features
+version: '3.8'
+
+services:
+  # Enhanced PostgreSQL with extensions
+  postgres:
+    image: postgres:15-alpine
+    container_name: multimodal-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./sql/extensions.sql:/docker-entrypoint-initdb.d/02-extensions.sql
+      - ./sql/realtime.sql:/docker-entrypoint-initdb.d/03-realtime.sql
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # PostgREST for auto-generated REST API
+  postgrest:
+    image: postgrest/postgrest:v11.2.0
+    container_name: multimodal-postgrest
+    ports:
+      - "3001:3000"
+    environment:
+      - PGRST_DB_URI=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-multimodal}
+      - PGRST_OPENAPI_SERVER_PROXY_URI=http://localhost:3001
+      - PGRST_DB_SCHEMA=public
+      - PGRST_DB_ANON_ROLE=${POSTGRES_USER:-postgres}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:7.8
+    container_name: multimodal-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@multimodal.local
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  multimodal-net:
+    external: true
+

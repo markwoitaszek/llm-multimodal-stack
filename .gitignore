@@ -1,0 +1,78 @@
+# Environment files
+.env
+.env.local
+.env.prod
+
+# Docker volumes and data
+data/
+logs/
+models/downloaded/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Certificates and keys
+certs/*.pem
+certs/*.key
+certs/*.crt
+*.pem
+*.key
+*.crt
+
+# Backup files
+backup/
+*.backup
+*.tar.gz
+*.zip
+
+# Test files
+test_files/
+test_image.png
+test_video.mp4
+benchmark_results_*.json
+debug_info.txt
+
+# Docker
+.dockerignore
+
+# Temporary files
+tmp/
+temp/
+*.tmp

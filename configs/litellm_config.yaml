@@ -1,0 +1,28 @@
+model_list:
+  - model_name: gpt-3.5-turbo
+    litellm_params:
+      model: openai/gpt-3.5-turbo
+      api_base: http://vllm:8000/v1
+      api_key: vllm-key
+      
+  - model_name: local-llm
+    litellm_params:
+      model: openai/local-model
+      api_base: http://vllm:8000/v1
+      api_key: vllm-key
+
+router_settings:
+  routing_strategy: simple-shuffle
+  model_group_alias:
+    gpt-3.5-turbo: local-llm
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  json_logs: true
+
+general_settings:
+  completion_model: local-llm
+  master_key: sk-1234
+  database_url: postgresql://postgres:postgres@postgres:5432/multimodal
+
