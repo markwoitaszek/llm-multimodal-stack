@@ -1,0 +1,102 @@
+name: 📋 Task/Chore
+description: Create a task, maintenance item, or technical debt issue
+title: "[TASK] "
+labels: ["task", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for tasks, maintenance items, technical debt, or other work that doesn't fit bug reports or feature requests.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Task Type
+      description: What type of task is this?
+      options:
+        - Maintenance
+        - Technical Debt
+        - Documentation
+        - Testing
+        - Refactoring
+        - Configuration
+        - Security Update
+        - Dependency Update
+        - Performance Optimization
+        - Code Cleanup
+        - Infrastructure
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How urgent is this task?
+      options:
+        - Critical - Must be done immediately
+        - High - Should be done soon
+        - Medium - Normal priority
+        - Low - Can be done when time permits
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Task Description
+      description: Detailed description of what needs to be done
+      placeholder: Describe the task, its purpose, and any relevant context
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How will we know when this task is complete?
+      placeholder: |
+        - [ ] Specific requirement 1
+        - [ ] Specific requirement 2
+        - [ ] Tests pass
+        - [ ] Documentation updated
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact/Benefits
+      description: What are the benefits of completing this task?
+      placeholder: |
+        - Performance improvements
+        - Reduced technical debt
+        - Better maintainability
+        - Security enhancements
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Are there any blockers or dependencies?
+      placeholder: |
+        - Depends on issue #123
+        - Requires specific environment
+        - Needs approval from team
+    validations:
+      required: false
+
+  - type: textarea
+    id: resources
+    attributes:
+      label: Resources/References
+      description: Links, documentation, or other helpful resources
+      placeholder: Links to documentation, related PRs, external resources, etc.
+    validations:
+      required: false

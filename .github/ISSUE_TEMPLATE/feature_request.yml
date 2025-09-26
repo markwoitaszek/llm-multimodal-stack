@@ -1,0 +1,135 @@
+name: 🚀 Feature Request
+description: Suggest a new feature or enhancement for the Multimodal LLM Stack
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide detailed information to help us understand your request.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm you've completed these steps
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have reviewed the roadmap and documentation
+          required: true
+        - label: This feature aligns with the project's goals
+          required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What type of feature is this?
+      options:
+        - API Enhancement
+        - New Model Integration
+        - Performance Optimization
+        - User Interface
+        - Monitoring/Observability
+        - Security
+        - Documentation
+        - Developer Experience
+        - Infrastructure/DevOps
+        - Integration (External Services)
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature?
+      options:
+        - Critical - Blocking major use cases
+        - High - Significantly improves user experience
+        - Medium - Nice to have improvement
+        - Low - Minor enhancement
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: Brief description of the feature
+      placeholder: A concise summary of what you want to achieve
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: |
+        - What is the current limitation?
+        - Who is affected by this problem?
+        - What is the business impact?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed solution
+      placeholder: |
+        - How should this feature work?
+        - What would the user experience be?
+        - Any technical considerations?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative approaches?
+      placeholder: What other solutions have you considered and why did you reject them?
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How will we know when this feature is complete?
+      placeholder: |
+        - [ ] Specific requirement 1
+        - [ ] Specific requirement 2
+        - [ ] Documentation updated
+        - [ ] Tests added
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: Technical Considerations
+      description: Any technical details, constraints, or dependencies
+      placeholder: |
+        - Performance impact
+        - Breaking changes
+        - Dependencies
+        - Architecture changes
+    validations:
+      required: false
+
+  - type: textarea
+    id: resources
+    attributes:
+      label: Additional Resources
+      description: Links, mockups, examples, or references
+      placeholder: Links to documentation, similar implementations, mockups, etc.
+    validations:
+      required: false

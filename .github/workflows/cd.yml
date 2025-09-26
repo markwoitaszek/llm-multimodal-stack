@@ -1,0 +1,263 @@
+name: 🚀 Continuous Deployment
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_run:
+    workflows: ["🔄 Continuous Integration"]
+    types: [completed]
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Build and Push Container Images
+  build-and-push:
+    name: 🏗️ Build & Push Images
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'push'
+    strategy:
+      matrix:
+        service: [multimodal-worker, retrieval-proxy]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📝 Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+
+      - name: 🏗️ Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/${{ matrix.service }}
+          file: ./services/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # Create Release
+  release:
+    name: 📦 Create Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-and-push]
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📝 Generate release notes
+        id: release_notes
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 HEAD^)
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+          
+          echo "Generating release notes from $LATEST_TAG to $CURRENT_TAG"
+          
+          # Generate changelog
+          cat > release_notes.md << EOF
+          # 🚀 Release $CURRENT_TAG
+          
+          ## 📋 What's Changed
+          
+          $(git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          
+          ## 🏗️ Docker Images
+          
+          This release includes the following Docker images:
+          
+          - \`ghcr.io/${{ github.repository }}/multimodal-worker:$CURRENT_TAG\`
+          - \`ghcr.io/${{ github.repository }}/retrieval-proxy:$CURRENT_TAG\`
+          
+          ## 🚀 Deployment
+          
+          ### Quick Start
+          \`\`\`bash
+          # Download and extract
+          wget https://github.com/${{ github.repository }}/archive/refs/tags/$CURRENT_TAG.tar.gz
+          tar -xzf $CURRENT_TAG.tar.gz
+          cd llm-multimodal-stack-${CURRENT_TAG#v}
+          
+          # Setup and deploy
+          ./scripts/setup.sh
+          docker-compose up -d
+          \`\`\`
+          
+          ### Production Deployment
+          \`\`\`bash
+          ./scripts/deploy-production.sh
+          \`\`\`
+          
+          ## 📚 Documentation
+          
+          - [Configuration Guide](docs/configuration.md)
+          - [API Reference](docs/api-reference.md)
+          - [Deployment Guide](DEPLOYMENT.md)
+          - [Troubleshooting](docs/troubleshooting.md)
+          
+          ## 🔧 System Requirements
+          
+          - NVIDIA GPU with 8GB+ VRAM (RTX 3090 recommended)
+          - Docker & Docker Compose
+          - 32GB+ RAM recommended
+          - 500GB+ storage
+          
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/$LATEST_TAG...$CURRENT_TAG
+          EOF
+          
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 📦 Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          draft: false
+          prerelease: false
+
+  # Deploy to Staging
+  deploy-staging:
+    name: 🧪 Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    needs: [build-and-push]
+    environment:
+      name: staging
+      url: https://staging.multimodal-stack.com
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to staging
+        run: |
+          echo "🧪 Deploying to staging environment"
+          echo "🔧 Using images with tag: develop"
+          echo "🌐 Staging URL: https://staging.multimodal-stack.com"
+          
+          # In a real scenario, this would:
+          # 1. SSH to staging server
+          # 2. Pull latest images
+          # 3. Update docker-compose.yml with new image tags
+          # 4. Run deployment script
+          # 5. Run health checks
+          # 6. Notify team of deployment status
+
+      - name: 🧪 Run staging tests
+        run: |
+          echo "🧪 Running staging environment tests"
+          # Health checks, smoke tests, etc.
+
+  # Deploy to Production
+  deploy-production:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-and-push, release]
+    environment:
+      name: production
+      url: https://multimodal-stack.com
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to production
+        run: |
+          echo "🚀 Deploying to production environment"
+          echo "🏷️ Using release tag: ${GITHUB_REF#refs/tags/}"
+          echo "🌐 Production URL: https://multimodal-stack.com"
+          
+          # In a real scenario, this would:
+          # 1. SSH to production servers
+          # 2. Pull release images
+          # 3. Update docker-compose.yml with release tag
+          # 4. Run zero-downtime deployment
+          # 5. Run comprehensive health checks
+          # 6. Notify team of deployment status
+          # 7. Update monitoring dashboards
+
+      - name: 🔍 Production health checks
+        run: |
+          echo "🔍 Running production health checks"
+          # Comprehensive health checks, performance tests, etc.
+
+      - name: 📢 Notify deployment success
+        run: |
+          echo "📢 Production deployment successful!"
+          echo "🎉 Release ${GITHUB_REF#refs/tags/} is now live"
+
+  # Update Documentation
+  update-docs:
+    name: 📚 Update Documentation
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [build-and-push]
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📚 Deploy documentation
+        run: |
+          echo "📚 Updating documentation"
+          echo "🌐 Documentation site: https://docs.multimodal-stack.com"
+          
+          # In a real scenario, this would:
+          # 1. Build documentation site (mkdocs, gitbook, etc.)
+          # 2. Deploy to documentation hosting
+          # 3. Update API documentation
+          # 4. Generate changelog
+          # 5. Update version references
+
+  # Cleanup
+  cleanup:
+    name: 🧹 Cleanup
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [build-and-push, deploy-staging, deploy-production]
+    steps:
+      - name: 🧹 Clean up old images
+        run: |
+          echo "🧹 Cleaning up old container images"
+          # Keep last 10 versions, clean up older ones
+          
+      - name: 📊 Update metrics
+        run: |
+          echo "📊 Updating deployment metrics"
+          # Update deployment frequency, success rate, etc.

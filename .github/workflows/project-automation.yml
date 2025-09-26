@@ -1,0 +1,279 @@
+name: 📊 Project Automation
+
+on:
+  issues:
+    types: [opened, closed, assigned, labeled]
+  pull_request:
+    types: [opened, closed, merged, ready_for_review]
+  project_card:
+    types: [moved]
+
+jobs:
+  # Auto-assign issues to project boards
+  auto-assign-to-project:
+    name: 📋 Auto-assign to Project
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    steps:
+      - name: 📊 Add issue to project board
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(label => label.name);
+            
+            // Determine which project board based on labels
+            let projectNumber = 1; // Default to main development board
+            
+            if (labels.includes('bug')) {
+              projectNumber = 2; // Bug triage board
+            } else if (labels.includes('documentation')) {
+              projectNumber = 3; // Documentation board
+            }
+            
+            // Add to project (Note: This is a simplified example)
+            console.log(`Would add issue #${issue.number} to project ${projectNumber}`);
+            console.log(`Issue title: ${issue.title}`);
+            console.log(`Labels: ${labels.join(', ')}`);
+
+  # Auto-label issues based on content
+  auto-label-issues:
+    name: 🏷️ Auto-label Issues
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    steps:
+      - name: 🏷️ Auto-label based on content
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = issue.body.toLowerCase();
+            const labels = [];
+            
+            // Component labels based on title/body content
+            if (title.includes('api') || body.includes('api')) {
+              labels.push('component/api');
+            }
+            if (title.includes('worker') || body.includes('multimodal-worker')) {
+              labels.push('component/worker');
+            }
+            if (title.includes('proxy') || body.includes('retrieval-proxy')) {
+              labels.push('component/proxy');
+            }
+            if (title.includes('docker') || body.includes('docker-compose')) {
+              labels.push('component/docker');
+            }
+            if (title.includes('database') || title.includes('postgres') || title.includes('qdrant')) {
+              labels.push('component/database');
+            }
+            if (title.includes('ci') || title.includes('pipeline') || body.includes('github actions')) {
+              labels.push('component/ci');
+            }
+            
+            // Priority labels based on keywords
+            if (title.includes('critical') || title.includes('urgent') || body.includes('production down')) {
+              labels.push('priority/critical');
+            } else if (title.includes('important') || body.includes('blocking')) {
+              labels.push('priority/high');
+            }
+            
+            // Size labels based on content length and complexity
+            const contentLength = (title + body).length;
+            if (contentLength > 1000 || body.includes('multiple') || body.includes('complex')) {
+              labels.push('size/large');
+            } else if (contentLength > 500) {
+              labels.push('size/medium');
+            } else {
+              labels.push('size/small');
+            }
+            
+            // Add labels if any were determined
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+              
+              console.log(`Added labels: ${labels.join(', ')}`);
+            }
+
+  # Update project status based on PR events
+  update-project-status:
+    name: 🔄 Update Project Status
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: 🔄 Update project card status
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const action = context.payload.action;
+            
+            console.log(`PR #${pr.number}: ${action}`);
+            
+            // Determine new status based on PR state
+            let newStatus = '';
+            switch (action) {
+              case 'opened':
+              case 'ready_for_review':
+                newStatus = 'In Review';
+                break;
+              case 'closed':
+                newStatus = pr.merged ? 'Done' : 'Cancelled';
+                break;
+              default:
+                console.log(`No status update needed for action: ${action}`);
+                return;
+            }
+            
+            console.log(`Would move PR to status: ${newStatus}`);
+            
+            // Extract linked issues from PR body
+            const issueNumbers = [];
+            const body = pr.body || '';
+            const matches = body.match(/(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi);
+            
+            if (matches) {
+              matches.forEach(match => {
+                const issueNumber = match.match(/#(\d+)/)[1];
+                issueNumbers.push(issueNumber);
+              });
+            }
+            
+            console.log(`Linked issues: ${issueNumbers.join(', ')}`);
+
+  # Generate project metrics
+  generate-metrics:
+    name: 📊 Generate Project Metrics
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' || github.event_name == 'pull_request'
+    steps:
+      - name: 📊 Calculate and update metrics
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            
+            // Get open issues
+            const openIssues = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+            
+            // Get closed issues from last 30 days
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            
+            const closedIssues = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'closed',
+              since: thirtyDaysAgo.toISOString(),
+              per_page: 100
+            });
+            
+            // Calculate metrics
+            const metrics = {
+              openIssues: openIssues.data.filter(issue => !issue.pull_request).length,
+              openPRs: openIssues.data.filter(issue => issue.pull_request).length,
+              closedIssuesLast30Days: closedIssues.data.filter(issue => !issue.pull_request).length,
+              closedPRsLast30Days: closedIssues.data.filter(issue => issue.pull_request).length,
+              timestamp: new Date().toISOString()
+            };
+            
+            console.log('Project Metrics:', JSON.stringify(metrics, null, 2));
+            
+            // In a real implementation, you would:
+            // 1. Store metrics in a database
+            // 2. Update project dashboard
+            // 3. Generate reports
+            // 4. Send notifications if thresholds are exceeded
+
+  # Stale issue management
+  manage-stale-issues:
+    name: 🗂️ Manage Stale Issues
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: 🗂️ Mark stale issues
+        uses: actions/stale@v8
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: |
+            👋 This issue has been automatically marked as stale because it has not had recent activity.
+            
+            **Next Steps:**
+            - If this is still relevant, please comment to keep it open
+            - Add more information if needed
+            - Close if no longer applicable
+            
+            This issue will be closed in 7 days if no further activity occurs.
+          stale-pr-message: |
+            👋 This pull request has been automatically marked as stale because it has not had recent activity.
+            
+            **Next Steps:**
+            - Rebase if needed
+            - Address review comments
+            - Close if no longer needed
+            
+            This PR will be closed in 7 days if no further activity occurs.
+          stale-issue-label: 'status/stale'
+          stale-pr-label: 'status/stale'
+          days-before-stale: 30
+          days-before-close: 7
+          exempt-issue-labels: 'priority/critical,priority/high,status/blocked'
+          exempt-pr-labels: 'priority/critical,priority/high,status/blocked'
+
+  # Welcome new contributors
+  welcome-contributors:
+    name: 👋 Welcome New Contributors
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    steps:
+      - name: 👋 Welcome first-time contributors
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            
+            // Check if this is the author's first contribution
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: author,
+              state: 'all'
+            });
+            
+            if (prs.length === 1) { // This is their first PR
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: `👋 Welcome @${author}! Thank you for your first contribution to the Multimodal LLM Stack!
+                
+                **What happens next:**
+                1. 🔍 Our team will review your changes
+                2. 🧪 Automated tests will run
+                3. 📝 We may suggest improvements
+                4. ✅ Once approved, we'll merge your PR
+                
+                **Helpful Resources:**
+                - 📚 [Contributing Guide](.github/CONTRIBUTING.md)
+                - 🐛 [Troubleshooting](docs/troubleshooting.md)
+                - 💬 [Discussions](https://github.com/${context.repo.owner}/${context.repo.repo}/discussions)
+                
+                Thanks for making the project better! 🚀`
+              });
+            }
