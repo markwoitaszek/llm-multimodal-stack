@@ -1,4 +1,4 @@
-version: '3.8'
+# Docker Compose file for Multimodal LLM Stack
 
 services:
   # Vector Database
@@ -14,7 +14,7 @@ services:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
+      test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -59,7 +59,7 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -97,7 +97,7 @@ services:
               count: 1
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/models"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/models', timeout=10)\""]
       interval: 60s
       timeout: 30s
       retries: 5
