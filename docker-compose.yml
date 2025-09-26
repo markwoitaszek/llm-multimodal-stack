@@ -50,7 +50,7 @@ services:
     container_name: multimodal-minio
     ports:
       - "9000:9000"
-      - "9001:9001"
+      - "9002:9001"
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -85,9 +85,8 @@ services:
       --host 0.0.0.0
       --port 8000
       --gpu-memory-utilization 0.8
-      --max-model-len 4096
+      --max-model-len 1024
       --dtype auto
-      --api-key ${VLLM_API_KEY:-vllm-key}
     deploy:
       resources:
         reservations:
@@ -218,14 +217,13 @@ services:
     ports:
       - "3000:8080"
     environment:
-      - OPENAI_API_BASE_URL=http://litellm:4000/v1
-      - OPENAI_API_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+      - OPENAI_API_BASE_URL=http://vllm:8000/v1
+      - OPENAI_API_KEY=dummy-key
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-webui-secret}
     volumes:
       - openwebui_data:/app/backend/data
     depends_on:
-      litellm:
-        condition: service_healthy
+      - vllm
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
