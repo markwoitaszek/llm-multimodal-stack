@@ -1,6 +1,7 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 pydantic==2.5.0
+pydantic-settings==2.1.0
 transformers==4.36.2
 torch==2.1.1
 torchvision==0.16.1
@@ -21,7 +22,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 aiofiles==23.2.1
 httpx==0.25.2
-whisper-openai==20231117
+openai-whisper
 librosa==0.10.1
 soundfile==0.12.1
 moviepy==1.0.3

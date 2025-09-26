@@ -114,7 +114,7 @@ services:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
       - LITELLM_SALT_KEY=${LITELLM_SALT_KEY:-sk-salt-1234}
     volumes:
-      - ./configs/litellm_config.yaml:/app/config.yaml
+      - ./configs/litellm_simple.yaml:/app/config.yaml
     command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
     depends_on:
       vllm:

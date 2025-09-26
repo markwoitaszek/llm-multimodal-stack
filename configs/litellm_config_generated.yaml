@@ -3,13 +3,13 @@ model_list:
     litellm_params:
       model: openai/gpt-3.5-turbo
       api_base: http://vllm:8000/v1
-      api_key: vllm-key
+      api_key: dummy-key
       
   - model_name: local-llm
     litellm_params:
       model: openai/local-model
       api_base: http://vllm:8000/v1
-      api_key: vllm-key
+      api_key: dummy-key
 
 router_settings:
   routing_strategy: simple-shuffle
@@ -23,6 +23,5 @@ litellm_settings:
 
 general_settings:
   completion_model: local-llm
-  master_key: ${LITELLM_MASTER_KEY}
-  database_url: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-
+  master_key: sk-Y/JfF3FLgezDRjqjUhFQGJVMYYLOE0DgDxnPyp4RLhQ=
+  database_url: postgresql://postgres:v1gg6iFZdfgQN25ucFvB9WKrgARE3aXS+Y3rq6Fa6OA=@postgres:5432/multimodal
