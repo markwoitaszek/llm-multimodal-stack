@@ -1,0 +1,287 @@
+name: 📦 Automated Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+jobs:
+  # Determine Release Type
+  determine-release:
+    name: 🔍 Determine Release Type
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      release_type: ${{ steps.check.outputs.release_type }}
+      new_version: ${{ steps.check.outputs.new_version }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔍 Analyze commits for release type
+        id: check
+        run: |
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Last tag: $LAST_TAG"
+          
+          # Get commit messages since last tag
+          COMMITS=$(git log $LAST_TAG..HEAD --pretty=format:"%s" --no-merges)
+          echo "Commits since last tag:"
+          echo "$COMMITS"
+          
+          # Determine release type based on conventional commits
+          RELEASE_TYPE="none"
+          
+          if [[ "$COMMITS" =~ feat(\(.+\))?!:|BREAKING[[:space:]]CHANGE|^[[:space:]]*\*[[:space:]]*BREAKING[[:space:]]CHANGE ]]; then
+            RELEASE_TYPE="major"
+          elif [[ "$COMMITS" =~ ^feat(\(.+\))?:|^✨ ]]; then
+            RELEASE_TYPE="minor"
+          elif [[ "$COMMITS" =~ ^fix(\(.+\))?:|^🐛|^perf(\(.+\))?:|^⚡ ]]; then
+            RELEASE_TYPE="patch"
+          elif [[ "$COMMITS" =~ ^docs(\(.+\))?:|^📚|^style(\(.+\))?:|^🎨|^refactor(\(.+\))?:|^♻️|^test(\(.+\))?:|^🧪|^chore(\(.+\))?:|^🔧 ]]; then
+            RELEASE_TYPE="patch"
+          fi
+          
+          # Override with manual input if provided
+          if [ "${{ github.event.inputs.release_type }}" != "" ]; then
+            RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          fi
+          
+          # Check if we should create a release
+          SHOULD_RELEASE="false"
+          if [ "$RELEASE_TYPE" != "none" ] && [ -n "$COMMITS" ]; then
+            SHOULD_RELEASE="true"
+          fi
+          
+          # Calculate new version
+          CURRENT_VERSION=${LAST_TAG#v}
+          if [ "$CURRENT_VERSION" = "$LAST_TAG" ]; then
+            CURRENT_VERSION="0.0.0"
+          fi
+          
+          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR=${VERSION_PARTS[0]:-0}
+          MINOR=${VERSION_PARTS[1]:-0}
+          PATCH=${VERSION_PARTS[2]:-0}
+          
+          case $RELEASE_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+            prerelease)
+              PATCH=$((PATCH + 1))
+              PRERELEASE="-rc.$(date +%Y%m%d%H%M%S)"
+              ;;
+          esac
+          
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH$PRERELEASE"
+          
+          echo "should_release=$SHOULD_RELEASE" >> $GITHUB_OUTPUT
+          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+          echo "Release decision: $SHOULD_RELEASE"
+          echo "Release type: $RELEASE_TYPE"
+          echo "New version: $NEW_VERSION"
+
+  # Create Release
+  create-release:
+    name: 🚀 Create Release
+    runs-on: ubuntu-latest
+    needs: [determine-release]
+    if: needs.determine-release.outputs.should_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔧 Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: 📝 Update version files
+        run: |
+          NEW_VERSION="${{ needs.determine-release.outputs.new_version }}"
+          
+          # Update version in various files
+          echo "$NEW_VERSION" > VERSION
+          
+          # Update docker-compose.yml with new image tags
+          sed -i "s/image: ghcr.io\/.*\/multimodal-worker:.*/image: ghcr.io\/${{ github.repository }}\/multimodal-worker:v$NEW_VERSION/" docker-compose.prod.yml
+          sed -i "s/image: ghcr.io\/.*\/retrieval-proxy:.*/image: ghcr.io\/${{ github.repository }}\/retrieval-proxy:v$NEW_VERSION/" docker-compose.prod.yml
+          
+          # Update README.md with new version
+          sed -i "s/version: \"[0-9]*\.[0-9]*\.[0-9]*\"/version: \"$NEW_VERSION\"/" README.md
+          
+          # Update Python package versions if they exist
+          find services/ -name "setup.py" -exec sed -i "s/version=\"[0-9]*\.[0-9]*\.[0-9]*\"/version=\"$NEW_VERSION\"/" {} \;
+
+      - name: 📝 Generate changelog
+        id: changelog
+        run: |
+          NEW_VERSION="${{ needs.determine-release.outputs.new_version }}"
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          
+          # Generate changelog
+          cat > CHANGELOG_TEMP.md << EOF
+          # 🚀 Release v$NEW_VERSION
+          
+          **Release Date**: $(date +"%Y-%m-%d")
+          **Release Type**: ${{ needs.determine-release.outputs.release_type }}
+          
+          ## 📋 What's Changed
+          
+          $(git log $LAST_TAG..HEAD --pretty=format:"- %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" --no-merges)
+          
+          ## 📊 Statistics
+          
+          - **Commits**: $(git rev-list --count $LAST_TAG..HEAD)
+          - **Files Changed**: $(git diff --name-only $LAST_TAG..HEAD | wc -l)
+          - **Contributors**: $(git shortlog -sn $LAST_TAG..HEAD | wc -l)
+          
+          ## 🏗️ Docker Images
+          
+          - \`ghcr.io/${{ github.repository }}/multimodal-worker:v$NEW_VERSION\`
+          - \`ghcr.io/${{ github.repository }}/retrieval-proxy:v$NEW_VERSION\`
+          
+          ## 🚀 Quick Start
+          
+          \`\`\`bash
+          # Download release
+          wget https://github.com/${{ github.repository }}/archive/refs/tags/v$NEW_VERSION.tar.gz
+          tar -xzf v$NEW_VERSION.tar.gz
+          cd llm-multimodal-stack-$NEW_VERSION
+          
+          # Deploy
+          ./scripts/setup.sh
+          docker-compose up -d
+          \`\`\`
+          
+          ## 📚 Documentation
+          
+          - [📖 Configuration Guide](docs/configuration.md)
+          - [🔌 API Reference](docs/api-reference.md)
+          - [🚀 Deployment Guide](DEPLOYMENT.md)
+          - [🔧 Troubleshooting](docs/troubleshooting.md)
+          
+          ---
+          
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/$LAST_TAG...v$NEW_VERSION
+          EOF
+          
+          # Prepend to existing CHANGELOG.md if it exists
+          if [ -f CHANGELOG.md ]; then
+            cat CHANGELOG_TEMP.md CHANGELOG.md > CHANGELOG_NEW.md
+            mv CHANGELOG_NEW.md CHANGELOG.md
+          else
+            mv CHANGELOG_TEMP.md CHANGELOG.md
+          fi
+          
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          cat CHANGELOG_TEMP.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 💾 Commit version updates
+        run: |
+          NEW_VERSION="${{ needs.determine-release.outputs.new_version }}"
+          
+          git add .
+          git commit -m "🔖 Release v$NEW_VERSION
+
+          - Update version files
+          - Generate changelog
+          - Update Docker image tags
+          
+          Release type: ${{ needs.determine-release.outputs.release_type }}
+          " || echo "No changes to commit"
+
+      - name: 🏷️ Create and push tag
+        run: |
+          NEW_VERSION="${{ needs.determine-release.outputs.new_version }}"
+          
+          git tag -a "v$NEW_VERSION" -m "🚀 Release v$NEW_VERSION
+          
+          Release type: ${{ needs.determine-release.outputs.release_type }}
+          
+          $(git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s" --no-merges)"
+          
+          git push origin main
+          git push origin "v$NEW_VERSION"
+
+      - name: 📦 Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.determine-release.outputs.new_version }}
+          release_name: 🚀 Release v${{ needs.determine-release.outputs.new_version }}
+          body: ${{ steps.changelog.outputs.CHANGELOG }}
+          draft: false
+          prerelease: ${{ contains(needs.determine-release.outputs.new_version, 'rc') }}
+
+  # Update Project Board
+  update-project:
+    name: 📊 Update Project Board
+    runs-on: ubuntu-latest
+    needs: [create-release]
+    if: needs.determine-release.outputs.should_release == 'true'
+    steps:
+      - name: 📊 Update project board
+        run: |
+          echo "📊 Updating project board with release v${{ needs.determine-release.outputs.new_version }}"
+          # In a real scenario, this would:
+          # 1. Move completed issues to "Released" column
+          # 2. Create release milestone
+          # 3. Update project metrics
+          # 4. Notify stakeholders
+
+  # Post-Release Tasks
+  post-release:
+    name: 🎉 Post-Release Tasks
+    runs-on: ubuntu-latest
+    needs: [create-release]
+    if: needs.determine-release.outputs.should_release == 'true'
+    steps:
+      - name: 📢 Announce release
+        run: |
+          echo "📢 Announcing release v${{ needs.determine-release.outputs.new_version }}"
+          # In a real scenario, this would:
+          # 1. Post to Slack/Discord
+          # 2. Update documentation site
+          # 3. Send email notifications
+          # 4. Update social media
+          # 5. Create blog post
+
+      - name: 🔄 Trigger dependent workflows
+        run: |
+          echo "🔄 Triggering dependent workflows"
+          # Trigger documentation updates, demo deployments, etc.

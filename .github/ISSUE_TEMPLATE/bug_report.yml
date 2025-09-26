@@ -1,0 +1,119 @@
+name: 🐛 Bug Report
+description: Report a bug or issue with the Multimodal LLM Stack
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below to help us understand and reproduce the issue.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-flight Checklist
+      description: Please confirm you've completed these steps
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have run `./scripts/health-check.sh` to verify system status
+          required: true
+        - label: I have checked the troubleshooting guide in `docs/troubleshooting.md`
+          required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component is affected?
+      options:
+        - vLLM Inference
+        - LiteLLM Router
+        - Multimodal Worker
+        - Retrieval Proxy
+        - Database (PostgreSQL)
+        - Vector Store (Qdrant)
+        - Storage (MinIO)
+        - Monitoring (Prometheus/Grafana)
+        - Web Interface (OpenWebUI)
+        - Docker Compose
+        - Documentation
+        - Scripts/Automation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - Critical - System is completely broken
+        - High - Major functionality is broken
+        - Medium - Some functionality is broken
+        - Low - Minor issue or cosmetic problem
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of the bug
+      placeholder: Describe what happened and what you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior
+      placeholder: |
+        1. Run command '...'
+        2. Navigate to '...'
+        3. Click on '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Information about your environment
+      placeholder: |
+        - OS: [e.g., Ubuntu 22.04]
+        - GPU: [e.g., RTX 3090 24GB]
+        - Docker version: [e.g., 24.0.7]
+        - Docker Compose version: [e.g., 2.23.0]
+        - Branch/Commit: [e.g., main/522d8e2]
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and Error Messages
+      description: Relevant log output or error messages
+      placeholder: |
+        Paste relevant logs here. You can get logs with:
+        - `docker-compose logs [service-name]`
+        - `./scripts/health-check.sh`
+        - `docker-compose ps`
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any additional information that might be helpful
+      placeholder: Screenshots, configuration files, related issues, etc.
+    validations:
+      required: false
