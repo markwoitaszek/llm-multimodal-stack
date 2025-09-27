@@ -22,7 +22,11 @@ class DatabaseManager:
         """Initialize database connection pool"""
         try:
             self.pool = await asyncpg.create_pool(
-                settings.postgres_url,
+                host=settings.postgres_host,
+                port=settings.postgres_port,
+                database=settings.postgres_db,
+                user=settings.postgres_user,
+                password=settings.postgres_password,
                 min_size=2,
                 max_size=10,
                 command_timeout=60

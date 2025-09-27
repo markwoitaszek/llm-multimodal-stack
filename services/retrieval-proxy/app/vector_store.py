@@ -41,7 +41,12 @@ class VectorStoreManager:
             
             # Create collections if they don't exist
             for collection_type, collection_name in self.collections.items():
-                if not self.client.collection_exists(collection_name):
+                try:
+                    # Try to get the collection - if it doesn't exist, create it
+                    self.client.get_collection(collection_name)
+                    logger.info(f"Collection exists: {collection_name}")
+                except Exception:
+                    # Collection doesn't exist, create it
                     self.client.create_collection(
                         collection_name=collection_name,
                         vectors_config=VectorParams(
@@ -50,8 +55,6 @@ class VectorStoreManager:
                         )
                     )
                     logger.info(f"Created collection: {collection_name}")
-                else:
-                    logger.info(f"Collection exists: {collection_name}")
             
             logger.info("Vector store manager initialized successfully")
             
@@ -270,10 +273,10 @@ class VectorStoreManager:
             stats = {}
             
             for collection_type, collection_name in self.collections.items():
-                if self.client.collection_exists(collection_name):
+                try:
                     info = self.get_collection_info(collection_name)
                     stats[collection_type] = info
-                else:
+                except Exception:
                     stats[collection_type] = {"status": "not_found"}
             
             return stats
