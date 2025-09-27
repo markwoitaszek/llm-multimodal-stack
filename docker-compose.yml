@@ -259,7 +259,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      qdrant:
+        condition: service_healthy
       vllm:
+        condition: service_healthy
+      multimodal-worker:
+        condition: service_healthy
+      retrieval-proxy:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
@@ -271,26 +277,19 @@ services:
     networks:
       - multimodal-net
 
-  # Setup Wizard Service
-  setup-wizard:
+  # AI Agents Web Interface
+  ai-agents-web:
     build:
-      context: ./services/setup-wizard
+      context: ./services/ai-agents/web
       dockerfile: Dockerfile
-    container_name: multimodal-setup-wizard
+    container_name: multimodal-ai-agents-web
     ports:
-      - "8004:8004"
-    environment:
-      - SETUP_WIZARD_HOST=0.0.0.0
-      - SETUP_WIZARD_PORT=8004
-      - SETUP_WIZARD_DEBUG=false
-    volumes:
-      - ./:/app
-      - setup_wizard_cache:/app/cache
+      - "3001:3000"
     depends_on:
-      postgres:
+      ai-agents:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/api/setup/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -346,7 +345,6 @@ volumes:
   multimodal_cache:
   openwebui_data:
   n8n_data:
-  setup_wizard_cache:
 
 networks:
   multimodal-net:

@@ -131,42 +131,75 @@ Remember: You are autonomous but should be helpful and safe in your actions.""")
                            task: str,
                            user_id: str = "default") -> Dict[str, Any]:
         """Execute a task with an agent"""
+        start_time = datetime.utcnow()
+        execution_time_ms = None
+        
         try:
             if agent_id not in self.agents:
                 raise ValueError(f"Agent {agent_id} not found")
             
             agent_executor = self.agents[agent_id]
             
+            logger.info(f"Starting agent execution - Agent: {agent_id}, Task: {task[:100]}...")
+            
             # Execute the task
             result = await agent_executor.ainvoke({
                 "input": task
             })
             
-            # Save execution history
-            await self.memory_manager.save_agent_execution(
-                agent_id=agent_id,
-                task=task,
-                result=result,
-                user_id=user_id,
-                executed_at=datetime.utcnow()
-            )
+            execution_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
             
-            return {
+            # Prepare execution result
+            execution_result = {
                 "agent_id": agent_id,
                 "task": task,
                 "result": result["output"],
                 "intermediate_steps": result.get("intermediate_steps", []),
-                "success": True
+                "success": True,
+                "execution_time_ms": execution_time_ms,
+                "timestamp": start_time.isoformat()
             }
             
+            # Save execution history
+            await self.memory_manager.save_agent_execution(
+                agent_id=agent_id,
+                task=task,
+                result=execution_result,
+                user_id=user_id,
+                executed_at=start_time,
+                execution_time_ms=execution_time_ms
+            )
+            
+            logger.info(f"Agent execution completed successfully - Agent: {agent_id}, Time: {execution_time_ms}ms")
+            
+            return execution_result
+            
         except Exception as e:
-            logger.error(f"Agent execution failed: {e}")
-            return {
+            execution_time_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            
+            error_result = {
                 "agent_id": agent_id,
                 "task": task,
                 "error": str(e),
-                "success": False
+                "success": False,
+                "execution_time_ms": execution_time_ms,
+                "timestamp": start_time.isoformat()
             }
+            
+            # Save failed execution
+            await self.memory_manager.save_agent_execution(
+                agent_id=agent_id,
+                task=task,
+                result=error_result,
+                user_id=user_id,
+                executed_at=start_time,
+                execution_time_ms=execution_time_ms,
+                success=False
+            )
+            
+            logger.error(f"Agent execution failed - Agent: {agent_id}, Error: {e}, Time: {execution_time_ms}ms")
+            
+            return error_result
     
     async def get_agent_info(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Get agent information"""

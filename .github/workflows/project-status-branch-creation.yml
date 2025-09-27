@@ -1,18 +1,17 @@
 name: Project Status Branch Creation
 
 on:
-  project:
-    types: [edited]
+  issues:
+    types: [labeled, unlabeled]
 
 jobs:
   create-branch-on-in-progress:
-    if: github.event.changes && github.event.changes.field && github.event.changes.field.name == 'Status' && github.event.changes.field.value == 'In Progress'
+    if: github.event.label.name == 'in progress'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       issues: write
       pull-requests: write
-      projects: write
     
     steps:
       - name: Checkout repository
@@ -29,10 +28,10 @@ jobs:
       - name: Get issue details
         id: issue-info
         run: |
-          # Get the issue number from the project item
-          ISSUE_NUMBER=$(echo '${{ github.event.project_item.content.number }}')
-          ISSUE_TITLE=$(echo '${{ github.event.project_item.content.title }}')
-          MILESTONE=$(echo '${{ github.event.project_item.content.milestone.title }}')
+          # Get the issue details from the issues event
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          ISSUE_TITLE="${{ github.event.issue.title }}"
+          MILESTONE="${{ github.event.issue.milestone.title }}"
           
           echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
           echo "issue_title=$ISSUE_TITLE" >> $GITHUB_OUTPUT

@@ -1,0 +1,402 @@
+{
+  "customer_support_automation": {
+    "name": "AI Customer Support Automation",
+    "nodes": [
+      {
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "customer-inquiry",
+          "responseMode": "responseNode"
+        }
+      },
+      {
+        "name": "Extract Customer Data",
+        "type": "n8n-nodes-base.set",
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "customer_id",
+                "value": "={{ $json.customer_id }}"
+              },
+              {
+                "name": "inquiry",
+                "value": "={{ $json.message }}"
+              },
+              {
+                "name": "priority",
+                "value": "={{ $json.priority || 'normal' }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Call AI Agent",
+        "type": "n8n-nodes-base.httpRequest",
+        "parameters": {
+          "url": "http://ai-agents:8003/agents/customer-support-bot/execute",
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "task": "Customer inquiry: {{ $json.inquiry }}. Customer ID: {{ $json.customer_id }}. Priority: {{ $json.priority }}",
+            "user_id": "n8n-system"
+          }
+        }
+      },
+      {
+        "name": "Process AI Response",
+        "type": "n8n-nodes-base.set",
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "ai_response",
+                "value": "={{ $json.result }}"
+              },
+              {
+                "name": "confidence",
+                "value": "={{ $json.success ? 'high' : 'low' }}"
+              },
+              {
+                "name": "execution_time",
+                "value": "={{ $json.execution_time_ms }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Update CRM",
+        "type": "n8n-nodes-base.httpRequest",
+        "parameters": {
+          "url": "http://your-crm-system/api/tickets/{{ $('Extract Customer Data').item.json.customer_id }}",
+          "method": "PUT",
+          "headers": {
+            "Authorization": "Bearer {{ $env.CRM_API_KEY }}"
+          },
+          "body": {
+            "status": "ai_responded",
+            "response": "={{ $json.ai_response }}",
+            "response_time_ms": "={{ $json.execution_time }}"
+          }
+        }
+      },
+      {
+        "name": "Send Response to Customer",
+        "type": "n8n-nodes-base.httpRequest",
+        "parameters": {
+          "url": "http://your-email-service/api/send",
+          "method": "POST",
+          "headers": {
+            "Authorization": "Bearer {{ $env.EMAIL_API_KEY }}"
+          },
+          "body": {
+            "to": "={{ $('Extract Customer Data').item.json.customer_email }}",
+            "subject": "Re: Your Inquiry",
+            "body": "={{ $json.ai_response }}"
+          }
+        }
+      },
+      {
+        "name": "Escalate if Needed",
+        "type": "n8n-nodes-base.if",
+        "parameters": {
+          "conditions": {
+            "string": [
+              {
+                "value1": "={{ $json.confidence }}",
+                "operation": "equal",
+                "value2": "low"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Notify Human Agent",
+        "type": "n8n-nodes-base.httpRequest",
+        "parameters": {
+          "url": "http://your-slack-webhook/notify-support",
+          "method": "POST",
+          "body": {
+            "text": "⚠️ AI Agent needs human assistance for customer {{ $('Extract Customer Data').item.json.customer_id }}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Customer Inquiry:* {{ $('Extract Customer Data').item.json.inquiry }}\n*AI Response:* {{ $('Process AI Response').item.json.ai_response }}"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Webhook Response",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "parameters": {
+          "responseBody": {
+            "success": "={{ $json.success }}",
+            "response": "={{ $json.ai_response }}",
+            "execution_time_ms": "={{ $json.execution_time }}",
+            "escalated": "={{ $('Escalate if Needed').item.json.confidence === 'low' }}"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Extract Customer Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Customer Data": {
+        "main": [
+          [
+            {
+              "node": "Call AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Process AI Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process AI Response": {
+        "main": [
+          [
+            {
+              "node": "Update CRM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update CRM": {
+        "main": [
+          [
+            {
+              "node": "Send Response to Customer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Response to Customer": {
+        "main": [
+          [
+            {
+              "node": "Escalate if Needed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Escalate if Needed": {
+        "main": [
+          [
+            {
+              "node": "Notify Human Agent",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Webhook Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Notify Human Agent": {
+        "main": [
+          [
+            {
+              "node": "Webhook Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    }
+  },
+  
+  "content_moderation_workflow": {
+    "name": "AI Content Moderation",
+    "nodes": [
+      {
+        "name": "File Upload Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "upload-content",
+          "responseMode": "responseNode"
+        }
+      },
+      {
+        "name": "Extract Content Info",
+        "type": "n8n-nodes-base.set",
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "content_id",
+                "value": "={{ $json.content_id }}"
+              },
+              {
+                "name": "file_url",
+                "value": "={{ $json.file_url }}"
+              },
+              {
+                "name": "content_type",
+                "value": "={{ $json.content_type }}"
+              },
+              {
+                "name": "user_id",
+                "value": "={{ $json.user_id }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Call AI Content Moderator",
+        "type": "n8n-nodes-base.httpRequest",
+        "parameters": {
+          "url": "http://ai-agents:8003/agents/content-moderator/execute",
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "task": "Moderate content: {{ $json.file_url }}. Content type: {{ $json.content_type }}. User: {{ $json.user_id }}",
+            "user_id": "n8n-system"
+          }
+        }
+      },
+      {
+        "name": "Process Moderation Result",
+        "type": "n8n-nodes-base.set",
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "moderation_decision",
+                "value": "={{ $json.result }}"
+              },
+              {
+                "name": "confidence_score",
+                "value": "={{ $json.success ? 'high' : 'low' }}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Check if Approved",
+        "type": "n8n-nodes-base.if",
+        "parameters": {
+          "conditions": {
+            "string": [
+              {
+                "value1": "={{ $json.moderation_decision }}",
+                "operation": "contains",
+                "value2": "approved"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Approve Content",
+        "type": "n8n-nodes-base.httpRequest",
+        "parameters": {
+          "url": "http://your-cms/api/content/{{ $('Extract Content Info').item.json.content_id }}/approve",
+          "method": "POST",
+          "headers": {
+            "Authorization": "Bearer {{ $env.CMS_API_KEY }}"
+          },
+          "body": {
+            "status": "approved",
+            "moderation_note": "AI approved - {{ $json.moderation_decision }}"
+          }
+        }
+      },
+      {
+        "name": "Flag for Review",
+        "type": "n8n-nodes-base.httpRequest",
+        "parameters": {
+          "url": "http://your-cms/api/content/{{ $('Extract Content Info').item.json.content_id }}/flag",
+          "method": "POST",
+          "headers": {
+            "Authorization": "Bearer {{ $env.CMS_API_KEY }}"
+          },
+          "body": {
+            "status": "flagged",
+            "moderation_note": "AI flagged - {{ $json.moderation_decision }}",
+            "priority": "high"
+          }
+        }
+      },
+      {
+        "name": "Notify Moderator",
+        "type": "n8n-nodes-base.httpRequest",
+        "parameters": {
+          "url": "http://your-slack-webhook/notify-moderators",
+          "method": "POST",
+          "body": {
+            "text": "🚨 Content flagged for review",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Content ID:* {{ $('Extract Content Info').item.json.content_id }}\n*User:* {{ $('Extract Content Info').item.json.user_id }}\n*AI Decision:* {{ $json.moderation_decision }}"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Webhook Response",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "parameters": {
+          "responseBody": {
+            "content_id": "={{ $('Extract Content Info').item.json.content_id }}",
+            "decision": "={{ $json.moderation_decision }}",
+            "approved": "={{ $('Check if Approved').item.json.moderation_decision }}"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -134,14 +134,16 @@ class MemoryManager:
                                   task: str,
                                   result: Dict[str, Any],
                                   user_id: str,
-                                  executed_at: datetime) -> bool:
+                                  executed_at: datetime,
+                                  execution_time_ms: int = None,
+                                  success: bool = None) -> bool:
         """Save agent execution history"""
         try:
             async with self.pool.acquire() as conn:
                 await conn.execute("""
-                    INSERT INTO agent_executions (agent_id, task, result, user_id, executed_at, success)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                """, agent_id, task, json.dumps(result), user_id, executed_at, result.get("success", True))
+                    INSERT INTO agent_executions (agent_id, task, result, user_id, executed_at, execution_time_ms, success)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                """, agent_id, task, json.dumps(result), user_id, executed_at, execution_time_ms, success or result.get("success", True))
             
             return True
             
