@@ -37,52 +37,74 @@ gh api repos/$(gh api user --jq .login)/$REPO_NAME -X PATCH -f has_wiki=true
 # Wait a moment for the wiki to be enabled
 sleep 2
 
-# Create wiki pages
+# Create wiki pages using GitHub API
 echo "📝 Creating wiki pages..."
 
+# Function to create wiki page using GitHub API
+create_wiki_page() {
+    local page_name="$1"
+    local content_file="$2"
+    
+    if [ ! -f "$content_file" ]; then
+        echo "⚠️  File not found: $content_file"
+        return 1
+    fi
+    
+    local content=$(cat "$content_file" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+    
+    echo "Creating $page_name..."
+    
+    # Create the wiki page using GitHub API
+    local response=$(gh api repos/$(gh api user --jq .login)/$REPO_NAME/wiki \
+        -X POST \
+        -f title="$page_name" \
+        -f body="$content" \
+        2>/dev/null)
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Created $page_name"
+        return 0
+    else
+        echo "❌ Failed to create $page_name"
+        return 1
+    fi
+}
+
 # Create Home page
-echo "Creating Home.md..."
-gh wiki create "$REPO_NAME" "Home" -b "$(cat docs/wiki/Home.md)"
+create_wiki_page "Home" "docs/wiki/Home.md"
 
 # Create Getting Started Guide
-echo "Creating Getting-Started-Guide.md..."
-gh wiki create "$REPO_NAME" "Getting-Started-Guide" -b "$(cat docs/wiki/Getting-Started-Guide.md)"
+create_wiki_page "Getting-Started-Guide" "docs/wiki/Getting-Started-Guide.md"
 
 # Create Setup Wizard Tutorial
-echo "Creating Setup-Wizard-Tutorial.md..."
-gh wiki create "$REPO_NAME" "Setup-Wizard-Tutorial" -b "$(cat docs/wiki/Setup-Wizard-Tutorial.md)"
+create_wiki_page "Setup-Wizard-Tutorial" "docs/wiki/Setup-Wizard-Tutorial.md"
 
 # Create additional wiki pages from existing docs
 echo "📄 Adding existing documentation to wiki..."
 
 # Add configuration guide
 if [ -f "docs/configuration.md" ]; then
-    echo "Adding Configuration-Guide.md..."
-    gh wiki create "$REPO_NAME" "Configuration-Guide" -b "$(cat docs/configuration.md)"
+    create_wiki_page "Configuration-Guide" "docs/configuration.md"
 fi
 
 # Add API reference
 if [ -f "docs/api-reference.md" ]; then
-    echo "Adding API-Reference.md..."
-    gh wiki create "$REPO_NAME" "API-Reference" -b "$(cat docs/api-reference.md)"
+    create_wiki_page "API-Reference" "docs/api-reference.md"
 fi
 
 # Add development guide
 if [ -f "docs/development.md" ]; then
-    echo "Adding Development-Guide.md..."
-    gh wiki create "$REPO_NAME" "Development-Guide" -b "$(cat docs/development.md)"
+    create_wiki_page "Development-Guide" "docs/development.md"
 fi
 
 # Add troubleshooting guide
 if [ -f "docs/troubleshooting.md" ]; then
-    echo "Adding Troubleshooting-Guide.md..."
-    gh wiki create "$REPO_NAME" "Troubleshooting-Guide" -b "$(cat docs/troubleshooting.md)"
+    create_wiki_page "Troubleshooting-Guide" "docs/troubleshooting.md"
 fi
 
 # Add quick start guide
 if [ -f "docs/quick-start.md" ]; then
-    echo "Adding Quick-Start-Guide.md..."
-    gh wiki create "$REPO_NAME" "Quick-Start-Guide" -b "$(cat docs/quick-start.md)"
+    create_wiki_page "Quick-Start-Guide" "docs/quick-start.md"
 fi
 
 echo ""
