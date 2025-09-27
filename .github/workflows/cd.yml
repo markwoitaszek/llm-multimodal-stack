@@ -21,7 +21,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'push'
     strategy:
       matrix:
-        service: [multimodal-worker, retrieval-proxy]
+        service: [multimodal-worker, retrieval-proxy, setup-wizard]
     permissions:
       contents: read
       packages: write
@@ -101,6 +101,7 @@ jobs:
           
           - \`ghcr.io/${{ github.repository }}/multimodal-worker:$CURRENT_TAG\`
           - \`ghcr.io/${{ github.repository }}/retrieval-proxy:$CURRENT_TAG\`
+          - \`ghcr.io/${{ github.repository }}/setup-wizard:$CURRENT_TAG\`
           
           ## 🚀 Deployment
           
@@ -157,11 +158,11 @@ jobs:
   deploy-staging:
     name: 🧪 Deploy to Staging
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
+    if: startsWith(github.ref, 'refs/heads/develop/')
     needs: [build-and-push]
-    environment:
-      name: "staging"
-      url: https://staging.multimodal-stack.com
+    # environment:
+    #   name: "staging"
+    #   url: https://staging.multimodal-stack.com
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -169,7 +170,7 @@ jobs:
       - name: 🚀 Deploy to staging
         run: |
           echo "🧪 Deploying to staging environment"
-          echo "🔧 Using images with tag: develop"
+          echo "🔧 Using images with tag: ${GITHUB_REF#refs/heads/}"
           echo "🌐 Staging URL: https://staging.multimodal-stack.com"
           
           # In a real scenario, this would:
@@ -191,9 +192,9 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-and-push, release]
-    environment:
-      name: "production"
-      url: https://multimodal-stack.com
+    # environment:
+    #   name: "production"
+    #   url: https://multimodal-stack.com
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4

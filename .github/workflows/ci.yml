@@ -2,9 +2,9 @@ name: 🔄 Continuous Integration
 
 on:
   push:
-    branches: [ main, develop, 'feature/*', 'hotfix/*' ]
+    branches: [ main, 'develop/*', 'feature/*', 'hotfix/*' ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, 'develop/*' ]
 
 env:
   REGISTRY: ghcr.io
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [multimodal-worker, retrieval-proxy]
+        service: [multimodal-worker, retrieval-proxy, setup-wizard]
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -250,7 +250,7 @@ jobs:
     name: 🔗 Integration Tests
     runs-on: ubuntu-latest
     needs: [quality, docker, infrastructure]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/develop/')
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
