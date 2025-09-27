@@ -1,0 +1,163 @@
+{
+  "name": "Content Processing Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "content-upload",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Content Upload Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://multimodal-worker:8001/api/v1/process/text",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "process-text",
+      "name": "Process Text Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://multimodal-worker:8001/api/v1/process/image",
+        "sendBody": true,
+        "specifyBody": "form",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "value": "={{ $json.image_data }}"
+            },
+            {
+              "name": "document_name", 
+              "value": "={{ $json.filename }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "process-image",
+      "name": "Process Image Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 480]
+    },
+    {
+      "parameters": {
+        "url": "http://retrieval-proxy:8002/api/v1/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $json.content || $json.caption }}\",\n  \"modalities\": [\"text\", \"image\"],\n  \"limit\": 10\n}",
+        "options": {}
+      },
+      "id": "index-content",
+      "name": "Index for Search",
+      "type": "n8n-nodes-base.httpRequest", 
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://vllm:8000/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"microsoft/DialoGPT-medium\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Summarize this content: {{ $json.content || $json.caption }}\"\n    }\n  ],\n  \"max_tokens\": 150\n}",
+        "options": {}
+      },
+      "id": "generate-summary",
+      "name": "Generate AI Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "subject": "Content Processing Complete",
+        "message": "=Content processed successfully!\n\nSummary: {{ $json.choices[0].message.content }}\n\nDocument ID: {{ $('Process Text Content').item.json.data.document_id }}\n\nTimestamp: {{ new Date().toISOString() }}",
+        "options": {}
+      },
+      "id": "send-notification",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Content Upload Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Text Content",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Process Image Content", 
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Text Content": {
+      "main": [
+        [
+          {
+            "node": "Index for Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Image Content": {
+      "main": [
+        [
+          {
+            "node": "Index for Search",
+            "type": "main", 
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Index for Search": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

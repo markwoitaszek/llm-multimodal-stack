@@ -236,6 +236,75 @@ services:
     networks:
       - multimodal-net
 
+  # AI Agents Service (LangChain)
+  ai-agents:
+    build:
+      context: ./services/ai-agents
+      dockerfile: Dockerfile
+    container_name: multimodal-ai-agents
+    ports:
+      - "8003:8003"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - LLM_BASE_URL=http://vllm:8000/v1
+      - LLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
+      - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
+      - RETRIEVAL_PROXY_URL=http://retrieval-proxy:8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vllm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # n8n Workflow Management Platform
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: multimodal-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678
+      - GENERIC_TIMEZONE=UTC
+      - N8N_METRICS=true
+      - N8N_LOG_LEVEL=info
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-multimodal-n8n-key}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows:/home/node/.n8n/workflows:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
 volumes:
   qdrant_data:
   postgres_data:
@@ -243,6 +312,7 @@ volumes:
   vllm_cache:
   multimodal_cache:
   openwebui_data:
+  n8n_data:
 
 networks:
   multimodal-net:

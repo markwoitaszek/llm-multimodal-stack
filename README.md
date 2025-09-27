@@ -67,7 +67,9 @@ open https://your-domain.com:3001   # Grafana monitoring
 | vLLM | 8000 | High-performance LLM inference |
 | Multimodal Worker | 8001 | Image/video processing |
 | Retrieval Proxy | 8002 | Unified search & context |
+| AI Agents | 8003 | LangChain autonomous agents |
 | OpenWebUI | 3030 | Web interface for testing |
+| n8n | 5678 | Visual workflow automation |
 | Qdrant | 6333 | Vector database |
 | PostgreSQL | 5432 | Metadata & memory storage |
 | MinIO | 9000 | S3-compatible artifact storage |
