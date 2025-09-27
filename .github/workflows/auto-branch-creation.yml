@@ -1,0 +1,181 @@
+name: Auto Branch Creation
+
+on:
+  issues:
+    types: [labeled, unlabeled]
+  project:
+    types: [edited]
+
+jobs:
+  create-branch:
+    if: github.event.label.name == 'in progress' || (github.event.action == 'unlabeled' && github.event.label.name == 'in progress')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+      
+      - name: Determine branch name and type
+        id: branch-info
+        run: |
+          ISSUE_NUMBER=${{ github.event.issue.number }}
+          ISSUE_TITLE="${{ github.event.issue.title }}"
+          MILESTONE="${{ github.event.issue.milestone.title }}"
+          
+          # Clean up issue title for branch name
+          CLEAN_TITLE=$(echo "$ISSUE_TITLE" | sed 's/\[.*\]//g' | sed 's/[^a-zA-Z0-9 -]//g' | sed 's/  */ /g' | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+          
+          # Determine if this is a phase overview issue
+          if [[ "$ISSUE_TITLE" == *"Overview"* ]]; then
+            # Extract phase number from milestone
+            PHASE_NUM=$(echo "$MILESTONE" | grep -o 'Phase [0-9]' | grep -o '[0-9]')
+            BRANCH_NAME="dev/phase-$PHASE_NUM"
+            BRANCH_TYPE="phase"
+          else
+            # Extract issue number and create feature branch
+            BRANCH_NAME="feature/issue-$ISSUE_NUMBER-$CLEAN_TITLE"
+            BRANCH_TYPE="feature"
+          fi
+          
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "branch_type=$BRANCH_TYPE" >> $GITHUB_OUTPUT
+          echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+          echo "milestone=$MILESTONE" >> $GITHUB_OUTPUT
+      
+      - name: Check if branch already exists
+        id: check-branch
+        run: |
+          BRANCH_NAME="${{ steps.branch-info.outputs.branch_name }}"
+          if git show-ref --verify --quiet refs/heads/$BRANCH_NAME; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Branch $BRANCH_NAME already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Branch $BRANCH_NAME does not exist"
+          fi
+      
+      - name: Create branch
+        if: steps.check-branch.outputs.exists == 'false'
+        run: |
+          BRANCH_NAME="${{ steps.branch-info.outputs.branch_name }}"
+          BRANCH_TYPE="${{ steps.branch-info.outputs.branch_type }}"
+          
+          # Create and checkout the new branch
+          git checkout -b $BRANCH_NAME
+          
+          # Create a basic README for the branch
+          if [[ "$BRANCH_TYPE" == "phase" ]]; then
+            echo "# Phase Development Branch" > README.md
+            echo "" >> README.md
+            echo "This branch contains work for the current phase." >> README.md
+            echo "" >> README.md
+            echo "## Related Issue" >> README.md
+            echo "- Issue #${{ steps.branch-info.outputs.issue_number }}: ${{ github.event.issue.title }}" >> README.md
+            echo "" >> README.md
+            echo "## Branch Purpose" >> README.md
+            echo "This is a phase-level development branch for coordinating work across multiple features." >> README.md
+            echo "" >> README.md
+            echo "## Getting Started" >> README.md
+            echo "1. Create feature branches from this branch for individual issues" >> README.md
+            echo "2. Use the naming convention: feature/issue-XXX-description" >> README.md
+            echo "3. Merge feature branches back to this branch when complete" >> README.md
+            echo "4. Create a PR to main when the phase is complete" >> README.md
+            echo "" >> README.md
+            echo "## Related Issues" >> README.md
+            echo "All issues in this milestone will be worked on in this branch." >> README.md
+          else
+            echo "# Feature Development Branch" > README.md
+            echo "" >> README.md
+            echo "This branch contains work for a specific feature issue." >> README.md
+            echo "" >> README.md
+            echo "## Issue Details" >> README.md
+            echo "- **Issue**: #${{ steps.branch-info.outputs.issue_number }}" >> README.md
+            echo "- **Title**: ${{ github.event.issue.title }}" >> README.md
+            echo "- **Milestone**: ${{ steps.branch-info.outputs.milestone }}" >> README.md
+            echo "" >> README.md
+            echo "## Branch Purpose" >> README.md
+            echo "This feature branch implements the requirements specified in the linked issue." >> README.md
+            echo "" >> README.md
+            echo "## Getting Started" >> README.md
+            echo "1. Make your changes in this branch" >> README.md
+            echo "2. Test thoroughly" >> README.md
+            echo "3. Create a PR to the appropriate phase branch (e.g., dev/phase-X)" >> README.md
+            echo "4. Link the PR to this issue" >> README.md
+            echo "" >> README.md
+            echo "## Implementation Notes" >> README.md
+            echo "Add your implementation notes here as you work on this feature." >> README.md
+          fi
+          
+          # Add and commit the README
+          git add README.md
+          git commit -m "Initial commit for ${{ github.event.issue.title }} - Created branch for Issue #${{ steps.branch-info.outputs.issue_number }} - Added branch documentation - Ready for development work"
+          
+          # Push the branch
+          git push origin $BRANCH_NAME
+          
+          echo "Successfully created and pushed branch: $BRANCH_NAME"
+      
+      - name: Comment on issue
+        if: steps.check-branch.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = '${{ steps.branch-info.outputs.branch_name }}';
+            const branchType = '${{ steps.branch-info.outputs.branch_type }}';
+            const issueNumber = ${{ steps.branch-info.outputs.issue_number }};
+            
+            let comment = `🚀 **Branch Created Successfully!**\n\n`;
+            comment += `**Branch**: \`${branchName}\`\n`;
+            comment += `**Type**: ${branchType === 'phase' ? 'Phase Development Branch' : 'Feature Branch'}\n\n`;
+            
+            if (branchType === 'phase') {
+              comment += `This phase branch is ready for development work. Create feature branches from this branch for individual issues.\n\n`;
+              comment += `**Next Steps:**\n`;
+              comment += `1. Checkout the branch: \`git checkout ${branchName}\`\n`;
+              comment += `2. Create feature branches for individual issues\n`;
+              comment += `3. Use naming convention: \`feature/issue-XXX-description\`\n`;
+            } else {
+              comment += `This feature branch is ready for development work.\n\n`;
+              comment += `**Next Steps:**\n`;
+              comment += `1. Checkout the branch: \`git checkout ${branchName}\`\n`;
+              comment += `2. Start implementing the feature\n`;
+              comment += `3. Create a PR to the appropriate phase branch when complete\n`;
+            }
+            
+            comment += `\n---\n*This branch was automatically created by GitHub Actions when the issue was moved to "In Progress".*`;
+            
+            github.rest.issues.createComment({
+              issue_number: issueNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+      
+      - name: Comment if branch already exists
+        if: steps.check-branch.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = '${{ steps.branch-info.outputs.branch_name }}';
+            const issueNumber = ${{ steps.branch-info.outputs.issue_number }};
+            
+            const comment = `ℹ️ **Branch Already Exists**\n\nBranch \`${branchName}\` already exists for this issue.\n\n**Next Steps:**\n1. Checkout the existing branch: \`git checkout ${branchName}\`\n2. Continue development work\n\n---\n*This branch was previously created for this issue.*`;
+            
+            github.rest.issues.createComment({
+              issue_number: issueNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
