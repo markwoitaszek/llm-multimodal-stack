@@ -5,7 +5,7 @@ import logging
 from typing import List, Dict, Any, Optional
 import httpx
 from langchain.tools import BaseTool
-from langchain.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from .config import settings
 
@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 
 class ImageAnalysisTool(BaseTool):
     """Tool for analyzing images using the multimodal worker"""
-    name = "analyze_image"
-    description = "Analyze an image and generate a detailed caption and features"
+    name: str = "analyze_image"
+    description: str = "Analyze an image and generate a detailed caption and features"
     
     class ImageAnalysisInput(BaseModel):
         image_url: str = Field(description="URL or path to the image to analyze")
         
-    args_schema = ImageAnalysisInput
+    args_schema: type = ImageAnalysisInput
     
     async def _arun(self, image_url: str) -> str:
         """Analyze image asynchronously"""
@@ -62,15 +62,15 @@ class ImageAnalysisTool(BaseTool):
 
 class SearchTool(BaseTool):
     """Tool for searching content using the retrieval proxy"""
-    name = "search_content"
-    description = "Search for relevant content across text, images, and videos"
+    name: str = "search_content"
+    description: str = "Search for relevant content across text, images, and videos"
     
     class SearchInput(BaseModel):
         query: str = Field(description="Search query")
         modalities: List[str] = Field(default=["text", "image", "video"], description="Content types to search")
         limit: int = Field(default=5, description="Maximum number of results")
         
-    args_schema = SearchInput
+    args_schema: type = SearchInput
     
     async def _arun(self, query: str, modalities: List[str] = None, limit: int = 5) -> str:
         """Search content asynchronously"""
@@ -115,14 +115,14 @@ class SearchTool(BaseTool):
 
 class TextGenerationTool(BaseTool):
     """Tool for generating text using the LLM"""
-    name = "generate_text"
-    description = "Generate text, summaries, or creative content using the LLM"
+    name: str = "generate_text"
+    description: str = "Generate text, summaries, or creative content using the LLM"
     
     class TextGenerationInput(BaseModel):
         prompt: str = Field(description="Text generation prompt")
         max_tokens: int = Field(default=200, description="Maximum tokens to generate")
         
-    args_schema = TextGenerationInput
+    args_schema: type = TextGenerationInput
     
     async def _arun(self, prompt: str, max_tokens: int = 200) -> str:
         """Generate text asynchronously"""
@@ -159,13 +159,13 @@ class TextGenerationTool(BaseTool):
 
 class WebSearchTool(BaseTool):
     """Tool for web search (placeholder - would integrate with search API)"""
-    name = "web_search"
-    description = "Search the web for current information"
+    name: str = "web_search"
+    description: str = "Search the web for current information"
     
     class WebSearchInput(BaseModel):
         query: str = Field(description="Web search query")
         
-    args_schema = WebSearchInput
+    args_schema: type = WebSearchInput
     
     def _run(self, query: str) -> str:
         """Web search (placeholder implementation)"""

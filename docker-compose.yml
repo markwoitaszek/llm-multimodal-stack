@@ -259,10 +259,37 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      qdrant:
+        condition: service_healthy
       vllm:
+        condition: service_healthy
+      multimodal-worker:
+        condition: service_healthy
+      retrieval-proxy:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # AI Agents Web Interface
+  ai-agents-web:
+    build:
+      context: ./services/ai-agents/web
+      dockerfile: Dockerfile
+    container_name: multimodal-ai-agents-web
+    ports:
+      - "3001:3000"
+    depends_on:
+      ai-agents:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
