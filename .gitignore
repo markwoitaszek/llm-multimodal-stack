@@ -88,8 +88,3 @@ configs/*_temp.*
 backups/
 *.backup
 backup_*
-# Temporary files
-temp-wiki-content/
-*.tmp
-# Wiki repository (separate repo)
-llm-multimodal-stack.wiki/

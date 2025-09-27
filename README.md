@@ -29,19 +29,6 @@ A **production-ready, Dockerized multimodal stack** for RTX 3090 GPU servers tha
 
 ## 🚦 Quick Start
 
-### Option 1: Interactive Setup Wizard (Recommended for Beginners)
-```bash
-# Clone and start the stack
-git clone <repo-url>
-cd llm-multimodal-stack
-docker-compose up -d
-
-# Open the interactive Setup Wizard
-open http://localhost:8004
-# Follow the guided setup process with built-in tutorials
-```
-
-### Option 2: Automated Setup
 ```bash
 # Clone and setup
 git clone <repo-url>
@@ -76,17 +63,16 @@ open https://your-domain.com:3001   # Grafana monitoring
 
 | Service | Port | Description |
 |---------|------|-------------|
-| **Setup Wizard** | 8004 | Interactive setup and tutorials |
-| **OpenWebUI** | 3030 | Web interface for testing |
-| **LiteLLM** | 4000 | OpenAI-compatible API router |
-| **vLLM** | 8000 | High-performance LLM inference |
-| **Multimodal Worker** | 8001 | Image/video processing |
-| **Retrieval Proxy** | 8002 | Unified search & context |
-| **AI Agents** | 8003 | LangChain autonomous agents |
-| **n8n** | 5678 | Visual workflow automation |
-| **Qdrant** | 6333 | Vector database |
-| **PostgreSQL** | 5432 | Metadata & memory storage |
-| **MinIO** | 9000 | S3-compatible artifact storage |
+| LiteLLM | 4000 | OpenAI-compatible API router |
+| vLLM | 8000 | High-performance LLM inference |
+| Multimodal Worker | 8001 | Image/video processing |
+| Retrieval Proxy | 8002 | Unified search & context |
+| AI Agents | 8003 | LangChain autonomous agents |
+| OpenWebUI | 3030 | Web interface for testing |
+| n8n | 5678 | Visual workflow automation |
+| Qdrant | 6333 | Vector database |
+| PostgreSQL | 5432 | Metadata & memory storage |
+| MinIO | 9000 | S3-compatible artifact storage |
 
 ## 🔧 Configuration
 
@@ -94,11 +80,6 @@ See `docs/configuration.md` for detailed setup instructions.
 
 ## 📚 Documentation
 
-### Interactive Resources
-- **Setup Wizard**: `http://localhost:8004` - Interactive setup and tutorials
-- **GitHub Wiki**: Comprehensive documentation and guides
-
-### Quick References
 - [Configuration Guide](docs/configuration.md)
 - [API Reference](docs/api-reference.md)
 - [Development Guide](docs/development.md)

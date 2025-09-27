@@ -271,34 +271,6 @@ services:
     networks:
       - multimodal-net
 
-  # Setup Wizard Service
-  setup-wizard:
-    build:
-      context: ./services/setup-wizard
-      dockerfile: Dockerfile
-    container_name: multimodal-setup-wizard
-    ports:
-      - "8004:8004"
-    environment:
-      - SETUP_WIZARD_HOST=0.0.0.0
-      - SETUP_WIZARD_PORT=8004
-      - SETUP_WIZARD_DEBUG=false
-    volumes:
-      - ./:/app
-      - setup_wizard_cache:/app/cache
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/api/setup/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    restart: unless-stopped
-    networks:
-      - multimodal-net
-
   # n8n Workflow Management Platform
   n8n:
     image: n8nio/n8n:latest
@@ -346,7 +318,6 @@ volumes:
   multimodal_cache:
   openwebui_data:
   n8n_data:
-  setup_wizard_cache:
 
 networks:
   multimodal-net:
