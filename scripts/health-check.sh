@@ -121,7 +121,13 @@ fi
 
 # OpenWebUI
 ((total_http_checks++))
-if check_service "OpenWebUI" "http://localhost:3000/health"; then
+if check_service "OpenWebUI" "http://localhost:3030/health"; then
+    ((http_healthy++))
+fi
+
+# Setup Wizard
+((total_http_checks++))
+if check_service "Setup Wizard" "http://localhost:8004/api/setup/health"; then
     ((http_healthy++))
 fi
 
