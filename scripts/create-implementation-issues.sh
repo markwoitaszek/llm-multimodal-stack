@@ -72,7 +72,6 @@ Current setup requires technical Docker knowledge. New users struggle with:
 - Time to first AI conversation: <10 minutes
 - Support ticket reduction: 70%
 - User satisfaction: >4.5/5" \
-    --label "enhancement,phase1,beginner-experience,critical"
 
 # P1.3: Complete Agent Framework
 gh issue create \
@@ -144,7 +143,6 @@ gh issue create \
 - Tool execution success rate: >95%
 - Agent response time: <5 seconds
 - Memory persistence: 100% reliable" \
-    --label "enhancement,phase1,agents,langchain,critical"
 
 # P1.4: Software Stack Updates
 gh issue create \
@@ -220,7 +218,6 @@ docker-compose config
 - Enhanced security posture
 - Access to latest framework features
 - Better long-term maintainability" \
-    --label "task,phase1,updates,security,critical"
 
 # P1.5: Comprehensive Testing
 gh issue create \
@@ -316,7 +313,6 @@ gh issue create \
 - Performance optimization guidance
 - Contributor confidence and adoption
 - Production reliability and stability" \
-    --label "task,phase1,testing,quality,critical"
 
 echo ""
 echo "🟡 Creating Phase 2 Issues (Platform Enhancement)..."
@@ -406,7 +402,6 @@ Enable seamless integration with Microsoft Copilot and other MCP-compatible plat
 - Integration with existing Python services
 - Authentication and authorization
 - Comprehensive logging and monitoring" \
-    --label "enhancement,phase2,mcp,enterprise,integration"
 
 # P2.2: Advanced Search & Retrieval
 gh issue create \
@@ -469,7 +464,6 @@ class AdvancedRetrieval:
 - Relevance improvement: 50%
 - User satisfaction: >4.0/5
 - Search success rate: >85%" \
-    --label "enhancement,phase2,search,intelligence"
 
 # P2.3: User Management & Authentication
 gh issue create \
@@ -533,7 +527,6 @@ CREATE POLICY tenant_isolation ON documents
 - 10+ organizations with isolation
 - <100ms authentication overhead
 - 99.9% authentication uptime" \
-    --label "enhancement,phase2,authentication,enterprise"
 
 echo ""
 echo "🟢 Creating Phase 3 Issues (Advanced Platform)..."
@@ -588,7 +581,6 @@ Provide comprehensive analytics for usage patterns, performance optimization, an
 - Cost per operation
 - User satisfaction scores
 - Feature adoption rates" \
-    --label "enhancement,phase3,analytics,intelligence"
 
 # P3.2: API Connector Ecosystem
 gh issue create \
@@ -648,7 +640,6 @@ Create comprehensive connector ecosystem enabling integration with 50+ external 
 - Error handling and retry logic
 - Authentication management
 - Usage monitoring and analytics" \
-    --label "enhancement,phase3,connectors,integrations"
 
 echo ""
 echo "🎉 Implementation issues created successfully!"
