@@ -76,3 +76,15 @@ debug_info.txt
 tmp/
 temp/
 *.tmp
+
+# Generated files
+configs/*_generated.*
+configs/*_temp.*
+*_generated.yaml
+*_generated.yml
+*_generated.json
+
+# Backup files
+backups/
+*.backup
+backup_*
