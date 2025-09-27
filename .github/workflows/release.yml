@@ -113,7 +113,7 @@ jobs:
     name: 🚀 Create Release
     runs-on: ubuntu-latest
     needs: [determine-release]
-    if: needs.determine-release.outputs.should_release == 'true'
+    if: needs.determine-release.outputs.should_release == true
     permissions:
       contents: write
     steps:
@@ -253,7 +253,7 @@ jobs:
     name: 📊 Update Project Board
     runs-on: ubuntu-latest
     needs: [create-release]
-    if: needs.determine-release.outputs.should_release == 'true'
+    if: needs.determine-release.outputs.should_release == true
     steps:
       - name: 📊 Update project board
         run: |
@@ -269,7 +269,7 @@ jobs:
     name: 🎉 Post-Release Tasks
     runs-on: ubuntu-latest
     needs: [create-release]
-    if: needs.determine-release.outputs.should_release == 'true'
+    if: needs.determine-release.outputs.should_release == true
     steps:
       - name: 📢 Announce release
         run: |

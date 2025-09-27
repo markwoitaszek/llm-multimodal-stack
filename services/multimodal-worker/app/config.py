@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Model settings
     clip_model: str = "openai/clip-vit-base-patch32"
     blip_model: str = "Salesforce/blip-image-captioning-base"
-    whisper_model: str = "openai/whisper-base"
+    whisper_model: str = "base"
     sentence_transformer_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     
     # Cache settings
@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        protected_namespaces = ('settings_',)
 
 # Create global settings instance
 settings = Settings()

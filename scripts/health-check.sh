@@ -14,15 +14,26 @@ check_service() {
     local service_name=$1
     local health_url=$2
     local expected_status=${3:-200}
+    local auth_header=${4:-""}
     
     echo -n "Checking $service_name... "
     
-    if curl -s -f "$health_url" > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Healthy${NC}"
-        return 0
+    if [ -n "$auth_header" ]; then
+        if curl -s -f -H "$auth_header" "$health_url" > /dev/null 2>&1; then
+            echo -e "${GREEN}✅ Healthy${NC}"
+            return 0
+        else
+            echo -e "${RED}❌ Unhealthy${NC}"
+            return 1
+        fi
     else
-        echo -e "${RED}❌ Unhealthy${NC}"
-        return 1
+        if curl -s -f "$health_url" > /dev/null 2>&1; then
+            echo -e "${GREEN}✅ Healthy${NC}"
+            return 0
+        else
+            echo -e "${RED}❌ Unhealthy${NC}"
+            return 1
+        fi
     fi
 }
 
@@ -92,7 +103,7 @@ fi
 
 # LiteLLM
 ((total_http_checks++))
-if check_service "LiteLLM" "http://localhost:4000/health"; then
+if check_service "LiteLLM" "http://localhost:4000/health" 200 "Authorization: Bearer sk-zfiSGe7bXx85c0hlkcjp+4SGtAYqXR/y8jBY9DWusm0="; then
     ((http_healthy++))
 fi
 

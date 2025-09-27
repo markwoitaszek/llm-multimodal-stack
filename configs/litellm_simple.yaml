@@ -1,13 +1,13 @@
 model_list:
   - model_name: gpt-3.5-turbo
     litellm_params:
-      model: openai/gpt-3.5-turbo
+      model: openai/microsoft/DialoGPT-medium
       api_base: http://vllm:8000/v1
       api_key: dummy-key
       
   - model_name: gpt-4
     litellm_params:
-      model: openai/gpt-4
+      model: openai/microsoft/DialoGPT-medium
       api_base: http://vllm:8000/v1
       api_key: dummy-key
 

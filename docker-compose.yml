@@ -122,7 +122,7 @@ services:
       vllm:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; req = urllib.request.Request('http://localhost:4000/health'); req.add_header('Authorization', 'Bearer sk-zfiSGe7bXx85c0hlkcjp+4SGtAYqXR/y8jBY9DWusm0='); urllib.request.urlopen(req, timeout=10)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -289,6 +289,11 @@ services:
       - N8N_METRICS=true
       - N8N_LOG_LEVEL=info
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-multimodal-n8n-key}
+      # Fix deprecation warnings
+      - DB_SQLITE_POOL_SIZE=5
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/home/node/.n8n/workflows:ro
