@@ -157,7 +157,7 @@ jobs:
   deploy-staging:
     name: 🧪 Deploy to Staging
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
+    if: startsWith(github.ref, 'refs/heads/develop/')
     needs: [build-and-push]
     environment:
       name: "staging"
@@ -169,7 +169,7 @@ jobs:
       - name: 🚀 Deploy to staging
         run: |
           echo "🧪 Deploying to staging environment"
-          echo "🔧 Using images with tag: develop"
+          echo "🔧 Using images with tag: ${GITHUB_REF#refs/heads/}"
           echo "🌐 Staging URL: https://staging.multimodal-stack.com"
           
           # In a real scenario, this would:
