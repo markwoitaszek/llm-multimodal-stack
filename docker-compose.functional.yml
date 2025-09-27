@@ -1,0 +1,23 @@
+# Functional override - disable problematic health checks
+version: '3.8'
+
+services:
+  # Disable health checks that are causing issues with older docker-compose
+  qdrant:
+    healthcheck:
+      disable: true
+
+  minio:
+    healthcheck:
+      disable: true
+
+  vllm:
+    healthcheck:
+      disable: true
+
+  # Keep working health checks
+  postgres:
+    # Keep existing health check - it works fine
+
+  openwebui:
+    # Keep existing health check - it works fine

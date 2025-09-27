@@ -44,6 +44,51 @@ mkdir -p logs
 echo "🔧 Setting permissions..."
 chmod +x scripts/*.sh
 
+# Check for network conflicts
+echo "🔍 Checking for Docker network conflicts..."
+existing_networks=$(docker network ls --format "{{.Name}}" | grep -v "bridge\|host\|none")
+
+if [ -n "$existing_networks" ]; then
+    echo "📋 Existing Docker networks detected:"
+    for network in $existing_networks; do
+        subnet=$(docker network inspect $network --format "{{range .IPAM.Config}}{{.Subnet}}{{end}}" 2>/dev/null || echo "unknown")
+        echo "  - $network: $subnet"
+    done
+    echo ""
+    
+    # Check for potential conflicts
+    if echo "$existing_networks" | grep -q "prometheus\|monitoring\|grafana"; then
+        echo "⚠️  Monitoring networks detected - using isolated subnet 172.25.0.0/24"
+        echo "✅ Network isolation configured to prevent conflicts"
+    fi
+else
+    echo "✅ No existing Docker networks found"
+fi
+
+# Check for port conflicts
+echo "🔍 Checking for port conflicts..."
+ports_to_check="3030 4000 5432 6333 8000 8001 8002 9000 9002"
+conflicts_found=false
+
+for port in $ports_to_check; do
+    if ss -tulpn | grep -q ":$port "; then
+        service_using_port=$(ss -tulpn | grep ":$port " | head -1)
+        echo "⚠️  Port $port is in use: $service_using_port"
+        conflicts_found=true
+    fi
+done
+
+if [ "$conflicts_found" = false ]; then
+    echo "✅ No port conflicts detected"
+else
+    echo ""
+    echo "💡 Port conflicts detected. The deployment will:"
+    echo "  - Use alternative ports where configured"
+    echo "  - Show specific conflicts during startup"
+    echo "  - Provide resolution guidance in logs"
+fi
+echo ""
+
 # Check if seismic-nvme storage is available and configure paths
 if [ -d "/mnt/nvme" ]; then
     echo "💾 Seismic NVMe storage detected, updating paths..."
@@ -163,9 +208,9 @@ echo "Services will be available at:"
 echo "- LiteLLM API: http://localhost:4000"
 echo "- Multimodal Worker: http://localhost:8001"
 echo "- Retrieval Proxy: http://localhost:8002"
-echo "- OpenWebUI: http://localhost:3000"
+echo "- OpenWebUI: http://localhost:3030"
 echo "- Qdrant: http://localhost:6333"
-echo "- MinIO Console: http://localhost:9001"
+echo "- MinIO Console: http://localhost:9002"
 echo ""
 echo "📚 See docs/ for detailed configuration and usage instructions."
 

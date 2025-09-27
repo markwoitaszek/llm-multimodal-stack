@@ -3,26 +3,22 @@ model_list:
     litellm_params:
       model: openai/gpt-3.5-turbo
       api_base: http://vllm:8000/v1
-      api_key: vllm-key
+      api_key: dummy-key
       
-  - model_name: local-llm
+  - model_name: gpt-4
     litellm_params:
-      model: openai/local-model
+      model: openai/gpt-4
       api_base: http://vllm:8000/v1
-      api_key: vllm-key
+      api_key: dummy-key
 
 router_settings:
   routing_strategy: simple-shuffle
-  model_group_alias:
-    gpt-3.5-turbo: local-llm
 
 litellm_settings:
   drop_params: true
   set_verbose: false
   json_logs: true
 
+# Disable database for now - use in-memory only
 general_settings:
-  completion_model: local-llm
-  master_key: ${LITELLM_MASTER_KEY}
-  database_url: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-
+  completion_model: gpt-3.5-turbo

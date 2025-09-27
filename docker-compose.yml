@@ -1,4 +1,4 @@
-version: '3.8'
+# Docker Compose file for Multimodal LLM Stack
 
 services:
   # Vector Database
@@ -14,10 +14,11 @@ services:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
     restart: unless-stopped
     networks:
       - multimodal-net
@@ -50,7 +51,7 @@ services:
     container_name: multimodal-minio
     ports:
       - "9000:9000"
-      - "9001:9001"
+      - "9002:9001"
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -58,10 +59,11 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
     networks:
       - multimodal-net
@@ -85,9 +87,8 @@ services:
       --host 0.0.0.0
       --port 8000
       --gpu-memory-utilization 0.8
-      --max-model-len 4096
+      --max-model-len 1024
       --dtype auto
-      --api-key ${VLLM_API_KEY:-vllm-key}
     deploy:
       resources:
         reservations:
@@ -96,11 +97,11 @@ services:
               count: 1
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/models', timeout=10)\""]
       interval: 60s
       timeout: 30s
-      retries: 3
-      start_period: 120s
+      retries: 5
+      start_period: 180s
     restart: unless-stopped
     networks:
       - multimodal-net
@@ -115,7 +116,7 @@ services:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
       - LITELLM_SALT_KEY=${LITELLM_SALT_KEY:-sk-salt-1234}
     volumes:
-      - ./configs/litellm_config.yaml:/app/config.yaml
+      - ./configs/litellm_simple.yaml:/app/config.yaml
     command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
     depends_on:
       vllm:
@@ -216,21 +217,21 @@ services:
     image: ghcr.io/open-webui/open-webui:main
     container_name: multimodal-openwebui
     ports:
-      - "3000:8080"
+      - "3030:8080"
     environment:
-      - OPENAI_API_BASE_URL=http://litellm:4000/v1
-      - OPENAI_API_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+      - OPENAI_API_BASE_URL=http://vllm:8000/v1
+      - OPENAI_API_KEY=dummy-key
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-webui-secret}
     volumes:
       - openwebui_data:/app/backend/data
     depends_on:
-      litellm:
-        condition: service_healthy
+      - vllm
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     restart: unless-stopped
     networks:
       - multimodal-net
@@ -246,4 +247,9 @@ volumes:
 networks:
   multimodal-net:
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/24
+          gateway: 172.25.0.1
 

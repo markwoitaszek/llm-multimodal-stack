@@ -45,7 +45,7 @@ docker-compose up -d
 ./scripts/test-multimodal.sh
 
 # Access the web interface
-open http://localhost:3000
+open http://localhost:3030
 ```
 
 ### Production Deployment
@@ -67,7 +67,7 @@ open https://your-domain.com:3001   # Grafana monitoring
 | vLLM | 8000 | High-performance LLM inference |
 | Multimodal Worker | 8001 | Image/video processing |
 | Retrieval Proxy | 8002 | Unified search & context |
-| OpenWebUI | 3000 | Web interface for testing |
+| OpenWebUI | 3030 | Web interface for testing |
 | Qdrant | 6333 | Vector database |
 | PostgreSQL | 5432 | Metadata & memory storage |
 | MinIO | 9000 | S3-compatible artifact storage |

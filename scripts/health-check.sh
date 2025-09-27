@@ -64,7 +64,7 @@ total_http_checks=0
 
 # Qdrant
 ((total_http_checks++))
-if check_service "Qdrant" "http://localhost:6333/health"; then
+if check_service "Qdrant" "http://localhost:6333/"; then
     ((http_healthy++))
 fi
 
