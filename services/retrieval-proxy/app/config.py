@@ -4,6 +4,7 @@ Configuration settings for the retrieval proxy service
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     # Service settings
@@ -36,6 +37,11 @@ class Settings(BaseSettings):
     minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "minioadmin")
     minio_secure: bool = False
     
+    # Redis settings (for caching)
+    redis_host: str = os.getenv("REDIS_HOST", "localhost")
+    redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
+    redis_db: int = int(os.getenv("REDIS_DB", "1"))
+    
     # Multimodal worker settings
     multimodal_worker_url: str = os.getenv("MULTIMODAL_WORKER_URL", "http://localhost:8001")
     
@@ -52,9 +58,11 @@ class Settings(BaseSettings):
     enable_citations: bool = True
     citation_format: str = "markdown"  # markdown, json, plain
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra='ignore'
+    )
 
 # Create global settings instance
 settings = Settings()

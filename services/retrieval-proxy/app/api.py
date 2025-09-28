@@ -36,16 +36,37 @@ class ContextBundleRequest(BaseModel):
 
 @router.post("/search", response_model=SearchResponse)
 async def search_multimodal(request: SearchRequest, req: Request):
-    """Perform unified multimodal search"""
+    """Perform unified multimodal search with caching"""
     try:
+        cache_manager = req.app.state.cache_manager
         retrieval_engine = req.app.state.retrieval_engine
         
+        # Check cache first
+        cached_results = await cache_manager.get_search_results(
+            query=request.query,
+            file_type=request.modalities[0] if request.modalities else None,
+            limit=request.limit
+        )
+        
+        if cached_results:
+            logger.info(f"Returning cached search results for: {request.query}")
+            return SearchResponse(**cached_results["results"])
+        
+        # Perform search if not cached
         result = await retrieval_engine.search(
             query=request.query,
             modalities=request.modalities,
             limit=request.limit,
             filters=request.filters,
             score_threshold=request.score_threshold
+        )
+        
+        # Cache the results
+        await cache_manager.set_search_results(
+            query=request.query,
+            results=result,
+            file_type=request.modalities[0] if request.modalities else None,
+            limit=request.limit
         )
         
         return SearchResponse(**result)
@@ -313,4 +334,44 @@ async def get_service_status(req: Request):
             "status": "unhealthy",
             "error": str(e)
         }
+
+# Cache management endpoints
+@router.get("/cache/stats")
+async def get_cache_stats(req: Request):
+    """Get cache statistics"""
+    try:
+        cache_manager = req.app.state.cache_manager
+        stats = await cache_manager.get_cache_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get cache stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/cache/clear")
+async def clear_cache(req: Request):
+    """Clear all cache entries"""
+    try:
+        cache_manager = req.app.state.cache_manager
+        success = await cache_manager.clear_all_cache()
+        if success:
+            return {"message": "Cache cleared successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to clear cache")
+    except Exception as e:
+        logger.error(f"Failed to clear cache: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/cache/search/{pattern}")
+async def invalidate_search_cache(pattern: str, req: Request):
+    """Invalidate search cache entries matching pattern"""
+    try:
+        cache_manager = req.app.state.cache_manager
+        deleted_count = await cache_manager.invalidate_search_cache(pattern)
+        return {
+            "message": f"Invalidated {deleted_count} cache entries",
+            "pattern": pattern
+        }
+    except Exception as e:
+        logger.error(f"Failed to invalidate search cache: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 

@@ -4,6 +4,7 @@ Configuration settings for the multimodal worker service
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     # Service settings
@@ -23,9 +24,9 @@ class Settings(BaseSettings):
     sentence_transformer_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     
     # Cache settings
-    cache_dir: str = "/app/cache"
-    model_cache_dir: str = "/app/cache/models"
-    temp_dir: str = "/tmp"
+    cache_dir: str = os.getenv("TEST_CACHE_DIR", "/app/cache")
+    model_cache_dir: str = os.getenv("TEST_MODEL_CACHE_DIR", "/app/cache/models")
+    temp_dir: str = os.getenv("TEST_TEMP_DIR", "/tmp")
     
     # Database settings
     postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
@@ -54,6 +55,11 @@ class Settings(BaseSettings):
     minio_bucket_documents: str = "documents"
     minio_secure: bool = False
     
+    # Redis settings (for model caching)
+    redis_host: str = os.getenv("REDIS_HOST", "localhost")
+    redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
+    redis_db: int = int(os.getenv("REDIS_DB", "0"))
+    
     # Processing settings
     max_file_size: int = 100 * 1024 * 1024  # 100MB
     max_video_duration: int = 3600  # 1 hour in seconds
@@ -70,10 +76,12 @@ class Settings(BaseSettings):
     supported_video_formats: list = [".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv"]
     video_thumbnail_size: tuple = (320, 240)
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-        protected_namespaces = ('settings_',)
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        protected_namespaces=('settings_',),
+        extra='ignore'
+    )
 
 # Create global settings instance
 settings = Settings()

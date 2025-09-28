@@ -3,7 +3,7 @@
 services:
   # Vector Database
   qdrant:
-    image: qdrant/qdrant:v1.7.4
+    image: qdrant/qdrant:v1.12.0
     container_name: multimodal-qdrant
     ports:
       - "6333:6333"
@@ -25,7 +25,7 @@ services:
 
   # PostgreSQL for metadata and memory
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: multimodal-postgres
     ports:
       - "5432:5432"
@@ -45,9 +45,27 @@ services:
     networks:
       - multimodal-net
 
+  # Redis for caching and agent memory
+  redis:
+    image: redis:7-alpine
+    container_name: multimodal-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
   # MinIO S3-compatible storage
   minio:
-    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+    image: minio/minio:latest
     container_name: multimodal-minio
     ports:
       - "9000:9000"
@@ -70,7 +88,7 @@ services:
 
   # vLLM inference server
   vllm:
-    image: vllm/vllm-openai:v0.2.7
+    image: vllm/vllm-openai:latest
     container_name: multimodal-vllm
     ports:
       - "8000:8000"
@@ -122,7 +140,7 @@ services:
       vllm:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; req = urllib.request.Request('http://localhost:4000/health'); req.add_header('Authorization', 'Bearer sk-zfiSGe7bXx85c0hlkcjp+4SGtAYqXR/y8jBY9DWusm0='); urllib.request.urlopen(req, timeout=10)"]
+      test: ["CMD", "python3", "-c", "import os, urllib.request; req = urllib.request.Request('http://localhost:4000/health'); req.add_header('Authorization', f'Bearer {os.environ[\"LITELLM_MASTER_KEY\"]}'); urllib.request.urlopen(req, timeout=10)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -150,6 +168,9 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
     volumes:
       - multimodal_cache:/app/cache
       - /tmp:/tmp
@@ -166,6 +187,8 @@ services:
       postgres:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
@@ -196,12 +219,17 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=1
     depends_on:
       multimodal-worker:
         condition: service_healthy
       qdrant:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
@@ -256,13 +284,45 @@ services:
       - LLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
       - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
       - RETRIEVAL_PROXY_URL=http://retrieval-proxy:8002
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=2
     depends_on:
       postgres:
         condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
       vllm:
+        condition: service_healthy
+      multimodal-worker:
+        condition: service_healthy
+      retrieval-proxy:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # AI Agents Web Interface
+  ai-agents-web:
+    build:
+      context: ./services/ai-agents/web
+      dockerfile: Dockerfile
+    container_name: multimodal-ai-agents-web
+    ports:
+      - "3001:3000"
+    depends_on:
+      ai-agents:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -313,6 +373,7 @@ services:
 volumes:
   qdrant_data:
   postgres_data:
+  redis_data:
   minio_data:
   vllm_cache:
   multimodal_cache:

@@ -88,3 +88,4 @@ configs/*_temp.*
 backups/
 *.backup
 backup_*
+llm-multimodal-stack.wiki/

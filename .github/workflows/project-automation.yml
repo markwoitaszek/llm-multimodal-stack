@@ -7,6 +7,7 @@ on:
     types: [opened, closed, ready_for_review]
   project_card:
     types: [moved]
+  workflow_dispatch:
 
 jobs:
   # Auto-assign issues to project boards
@@ -117,23 +118,8 @@ jobs:
             const action = context.payload.action;
             
             console.log(`PR #${pr.number}: ${action}`);
-            
-            // Determine new status based on PR state
-            let newStatus = '';
-            switch (action) {
-              case 'opened':
-              case 'ready_for_review':
-                newStatus = 'In Review';
-                break;
-              case 'closed':
-                newStatus = pr.merged ? 'Done' : 'Cancelled';
-                break;
-              default:
-                console.log(`No status update needed for action: ${action}`);
-                return;
-            }
-            
-            console.log(`Would move PR to status: ${newStatus}`);
+            console.log(`PR merged: ${pr.merged}`);
+            console.log(`Target branch: ${pr.base.ref}`);
             
             // Extract linked issues from PR body
             const issueNumbers = [];
@@ -148,6 +134,128 @@ jobs:
             }
             
             console.log(`Linked issues: ${issueNumbers.join(', ')}`);
+            
+            // Only proceed if there are linked issues
+            if (issueNumbers.length === 0) {
+              console.log('No linked issues found, skipping status update');
+              return;
+            }
+            
+            // Determine new status based on PR state and target branch
+            let newStatus = '';
+            let statusOptionId = '';
+            
+            if (action === 'closed' && pr.merged) {
+              // Check if merged into a development branch
+              const isDevBranch = pr.base.ref.startsWith('develop/') || pr.base.ref.startsWith('dev/');
+              
+              if (isDevBranch) {
+                newStatus = 'Ready to Release';
+                statusOptionId = '901b747a'; // Ready to Release option ID
+                console.log(`PR merged to development branch (${pr.base.ref}), moving issues to Ready to Release`);
+              } else if (pr.base.ref === 'main') {
+                newStatus = 'Done';
+                statusOptionId = '98236657'; // Done option ID
+                console.log(`PR merged to main branch, moving issues to Done`);
+              } else {
+                newStatus = 'Done';
+                statusOptionId = '98236657'; // Done option ID
+                console.log(`PR merged to ${pr.base.ref}, moving issues to Done`);
+              }
+            } else if (action === 'opened' || action === 'ready_for_review') {
+              newStatus = 'In Progress';
+              statusOptionId = '47fc9ee4'; // In Progress option ID
+              console.log(`PR opened/ready for review, moving issues to In Progress`);
+            } else {
+              console.log(`No status update needed for action: ${action}`);
+              return;
+            }
+            
+            console.log(`Moving issues to status: ${newStatus} (${statusOptionId})`);
+            
+            // Get project information
+            const projectNumber = 8; // LLM Multimodal Stack Development project
+            const statusFieldId = 'PVTSSF_lAHOAsUPVc4BEMuqzg15RFE'; // Status field ID
+            
+            // Update each linked issue's project status
+            for (const issueNumber of issueNumbers) {
+              try {
+                console.log(`Updating issue #${issueNumber}...`);
+                
+                // Get the issue to find its project item ID
+                const { data: issue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber
+                });
+                
+                // Find the project item for this issue
+                const { data: projectItems } = await github.rest.projects.listCards({
+                  project_id: projectNumber,
+                  column_id: 'none' // This will get all items
+                });
+                
+                // For project v2, we need to use GraphQL
+                const projectItemQuery = `
+                  query($owner: String!, $repo: String!, $issueNumber: Int!, $projectNumber: Int!) {
+                    repository(owner: $owner, name: $repo) {
+                      issue(number: $issueNumber) {
+                        projectItems(first: 10) {
+                          nodes {
+                            id
+                            project {
+                              number
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                `;
+                
+                const projectItemResult = await github.graphql(projectItemQuery, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issueNumber: parseInt(issueNumber),
+                  projectNumber: projectNumber
+                });
+                
+                const projectItems = projectItemResult.repository?.issue?.projectItems?.nodes || [];
+                const targetProjectItem = projectItems.find(item => item.project.number === projectNumber);
+                
+                if (targetProjectItem) {
+                  // Update the project item status
+                  const updateMutation = `
+                    mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                      updateProjectV2ItemField(input: {
+                        projectId: $projectId
+                        itemId: $itemId
+                        fieldId: $fieldId
+                        value: { singleSelectOptionId: $optionId }
+                      }) {
+                        projectV2Item {
+                          id
+                        }
+                      }
+                    }
+                  `;
+                  
+                  await github.graphql(updateMutation, {
+                    projectId: 'PVT_kwHOAsUPVc4BEMuq', // Project ID
+                    itemId: targetProjectItem.id,
+                    fieldId: statusFieldId,
+                    optionId: statusOptionId
+                  });
+                  
+                  console.log(`✅ Updated issue #${issueNumber} to ${newStatus}`);
+                } else {
+                  console.log(`⚠️ Issue #${issueNumber} not found in project ${projectNumber}`);
+                }
+                
+              } catch (error) {
+                console.error(`❌ Failed to update issue #${issueNumber}:`, error.message);
+              }
+            }
 
   # Generate project metrics
   generate-metrics:

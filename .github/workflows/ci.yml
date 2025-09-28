@@ -52,7 +52,7 @@ jobs:
         run: bandit -r services/ -f json -o bandit-report.json || true
 
       - name: 📊 Upload security scan results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: security-scan-results
@@ -62,7 +62,7 @@ jobs:
         run: safety check --json --output safety-report.json || true
 
       - name: 📊 Upload dependency scan results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: dependency-scan-results
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [multimodal-worker, retrieval-proxy, setup-wizard]
+        service: [multimodal-worker, retrieval-proxy, ai-agents]
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -206,7 +206,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: 📊 Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
