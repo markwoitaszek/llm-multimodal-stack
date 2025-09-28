@@ -313,6 +313,32 @@ services:
     networks:
       - multimodal-net
 
+  # Memory System Service
+  memory-system:
+    build:
+      context: ./services/memory-system
+      dockerfile: Dockerfile
+    container_name: multimodal-memory-system
+    ports:
+      - "8005:8005"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=4
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      
+      
   # Search Engine Service
   search-engine:
     build:
@@ -321,12 +347,6 @@ services:
     container_name: multimodal-search-engine
     ports:
       - "8004:8004"
-    environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - REDIS_HOST=redis
@@ -343,6 +363,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+
       interval: 30s
       timeout: 10s
       retries: 3
