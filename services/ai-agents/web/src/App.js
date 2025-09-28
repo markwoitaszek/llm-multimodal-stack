@@ -11,7 +11,9 @@ import {
     Plus,
     FileText,
     Settings,
-    Home
+    Home,
+    BookOpen,
+    ExternalLink
 } from 'lucide-react';
 
 // API base URL
@@ -158,6 +160,16 @@ function App() {
                                     <Plus className="h-4 w-4" />
                                     <span>Create Agent</span>
                                 </Link>
+                                <a
+                                    href="/docs/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md"
+                                >
+                                    <BookOpen className="h-4 w-4" />
+                                    <span>Documentation</span>
+                                    <ExternalLink className="h-3 w-3" />
+                                </a>
                             </div>
                         </div>
                     </div>

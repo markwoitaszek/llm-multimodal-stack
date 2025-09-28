@@ -20,7 +20,22 @@ docs/
 
 ## 🚀 Quick Start
 
-### Option 1: Use the Documentation Server
+### Option 1: Use the Integrated Documentation (RECOMMENDED)
+
+The documentation is now integrated with the AI Agents Web Interface for a seamless experience.
+
+1. **Start the full stack:**
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Access the documentation through the web interface:**
+   - **Main Interface**: http://localhost:3001
+   - **Documentation**: http://localhost:3001/docs/
+   - **API Documentation (Swagger UI)**: http://localhost:3001/api-docs/
+   - **Combined OpenAPI Spec**: http://localhost:3001/docs/openapi/combined.yaml
+
+### Option 2: Use the Standalone Documentation Server
 
 1. **Start the documentation server:**
    ```bash
@@ -32,7 +47,7 @@ docs/
    - **Interactive Swagger UI**: http://localhost:8080/swagger-ui.html
    - **Combined OpenAPI Spec**: http://localhost:8080/openapi/combined.yaml
 
-### Option 2: Use Any HTTP Server
+### Option 3: Use Any HTTP Server
 
 1. **Serve the docs directory with any HTTP server:**
    ```bash
