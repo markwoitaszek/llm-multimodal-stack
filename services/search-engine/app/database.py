@@ -1,429 +1,301 @@
 """
-PostgreSQL database operations for the search engine service
+Search Engine Database Operations
 """
-import logging
 import asyncio
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Any
+from datetime import datetime
 import asyncpg
-from asyncpg import Pool, Connection
-from contextlib import asynccontextmanager
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column
+from sqlalchemy import String, Text, DateTime, Float, Integer, JSON, Index
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
-from .config import settings
-from .models import SearchAnalytics, SearchSession, SearchSuggestion
+from app.config import settings
 
-logger = logging.getLogger(__name__)
+Base = declarative_base()
+
+
+class SearchContent(Base):
+    """Search content database model"""
+    __tablename__ = "search_content"
+    
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    embedding: Mapped[Optional[List[float]]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_content_type', 'content_type'),
+        Index('idx_created_at', 'created_at'),
+        Index('idx_updated_at', 'updated_at'),
+    )
+
+
+class SearchLog(Base):
+    """Search operation log"""
+    __tablename__ = "search_logs"
+    
+    id: Mapped[str] = mapped_column(String(255), primary_key=True, default=lambda: str(uuid.uuid4()))
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    search_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    results_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    execution_time_ms: Mapped[float] = mapped_column(Float, nullable=False)
+    cached: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
 
 class DatabaseManager:
-    """Manages PostgreSQL database connections and operations"""
+    """Database connection and operation manager"""
     
     def __init__(self):
-        self.pool: Optional[Pool] = None
-        self._start_time = datetime.utcnow()
+        self.engine = None
+        self.session_factory = None
+        self._connection_pool = None
     
     async def initialize(self):
-        """Initialize database connection pool"""
+        """Initialize database connections"""
         try:
-            self.pool = await asyncpg.create_pool(
-                settings.postgres_url,
-                min_size=5,
-                max_size=20,
-                command_timeout=60,
-                server_settings={
-                    'application_name': 'search-engine',
-                    'timezone': 'UTC'
-                }
+            # Create async engine
+            self.engine = create_async_engine(
+                settings.database_url,
+                pool_size=settings.database_pool_size,
+                max_overflow=settings.database_max_overflow,
+                echo=settings.debug
             )
-            logger.info("Database connection pool initialized")
             
-            # Create tables if they don't exist
-            await self._create_tables()
+            # Create session factory
+            self.session_factory = async_sessionmaker(
+                bind=self.engine,
+                class_=AsyncSession,
+                expire_on_commit=False
+            )
+            
+            # Create tables
+            async with self.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            
+            # Create connection pool for raw queries
+            self._connection_pool = await asyncpg.create_pool(
+                settings.database_url.replace("postgresql+asyncpg://", "postgresql://"),
+                min_size=5,
+                max_size=settings.database_pool_size
+            )
             
         except Exception as e:
-            logger.error(f"Failed to initialize database: {e}")
-            raise
+            raise Exception(f"Failed to initialize database: {str(e)}")
     
     async def close(self):
-        """Close database connection pool"""
-        if self.pool:
-            await self.pool.close()
-            logger.info("Database connection pool closed")
+        """Close database connections"""
+        if self.engine:
+            await self.engine.dispose()
+        if self._connection_pool:
+            await self._connection_pool.close()
     
-    async def _create_tables(self):
-        """Create necessary tables for search analytics and sessions"""
-        async with self.pool.acquire() as conn:
-            # Search analytics table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS search_analytics (
-                    id SERIAL PRIMARY KEY,
-                    query TEXT NOT NULL,
-                    search_type VARCHAR(50) NOT NULL,
-                    results_count INTEGER NOT NULL,
-                    processing_time_ms FLOAT NOT NULL,
-                    user_id VARCHAR(255),
-                    session_id VARCHAR(255),
-                    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    filters JSONB,
-                    clicked_results JSONB,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                )
-            """)
-            
-            # Search sessions table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS search_sessions (
-                    id VARCHAR(255) PRIMARY KEY,
-                    user_id VARCHAR(255),
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    search_count INTEGER DEFAULT 0,
-                    queries JSONB DEFAULT '[]'::jsonb
-                )
-            """)
-            
-            # Search suggestions table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS search_suggestions (
-                    id SERIAL PRIMARY KEY,
-                    query TEXT NOT NULL,
-                    suggestion TEXT NOT NULL,
-                    suggestion_type VARCHAR(50) NOT NULL,
-                    score FLOAT NOT NULL,
-                    usage_count INTEGER DEFAULT 0,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    UNIQUE(query, suggestion)
-                )
-            """)
-            
-            # Query logs table for autocomplete
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS query_logs (
-                    id SERIAL PRIMARY KEY,
-                    query TEXT NOT NULL,
-                    user_id VARCHAR(255),
-                    session_id VARCHAR(255),
-                    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    result_count INTEGER,
-                    clicked BOOLEAN DEFAULT FALSE
-                )
-            """)
-            
-            # Create indexes for better performance
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_search_analytics_timestamp 
-                ON search_analytics(timestamp)
-            """)
-            
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_search_analytics_user_id 
-                ON search_analytics(user_id)
-            """)
-            
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_search_sessions_user_id 
-                ON search_sessions(user_id)
-            """)
-            
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_search_suggestions_query 
-                ON search_suggestions(query)
-            """)
-            
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_query_logs_timestamp 
-                ON query_logs(timestamp)
-            """)
-            
-            logger.info("Database tables created/verified")
+    async def get_session(self) -> AsyncSession:
+        """Get database session"""
+        if not self.session_factory:
+            raise Exception("Database not initialized")
+        return self.session_factory()
     
-    @asynccontextmanager
-    async def acquire_connection(self):
-        """Context manager for acquiring database connections"""
-        if not self.pool:
-            raise RuntimeError("Database pool not initialized")
-        
-        conn = await self.pool.acquire()
+    async def get_connection(self):
+        """Get raw database connection"""
+        if not self._connection_pool:
+            raise Exception("Database not initialized")
+        return self._connection_pool.acquire()
+    
+    # Content operations
+    async def create_content(self, content_id: str, content: str, content_type: str, 
+                           metadata: Optional[Dict[str, Any]] = None, 
+                           embedding: Optional[List[float]] = None) -> bool:
+        """Create new searchable content"""
         try:
-            yield conn
-        finally:
-            await self.pool.release(conn)
-    
-    async def log_search_analytics(self, analytics: SearchAnalytics):
-        """Log search analytics data"""
-        try:
-            async with self.acquire_connection() as conn:
-                await conn.execute("""
-                    INSERT INTO search_analytics 
-                    (query, search_type, results_count, processing_time_ms, user_id, 
-                     session_id, filters, clicked_results)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                """, 
-                analytics.query,
-                analytics.search_type,
-                analytics.results_count,
-                analytics.processing_time_ms,
-                analytics.user_id,
-                analytics.session_id,
-                analytics.filters,
-                analytics.clicked_results
+            async with self.get_session() as session:
+                search_content = SearchContent(
+                    id=content_id,
+                    content=content,
+                    content_type=content_type,
+                    metadata=metadata,
+                    embedding=embedding
                 )
-        except Exception as e:
-            logger.error(f"Failed to log search analytics: {e}")
-    
-    async def get_search_analytics(
-        self, 
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        user_id: Optional[str] = None,
-        limit: int = 100
-    ) -> List[Dict[str, Any]]:
-        """Get search analytics data"""
-        try:
-            async with self.acquire_connection() as conn:
-                query = "SELECT * FROM search_analytics WHERE 1=1"
-                params = []
-                param_count = 0
-                
-                if start_date:
-                    param_count += 1
-                    query += f" AND timestamp >= ${param_count}"
-                    params.append(start_date)
-                
-                if end_date:
-                    param_count += 1
-                    query += f" AND timestamp <= ${param_count}"
-                    params.append(end_date)
-                
-                if user_id:
-                    param_count += 1
-                    query += f" AND user_id = ${param_count}"
-                    params.append(user_id)
-                
-                query += f" ORDER BY timestamp DESC LIMIT ${param_count + 1}"
-                params.append(limit)
-                
-                rows = await conn.fetch(query, *params)
-                return [dict(row) for row in rows]
-                
-        except Exception as e:
-            logger.error(f"Failed to get search analytics: {e}")
-            return []
-    
-    async def get_popular_queries(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """Get most popular search queries"""
-        try:
-            async with self.acquire_connection() as conn:
-                rows = await conn.fetch("""
-                    SELECT query, COUNT(*) as search_count, 
-                           AVG(processing_time_ms) as avg_processing_time,
-                           AVG(results_count) as avg_results_count
-                    FROM search_analytics
-                    WHERE timestamp >= NOW() - INTERVAL '7 days'
-                    GROUP BY query
-                    ORDER BY search_count DESC
-                    LIMIT $1
-                """, limit)
-                
-                return [dict(row) for row in rows]
-                
-        except Exception as e:
-            logger.error(f"Failed to get popular queries: {e}")
-            return []
-    
-    async def create_search_session(self, session_id: str, user_id: Optional[str] = None) -> bool:
-        """Create a new search session"""
-        try:
-            async with self.acquire_connection() as conn:
-                await conn.execute("""
-                    INSERT INTO search_sessions (id, user_id, created_at, last_activity)
-                    VALUES ($1, $2, NOW(), NOW())
-                    ON CONFLICT (id) DO UPDATE SET
-                        last_activity = NOW(),
-                        search_count = search_sessions.search_count + 1
-                """, session_id, user_id)
+                session.add(search_content)
+                await session.commit()
                 return True
         except Exception as e:
-            logger.error(f"Failed to create search session: {e}")
+            if settings.debug:
+                print(f"Error creating content: {str(e)}")
             return False
     
-    async def update_search_session(self, session_id: str, query: str):
-        """Update search session with new query"""
+    async def get_content(self, content_id: str) -> Optional[Dict[str, Any]]:
+        """Get content by ID"""
         try:
-            async with self.acquire_connection() as conn:
-                await conn.execute("""
-                    UPDATE search_sessions 
-                    SET last_activity = NOW(),
-                        search_count = search_count + 1,
-                        queries = queries || $2::jsonb
-                    WHERE id = $1
-                """, session_id, f'["{query}"]')
+            async with self.get_session() as session:
+                result = await session.get(SearchContent, content_id)
+                if result:
+                    return {
+                        "id": result.id,
+                        "content": result.content,
+                        "content_type": result.content_type,
+                        "metadata": result.metadata,
+                        "embedding": result.embedding,
+                        "created_at": result.created_at,
+                        "updated_at": result.updated_at
+                    }
+                return None
         except Exception as e:
-            logger.error(f"Failed to update search session: {e}")
-    
-    async def get_search_session(self, session_id: str) -> Optional[Dict[str, Any]]:
-        """Get search session data"""
-        try:
-            async with self.acquire_connection() as conn:
-                row = await conn.fetchrow("""
-                    SELECT * FROM search_sessions WHERE id = $1
-                """, session_id)
-                
-                return dict(row) if row else None
-                
-        except Exception as e:
-            logger.error(f"Failed to get search session: {e}")
+            if settings.debug:
+                print(f"Error getting content: {str(e)}")
             return None
     
-    async def cleanup_old_sessions(self, days: int = 7):
-        """Clean up old search sessions"""
+    async def update_content(self, content_id: str, content: Optional[str] = None,
+                           metadata: Optional[Dict[str, Any]] = None,
+                           embedding: Optional[List[float]] = None) -> bool:
+        """Update existing content"""
         try:
-            async with self.acquire_connection() as conn:
-                result = await conn.execute("""
-                    DELETE FROM search_sessions 
-                    WHERE last_activity < NOW() - INTERVAL '%s days'
-                """, days)
-                
-                logger.info(f"Cleaned up old search sessions: {result}")
-                
+            async with self.get_session() as session:
+                result = await session.get(SearchContent, content_id)
+                if result:
+                    if content is not None:
+                        result.content = content
+                    if metadata is not None:
+                        result.metadata = metadata
+                    if embedding is not None:
+                        result.embedding = embedding
+                    result.updated_at = datetime.utcnow()
+                    await session.commit()
+                    return True
+                return False
         except Exception as e:
-            logger.error(f"Failed to cleanup old sessions: {e}")
-    
-    async def add_search_suggestion(
-        self, 
-        query: str, 
-        suggestion: str, 
-        suggestion_type: str, 
-        score: float
-    ):
-        """Add or update search suggestion"""
-        try:
-            async with self.acquire_connection() as conn:
-                await conn.execute("""
-                    INSERT INTO search_suggestions (query, suggestion, suggestion_type, score)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (query, suggestion) DO UPDATE SET
-                        usage_count = search_suggestions.usage_count + 1,
-                        score = GREATEST(search_suggestions.score, $4),
-                        updated_at = NOW()
-                """, query, suggestion, suggestion_type, score)
-                
-        except Exception as e:
-            logger.error(f"Failed to add search suggestion: {e}")
-    
-    async def get_search_suggestions(
-        self, 
-        query: str, 
-        limit: int = 10
-    ) -> List[SearchSuggestion]:
-        """Get search suggestions for a query"""
-        try:
-            async with self.acquire_connection() as conn:
-                rows = await conn.fetch("""
-                    SELECT suggestion, suggestion_type, score, usage_count
-                    FROM search_suggestions
-                    WHERE query ILIKE $1
-                    ORDER BY score DESC, usage_count DESC
-                    LIMIT $2
-                """, f"%{query}%", limit)
-                
-                return [
-                    SearchSuggestion(
-                        text=row['suggestion'],
-                        type=row['suggestion_type'],
-                        score=row['score'],
-                        metadata={'usage_count': row['usage_count']}
-                    )
-                    for row in rows
-                ]
-                
-        except Exception as e:
-            logger.error(f"Failed to get search suggestions: {e}")
-            return []
-    
-    async def log_query(self, query: str, user_id: Optional[str] = None, 
-                       session_id: Optional[str] = None, result_count: int = 0):
-        """Log a query for autocomplete and analytics"""
-        try:
-            async with self.acquire_connection() as conn:
-                await conn.execute("""
-                    INSERT INTO query_logs (query, user_id, session_id, result_count)
-                    VALUES ($1, $2, $3, $4)
-                """, query, user_id, session_id, result_count)
-                
-        except Exception as e:
-            logger.error(f"Failed to log query: {e}")
-    
-    async def get_autocomplete_suggestions(
-        self, 
-        partial_query: str, 
-        limit: int = 10
-    ) -> List[str]:
-        """Get autocomplete suggestions based on query logs"""
-        try:
-            async with self.acquire_connection() as conn:
-                rows = await conn.fetch("""
-                    SELECT DISTINCT query, COUNT(*) as frequency
-                    FROM query_logs
-                    WHERE query ILIKE $1
-                    AND timestamp >= NOW() - INTERVAL '30 days'
-                    GROUP BY query
-                    ORDER BY frequency DESC, query
-                    LIMIT $2
-                """, f"{partial_query}%", limit)
-                
-                return [row['query'] for row in rows]
-                
-        except Exception as e:
-            logger.error(f"Failed to get autocomplete suggestions: {e}")
-            return []
-    
-    async def get_database_stats(self) -> Dict[str, Any]:
-        """Get database statistics"""
-        try:
-            async with self.acquire_connection() as conn:
-                stats = {}
-                
-                # Get table counts
-                tables = ['search_analytics', 'search_sessions', 'search_suggestions', 'query_logs']
-                for table in tables:
-                    count = await conn.fetchval(f"SELECT COUNT(*) FROM {table}")
-                    stats[f"{table}_count"] = count
-                
-                # Get recent activity
-                recent_searches = await conn.fetchval("""
-                    SELECT COUNT(*) FROM search_analytics 
-                    WHERE timestamp >= NOW() - INTERVAL '24 hours'
-                """)
-                stats['recent_searches_24h'] = recent_searches
-                
-                # Get unique users
-                unique_users = await conn.fetchval("""
-                    SELECT COUNT(DISTINCT user_id) FROM search_analytics 
-                    WHERE timestamp >= NOW() - INTERVAL '7 days'
-                    AND user_id IS NOT NULL
-                """)
-                stats['unique_users_7d'] = unique_users
-                
-                return stats
-                
-        except Exception as e:
-            logger.error(f"Failed to get database stats: {e}")
-            return {}
-    
-    async def health_check(self) -> bool:
-        """Check database health"""
-        try:
-            async with self.acquire_connection() as conn:
-                await conn.execute("SELECT 1")
-                return True
-        except Exception as e:
-            logger.error(f"Database health check failed: {e}")
+            if settings.debug:
+                print(f"Error updating content: {str(e)}")
             return False
     
-    def get_uptime(self) -> float:
-        """Get service uptime in seconds"""
-        return (datetime.utcnow() - self._start_time).total_seconds()
+    async def delete_content(self, content_id: str) -> bool:
+        """Delete content by ID"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(SearchContent, content_id)
+                if result:
+                    await session.delete(result)
+                    await session.commit()
+                    return True
+                return False
+        except Exception as e:
+            if settings.debug:
+                print(f"Error deleting content: {str(e)}")
+            return False
+    
+    async def search_content(self, query: str, content_types: Optional[List[str]] = None,
+                           limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
+        """Search content using full-text search"""
+        try:
+            async with self.get_connection() as conn:
+                # Build query
+                base_query = """
+                    SELECT id, content, content_type, metadata, created_at, updated_at,
+                           ts_rank(to_tsvector('english', content), plainto_tsquery('english', $1)) as rank
+                    FROM search_content
+                    WHERE to_tsvector('english', content) @@ plainto_tsquery('english', $1)
+                """
+                
+                params = [query]
+                param_count = 1
+                
+                if content_types:
+                    param_count += 1
+                    base_query += f" AND content_type = ANY(${param_count})"
+                    params.append(content_types)
+                
+                base_query += f" ORDER BY rank DESC LIMIT ${param_count + 1} OFFSET ${param_count + 2}"
+                params.extend([limit, offset])
+                
+                rows = await conn.fetch(base_query, *params)
+                
+                return [
+                    {
+                        "id": row["id"],
+                        "content": row["content"],
+                        "content_type": row["content_type"],
+                        "metadata": row["metadata"],
+                        "created_at": row["created_at"],
+                        "updated_at": row["updated_at"],
+                        "score": float(row["rank"])
+                    }
+                    for row in rows
+                ]
+        except Exception as e:
+            if settings.debug:
+                print(f"Error searching content: {str(e)}")
+            return []
+    
+    async def get_content_count(self, content_type: Optional[str] = None) -> int:
+        """Get total content count"""
+        try:
+            async with self.get_connection() as conn:
+                if content_type:
+                    result = await conn.fetchval(
+                        "SELECT COUNT(*) FROM search_content WHERE content_type = $1",
+                        content_type
+                    )
+                else:
+                    result = await conn.fetchval("SELECT COUNT(*) FROM search_content")
+                return result or 0
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting content count: {str(e)}")
+            return 0
+    
+    # Search logging
+    async def log_search(self, query: str, search_type: str, results_count: int, 
+                        execution_time_ms: float, cached: bool = False) -> bool:
+        """Log search operation"""
+        try:
+            async with self.get_session() as session:
+                search_log = SearchLog(
+                    query=query,
+                    search_type=search_type,
+                    results_count=results_count,
+                    execution_time_ms=execution_time_ms,
+                    cached=cached
+                )
+                session.add(search_log)
+                await session.commit()
+                return True
+        except Exception as e:
+            if settings.debug:
+                print(f"Error logging search: {str(e)}")
+            return False
+    
+    async def get_search_stats(self) -> Dict[str, Any]:
+        """Get search statistics"""
+        try:
+            async with self.get_connection() as conn:
+                total_searches = await conn.fetchval("SELECT COUNT(*) FROM search_logs")
+                avg_execution_time = await conn.fetchval(
+                    "SELECT AVG(execution_time_ms) FROM search_logs"
+                )
+                cache_hit_rate = await conn.fetchval(
+                    "SELECT AVG(CASE WHEN cached THEN 1.0 ELSE 0.0 END) FROM search_logs"
+                )
+                
+                return {
+                    "total_searches": total_searches or 0,
+                    "average_execution_time_ms": float(avg_execution_time or 0),
+                    "cache_hit_rate": float(cache_hit_rate or 0)
+                }
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting search stats: {str(e)}")
+            return {
+                "total_searches": 0,
+                "average_execution_time_ms": 0.0,
+                "cache_hit_rate": 0.0
+            }
+
 
 # Global database manager instance
 db_manager = DatabaseManager()

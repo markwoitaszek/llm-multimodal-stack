@@ -1,435 +1,419 @@
 """
-FastAPI routes for the search engine service
+Search Engine API Endpoints
 """
-import logging
-import uuid
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Query, Path, Request, Depends
+import asyncio
+from typing import List, Optional, Dict, Any
+from datetime import datetime
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import logging
 
-from .config import settings
-from .models import (
-    SearchRequest, SemanticSearchRequest, HybridSearchRequest, AutocompleteRequest,
-    SearchResponse, AutocompleteResponse, SearchSuggestion, FacetedSearchResponse,
-    HealthCheck, ErrorResponse, SearchType, ContentType
+from app.models import (
+    SearchRequest, SearchResponse, IndexRequest, IndexResponse,
+    DeleteRequest, DeleteResponse, HealthResponse, StatsResponse, ErrorResponse
 )
-from .search_engine import search_engine
-from .cache import cache_manager
-from .database import db_manager
-from .vector_store import vector_manager
+from app.search_engine import search_engine
+from app.database import db_manager
+from app.vector_store import vector_store
+from app.embeddings import cached_embedding_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+# Create FastAPI app
+app = FastAPI(
+    title="Search Engine Service",
+    description="Advanced search engine with semantic and keyword search capabilities",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 
-# Dependency to get session ID
-async def get_session_id(request: Request) -> str:
-    """Get or create session ID from request"""
-    session_id = request.headers.get('X-Session-ID')
-    if not session_id:
-        session_id = str(uuid.uuid4())
-    return session_id
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@router.post("/api/v1/search/semantic", response_model=SearchResponse)
-async def semantic_search(
-    request: SemanticSearchRequest,
-    session_id: str = Depends(get_session_id)
-):
-    """Perform semantic search using vector similarity"""
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup"""
     try:
-        # Validate request
-        if not request.query.strip():
-            raise HTTPException(status_code=400, detail="Query cannot be empty")
+        # Initialize database
+        await db_manager.initialize()
+        logger.info("Database initialized")
         
-        # Create search session
-        await db_manager.create_search_session(session_id)
-        await db_manager.update_search_session(session_id, request.query)
+        # Initialize vector store
+        await vector_store.initialize()
+        logger.info("Vector store initialized")
         
-        # Perform search
-        response = await search_engine.semantic_search(request, session_id)
+        # Initialize embedding service
+        await cached_embedding_service.embedding_service.initialize()
+        logger.info("Embedding service initialized")
         
-        return response
+        logger.info("Search Engine Service started successfully")
         
-    except HTTPException:
+    except Exception as e:
+        logger.error(f"Failed to start Search Engine Service: {str(e)}")
         raise
-    except Exception as e:
-        logger.error(f"Semantic search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/v1/search/hybrid", response_model=SearchResponse)
-async def hybrid_search(
-    request: HybridSearchRequest,
-    session_id: str = Depends(get_session_id)
-):
-    """Perform hybrid search combining semantic and keyword search"""
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
     try:
-        # Validate request
-        if not request.query.strip():
-            raise HTTPException(status_code=400, detail="Query cannot be empty")
-        
-        # Create search session
-        await db_manager.create_search_session(session_id)
-        await db_manager.update_search_session(session_id, request.query)
-        
-        # Perform search
-        response = await search_engine.hybrid_search(request, session_id)
-        
-        return response
-        
-    except HTTPException:
-        raise
+        await db_manager.close()
+        await vector_store.close()
+        logger.info("Search Engine Service shutdown complete")
     except Exception as e:
-        logger.error(f"Hybrid search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error during shutdown: {str(e)}")
 
-@router.post("/api/v1/search/autocomplete", response_model=AutocompleteResponse)
-async def autocomplete_search(request: AutocompleteRequest):
-    """Generate autocomplete suggestions for partial query"""
-    try:
-        start_time = datetime.utcnow()
-        
-        # Validate request
-        if len(request.query.strip()) < 2:
-            return AutocompleteResponse(
-                query=request.query,
-                suggestions=[],
-                total_count=0,
-                processing_time_ms=0
-            )
-        
-        # Get suggestions
-        suggestions = await search_engine.autocomplete_search(
-            request.query.strip(),
-            request.limit
-        )
-        
-        processing_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-        
-        return AutocompleteResponse(
-            query=request.query,
-            suggestions=suggestions,
-            total_count=len(suggestions),
-            processing_time_ms=processing_time
-        )
-        
-    except Exception as e:
-        logger.error(f"Autocomplete search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/v1/search/suggestions", response_model=List[SearchSuggestion])
-async def get_search_suggestions(
-    query: str = Query(..., description="Search query"),
-    limit: int = Query(default=10, ge=1, le=50, description="Maximum number of suggestions")
-):
-    """Get search suggestions for a query"""
-    try:
-        # Validate request
-        if not query.strip():
-            raise HTTPException(status_code=400, detail="Query cannot be empty")
-        
-        # Get suggestions
-        suggestions = await search_engine.get_search_suggestions(query.strip(), limit)
-        
-        return suggestions
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get search suggestions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Global exception handler"""
+    logger.error(f"Unhandled exception: {str(exc)}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=ErrorResponse(
+            error="Internal server error",
+            error_code="INTERNAL_ERROR",
+            timestamp=datetime.utcnow()
+        ).dict()
+    )
 
-@router.post("/api/v1/search/filters", response_model=FacetedSearchResponse)
-async def faceted_search(
-    request: SearchRequest,
-    session_id: str = Depends(get_session_id)
-):
-    """Perform faceted search with filter options"""
-    try:
-        # Validate request
-        if not request.query.strip():
-            raise HTTPException(status_code=400, detail="Query cannot be empty")
-        
-        # Perform semantic search first
-        semantic_request = SemanticSearchRequest(
-            query=request.query,
-            content_types=request.content_types,
-            limit=request.limit,
-            filters=request.filters
-        )
-        
-        search_response = await search_engine.semantic_search(semantic_request, session_id)
-        
-        # Generate facets (simplified implementation)
-        facets = await _generate_facets(search_response.results)
-        
-        return FacetedSearchResponse(
-            query=request.query,
-            results=search_response.results,
-            total_count=search_response.total_count,
-            facets=facets,
-            processing_time_ms=search_response.processing_time_ms
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Faceted search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
-async def _generate_facets(results: List[Any]) -> Dict[str, List[Dict[str, Any]]]:
-    """Generate facets from search results"""
-    facets = {}
-    
-    # Content type facet
-    content_types = {}
-    for result in results:
-        content_type = result.content_type.value
-        content_types[content_type] = content_types.get(content_type, 0) + 1
-    
-    facets['content_type'] = [
-        {'field': 'content_type', 'value': ct, 'count': count, 'label': ct.title()}
-        for ct, count in content_types.items()
-    ]
-    
-    # Date facet (simplified)
-    if results:
-        facets['date_range'] = [
-            {'field': 'date_range', 'value': 'last_week', 'count': len(results), 'label': 'Last Week'},
-            {'field': 'date_range', 'value': 'last_month', 'count': len(results), 'label': 'Last Month'},
-            {'field': 'date_range', 'value': 'last_year', 'count': len(results), 'label': 'Last Year'}
-        ]
-    
-    return facets
-
-@router.get("/api/v1/search/analytics")
-async def get_search_analytics(
-    start_date: Optional[datetime] = Query(default=None, description="Start date for analytics"),
-    end_date: Optional[datetime] = Query(default=None, description="End date for analytics"),
-    user_id: Optional[str] = Query(default=None, description="User ID filter"),
-    limit: int = Query(default=100, ge=1, le=1000, description="Maximum number of records")
-):
-    """Get search analytics data"""
-    try:
-        # Set default date range if not provided
-        if not end_date:
-            end_date = datetime.utcnow()
-        if not start_date:
-            start_date = end_date - timedelta(days=7)
-        
-        analytics = await search_engine.get_search_analytics(
-            start_date=start_date,
-            end_date=end_date,
-            user_id=user_id,
-            limit=limit
-        )
-        
-        return {
-            "analytics": analytics,
-            "count": len(analytics),
-            "date_range": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to get search analytics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/api/v1/search/popular")
-async def get_popular_queries(
-    limit: int = Query(default=20, ge=1, le=100, description="Maximum number of popular queries")
-):
-    """Get popular search queries"""
-    try:
-        popular_queries = await search_engine.get_popular_queries(limit)
-        
-        return {
-            "popular_queries": popular_queries,
-            "count": len(popular_queries)
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to get popular queries: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/api/v1/search/sessions/{session_id}")
-async def get_search_session(
-    session_id: str = Path(..., description="Session ID")
-):
-    """Get search session information"""
-    try:
-        session = await db_manager.get_search_session(session_id)
-        
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
-        
-        return session
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get search session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/api/v1/search/user-history")
-async def get_user_search_history(
-    user_id: str = Query(..., description="User ID"),
-    limit: int = Query(default=20, ge=1, le=100, description="Maximum number of queries")
-):
-    """Get user search history"""
-    try:
-        history = await cache_manager.get_user_search_history(user_id, limit)
-        
-        return {
-            "user_id": user_id,
-            "search_history": history or [],
-            "count": len(history) if history else 0
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to get user search history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/api/v1/search/stats")
-async def get_search_stats():
-    """Get search engine statistics"""
-    try:
-        # Get database stats
-        db_stats = await db_manager.get_database_stats()
-        
-        # Get cache stats
-        cache_stats = await cache_manager.get_cache_stats()
-        
-        # Get vector store stats
-        vector_stats = await vector_manager.get_all_collections_info()
-        
-        return {
-            "database": db_stats,
-            "cache": cache_stats,
-            "vector_store": vector_stats,
-            "search_engine": {
-                "uptime_seconds": search_engine.get_uptime(),
-                "embedding_model": "all-MiniLM-L6-v2"
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to get search stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/health", response_model=HealthCheck)
+# Health check endpoint
+@app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
     try:
-        # Check all components
-        db_healthy = await db_manager.health_check()
-        cache_healthy = await cache_manager.health_check()
-        vector_healthy = await vector_manager.health_check()
-        search_healthy = await search_engine.health_check()
+        # Check database health
+        db_healthy = True
+        try:
+            await db_manager.get_content_count()
+        except Exception:
+            db_healthy = False
         
-        overall_status = "healthy" if all([
-            db_healthy, cache_healthy, vector_healthy, search_healthy
-        ]) else "unhealthy"
+        # Check vector store health
+        vector_healthy = await vector_store.health_check()
         
-        return HealthCheck(
-            service="search-engine",
+        # Check embedding service health
+        embedding_healthy = await cached_embedding_service.embedding_service.health_check()
+        
+        overall_status = "healthy" if all([db_healthy, vector_healthy, embedding_healthy]) else "unhealthy"
+        
+        return HealthResponse(
             status=overall_status,
+            timestamp=datetime.utcnow(),
             version="1.0.0",
-            components={
+            dependencies={
                 "database": "healthy" if db_healthy else "unhealthy",
-                "cache": "healthy" if cache_healthy else "unhealthy",
                 "vector_store": "healthy" if vector_healthy else "unhealthy",
-                "search_engine": "healthy" if search_healthy else "unhealthy"
-            },
-            uptime_seconds=search_engine.get_uptime()
+                "embedding_service": "healthy" if embedding_healthy else "unhealthy"
+            }
         )
         
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return HealthCheck(
-            service="search-engine",
-            status="unhealthy",
-            version="1.0.0",
-            components={
-                "database": "unknown",
-                "cache": "unknown",
-                "vector_store": "unknown",
-                "search_engine": "unknown"
-            },
-            uptime_seconds=0
+        logger.error(f"Health check failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service unavailable"
         )
 
-# Cache management endpoints
-@router.get("/api/v1/cache/stats")
-async def get_cache_stats():
-    """Get cache statistics"""
-    try:
-        stats = await cache_manager.get_cache_stats()
-        return stats
-    except Exception as e:
-        logger.error(f"Failed to get cache stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/api/v1/cache/clear")
-async def clear_cache():
-    """Clear all cache entries"""
+# Search endpoints
+@app.post("/api/v1/search", response_model=SearchResponse)
+async def search(request: SearchRequest):
+    """Perform search"""
     try:
-        success = await cache_manager.clear_all_cache()
-        if success:
-            return {"message": "Cache cleared successfully"}
-        else:
-            raise HTTPException(status_code=500, detail="Failed to clear cache")
-    except Exception as e:
-        logger.error(f"Failed to clear cache: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.delete("/api/v1/cache/search/{pattern}")
-async def invalidate_search_cache(pattern: str):
-    """Invalidate search cache entries matching pattern"""
-    try:
-        deleted_count = await cache_manager.invalidate_search_cache(pattern)
-        return {
-            "message": f"Invalidated {deleted_count} cache entries",
-            "pattern": pattern
-        }
-    except Exception as e:
-        logger.error(f"Failed to invalidate search cache: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Vector store management endpoints
-@router.get("/api/v1/vector/collections")
-async def get_collections():
-    """Get vector store collections information"""
-    try:
-        collections = await vector_manager.get_all_collections_info()
-        return {"collections": collections}
-    except Exception as e:
-        logger.error(f"Failed to get collections: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/api/v1/vector/collections/{content_type}")
-async def get_collection_info(
-    content_type: str = Path(..., description="Content type")
-):
-    """Get specific collection information"""
-    try:
-        if content_type not in [ct.value for ct in ContentType]:
-            raise HTTPException(status_code=400, detail="Invalid content type")
+        result = await search_engine.search(request)
+        return result
         
-        content_type_enum = ContentType(content_type)
-        info = await vector_manager.get_collection_info(content_type_enum)
+    except Exception as e:
+        logger.error(f"Search error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Search failed: {str(e)}"
+        )
+
+
+@app.post("/api/v1/search/semantic", response_model=SearchResponse)
+async def semantic_search(request: SearchRequest):
+    """Perform semantic search"""
+    try:
+        # Override search type to semantic
+        request.search_type = "semantic"
+        result = await search_engine.search(request)
+        return result
         
-        if not info:
-            raise HTTPException(status_code=404, detail="Collection not found")
+    except Exception as e:
+        logger.error(f"Semantic search error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Semantic search failed: {str(e)}"
+        )
+
+
+@app.post("/api/v1/search/keyword", response_model=SearchResponse)
+async def keyword_search(request: SearchRequest):
+    """Perform keyword search"""
+    try:
+        # Override search type to keyword
+        request.search_type = "keyword"
+        result = await search_engine.search(request)
+        return result
         
-        return info
+    except Exception as e:
+        logger.error(f"Keyword search error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Keyword search failed: {str(e)}"
+        )
+
+
+@app.post("/api/v1/search/hybrid", response_model=SearchResponse)
+async def hybrid_search(request: SearchRequest):
+    """Perform hybrid search"""
+    try:
+        # Override search type to hybrid
+        request.search_type = "hybrid"
+        result = await search_engine.search(request)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Hybrid search error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Hybrid search failed: {str(e)}"
+        )
+
+
+# Indexing endpoints
+@app.post("/api/v1/index", response_model=IndexResponse)
+async def index_content(request: IndexRequest, background_tasks: BackgroundTasks):
+    """Index content for search"""
+    try:
+        # Generate embedding if not provided
+        embedding = request.embedding
+        if not embedding:
+            embedding = await cached_embedding_service.generate_embedding(request.content)
+        
+        # Store in database
+        success = await db_manager.create_content(
+            content_id=request.content_id,
+            content=request.content,
+            content_type=request.content_type.value,
+            metadata=request.metadata,
+            embedding=embedding
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to store content in database"
+            )
+        
+        # Store embedding in vector store (background task)
+        background_tasks.add_task(
+            vector_store.upsert_embedding,
+            request.content_id,
+            embedding,
+            request.metadata
+        )
+        
+        return IndexResponse(
+            content_id=request.content_id,
+            indexed=True,
+            embedding_dimension=len(embedding),
+            indexed_at=datetime.utcnow()
+        )
+        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get collection info: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Index content error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Indexing failed: {str(e)}"
+        )
 
-# Error handlers - Note: APIRouter doesn't support exception handlers
-# These should be handled at the FastAPI app level in main.py
+
+@app.get("/api/v1/index/{content_id}")
+async def get_indexed_content(content_id: str):
+    """Get indexed content by ID"""
+    try:
+        content = await db_manager.get_content(content_id)
+        
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Content not found"
+            )
+        
+        return content
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get content error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get content: {str(e)}"
+        )
+
+
+@app.delete("/api/v1/index/{content_id}", response_model=DeleteResponse)
+async def delete_indexed_content(content_id: str, background_tasks: BackgroundTasks):
+    """Delete indexed content"""
+    try:
+        # Delete from database
+        db_success = await db_manager.delete_content(content_id)
+        
+        # Delete from vector store (background task)
+        background_tasks.add_task(vector_store.delete_embedding, content_id)
+        
+        if not db_success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Content not found"
+            )
+        
+        return DeleteResponse(
+            content_id=content_id,
+            deleted=True,
+            deleted_at=datetime.utcnow()
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete content error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete content: {str(e)}"
+        )
+
+
+# Batch operations
+@app.post("/api/v1/index/batch", response_model=List[IndexResponse])
+async def batch_index_content(requests: List[IndexRequest], background_tasks: BackgroundTasks):
+    """Batch index content"""
+    try:
+        results = []
+        
+        for request in requests:
+            try:
+                # Generate embedding if not provided
+                embedding = request.embedding
+                if not embedding:
+                    embedding = await cached_embedding_service.generate_embedding(request.content)
+                
+                # Store in database
+                success = await db_manager.create_content(
+                    content_id=request.content_id,
+                    content=request.content,
+                    content_type=request.content_type.value,
+                    metadata=request.metadata,
+                    embedding=embedding
+                )
+                
+                if success:
+                    results.append(IndexResponse(
+                        content_id=request.content_id,
+                        indexed=True,
+                        embedding_dimension=len(embedding),
+                        indexed_at=datetime.utcnow()
+                    ))
+                else:
+                    results.append(IndexResponse(
+                        content_id=request.content_id,
+                        indexed=False,
+                        indexed_at=datetime.utcnow()
+                    ))
+                
+            except Exception as e:
+                logger.error(f"Batch index error for {request.content_id}: {str(e)}")
+                results.append(IndexResponse(
+                    content_id=request.content_id,
+                    indexed=False,
+                    indexed_at=datetime.utcnow()
+                ))
+        
+        # Batch store embeddings in vector store (background task)
+        embeddings_data = []
+        for i, request in enumerate(requests):
+            if results[i].indexed and request.embedding:
+                embeddings_data.append((request.content_id, request.embedding, request.metadata))
+        
+        if embeddings_data:
+            background_tasks.add_task(
+                vector_store.batch_upsert_embeddings,
+                embeddings_data
+            )
+        
+        return results
+        
+    except Exception as e:
+        logger.error(f"Batch index content error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Batch indexing failed: {str(e)}"
+        )
+
+
+# Statistics and monitoring
+@app.get("/api/v1/stats", response_model=StatsResponse)
+async def get_stats():
+    """Get service statistics"""
+    try:
+        stats = await search_engine.get_search_stats()
+        
+        return StatsResponse(
+            total_indexed_content=stats.get("total_searches", 0),
+            total_searches=stats.get("total_searches", 0),
+            cache_hit_rate=stats.get("cache_hit_rate", 0.0),
+            average_search_time_ms=stats.get("average_search_time_ms", 0.0),
+            active_connections=settings.database_pool_size,
+            memory_usage_mb=0.0  # Could be implemented with psutil
+        )
+        
+    except Exception as e:
+        logger.error(f"Get stats error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get statistics: {str(e)}"
+        )
+
+
+# Cache management
+@app.delete("/api/v1/cache")
+async def clear_cache():
+    """Clear all caches"""
+    try:
+        search_engine.clear_cache()
+        return {"message": "Cache cleared successfully"}
+        
+    except Exception as e:
+        logger.error(f"Clear cache error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clear cache: {str(e)}"
+        )
+
+
+# Root endpoint
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "service": "Search Engine Service",
+        "version": "1.0.0",
+        "status": "running",
+        "docs": "/docs"
+    }

@@ -1,69 +1,81 @@
 """
-Configuration settings for the user management service
+User Management Service Configuration
 """
 import os
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic import BaseSettings
+
 
 class Settings(BaseSettings):
-    # Service settings
+    """Application settings"""
+    
+    # Service Configuration
     service_name: str = "user-management"
-    host: str = "0.0.0.0"
-    port: int = 8006
+    service_port: int = 8006
+    service_host: str = "0.0.0.0"
     debug: bool = False
     
-    # Database settings
-    postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
-    postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))
-    postgres_db: str = os.getenv("POSTGRES_DB", "multimodal")
-    postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
-    postgres_password: str = os.getenv("POSTGRES_PASSWORD", "postgres")
+    # Database Configuration
+    database_url: str = "postgresql+asyncpg://postgres:postgres@postgres:5432/multimodal"
+    database_pool_size: int = 10
+    database_max_overflow: int = 20
     
-    @property
-    def postgres_url(self) -> str:
-        return f"postgresql://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+    # Redis Configuration
+    redis_url: str = "redis://redis:6379/0"
+    redis_password: Optional[str] = None
+    redis_pool_size: int = 10
     
-    # Redis settings
-    redis_host: str = os.getenv("REDIS_HOST", "localhost")
-    redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
-    redis_db: int = int(os.getenv("REDIS_DB", "5"))
+    # JWT Configuration
+    secret_key: str = "your-secret-key-here-change-in-production"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
     
-    # JWT settings
-    jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
-    jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 30
-    jwt_refresh_token_expire_days: int = 7
-    
-    # Security settings
+    # Password Configuration
     password_min_length: int = 8
+    password_require_uppercase: bool = True
+    password_require_lowercase: bool = True
+    password_require_numbers: bool = True
+    password_require_special_chars: bool = True
+    
+    # Rate Limiting Configuration
+    rate_limit_per_minute: int = 60
+    rate_limit_per_hour: int = 1000
     max_login_attempts: int = 5
     lockout_duration_minutes: int = 15
-    session_timeout_minutes: int = 60
     
-    # Rate limiting settings
-    rate_limit_requests: int = 100
-    rate_limit_window_minutes: int = 15
+    # Session Configuration
+    session_timeout_minutes: int = 120
+    max_concurrent_sessions: int = 5
+    session_cleanup_interval_minutes: int = 30
     
-    # Email settings (for future use)
-    smtp_host: Optional[str] = os.getenv("SMTP_HOST")
-    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
-    smtp_username: Optional[str] = os.getenv("SMTP_USERNAME")
-    smtp_password: Optional[str] = os.getenv("SMTP_PASSWORD")
+    # Multi-tenancy Configuration
+    default_tenant_id: str = "default"
+    tenant_isolation_enabled: bool = True
+    max_users_per_tenant: int = 1000
+    
+    # Security Configuration
+    api_key_header: str = "X-API-Key"
+    cors_origins: list = ["*"]
+    require_email_verification: bool = False
+    require_phone_verification: bool = False
+    
+    # Performance Configuration
+    max_concurrent_operations: int = 10
+    cache_ttl: int = 3600  # 1 hour
+    
+    # Email Configuration (for notifications)
+    smtp_server: Optional[str] = None
+    smtp_port: int = 587
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
     smtp_use_tls: bool = True
-    
-    # Application settings
-    app_name: str = "LLM Multimodal Stack"
-    app_version: str = "2.0.0"
-    cors_origins: list = ["*"]  # Configure appropriately for production
-    
-    # Audit settings
-    enable_audit_logging: bool = True
-    audit_log_level: str = "INFO"
+    from_email: str = "noreply@example.com"
     
     class Config:
         env_file = ".env"
         case_sensitive = False
-        protected_namespaces = ('settings_',)
 
-# Create global settings instance
+
+# Global settings instance
 settings = Settings()

@@ -1,28 +1,19 @@
-# Optimized Search Engine Service Dockerfile
-# Uses shared base image and advanced caching
+# Optimized Dockerfile for Search Engine Service
+# Inherits from shared base image for better caching
+FROM multimodal-base:latest
 
-# Build stage - use shared base image
-FROM multimodal-base:latest as builder
+# Set working directory
+WORKDIR /app
 
-# Set environment variables
-ENV PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Copy requirements first for better layer caching
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
-
-# Install Python dependencies with caching
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Production stage
-FROM multimodal-base:latest as production
-
-# Copy Python dependencies from builder
-COPY --from=builder /home/appuser/.local /home/appuser/.local
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY --chown=appuser:appuser . .
+COPY . .
+
+# Create cache directory
+RUN mkdir -p /app/cache
 
 # Expose port
 EXPOSE 8004
@@ -31,5 +22,5 @@ EXPOSE 8004
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8004/health || exit 1
 
-# Run the application
+# Run application
 CMD ["python", "main.py"]

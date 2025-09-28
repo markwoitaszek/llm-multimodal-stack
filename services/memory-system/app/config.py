@@ -1,57 +1,60 @@
 """
-Configuration settings for the memory system service
+Memory System Service Configuration
 """
 import os
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic import BaseSettings
+
 
 class Settings(BaseSettings):
-    # Service settings
+    """Application settings"""
+    
+    # Service Configuration
     service_name: str = "memory-system"
-    host: str = "0.0.0.0"
-    port: int = 8005
+    service_port: int = 8005
+    service_host: str = "0.0.0.0"
     debug: bool = False
     
-    # Database settings
-    postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
-    postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))
-    postgres_db: str = os.getenv("POSTGRES_DB", "multimodal")
-    postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
-    postgres_password: str = os.getenv("POSTGRES_PASSWORD", "postgres")
+    # Database Configuration
+    database_url: str = "postgresql+asyncpg://postgres:postgres@postgres:5432/multimodal"
+    database_pool_size: int = 10
+    database_max_overflow: int = 20
     
-    @property
-    def postgres_url(self) -> str:
-        return f"postgresql://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+    # Redis Configuration
+    redis_url: str = "redis://redis:6379/0"
+    redis_password: Optional[str] = None
+    redis_pool_size: int = 10
     
-    # Redis settings
-    redis_host: str = os.getenv("REDIS_HOST", "localhost")
-    redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
-    redis_db: int = int(os.getenv("REDIS_DB", "4"))
+    # Qdrant Configuration
+    qdrant_url: str = "http://qdrant:6333"
+    qdrant_api_key: Optional[str] = None
+    qdrant_collection_name: str = "memory_embeddings"
     
-    # Memory settings
+    # Memory Configuration
     max_conversation_length: int = 1000
+    max_memory_items: int = 10000
+    memory_consolidation_threshold: int = 100
+    context_window_size: int = 50
     memory_retention_days: int = 30
-    context_window_size: int = 10
-    knowledge_base_limit: int = 10000
     
-    # Cache settings
-    cache_ttl_seconds: int = 3600  # 1 hour
-    conversation_cache_ttl: int = 1800  # 30 minutes
-    knowledge_cache_ttl: int = 7200  # 2 hours
+    # Model Configuration
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_dimension: int = 384
+    max_text_length: int = 512
     
-    # Memory consolidation settings
-    consolidation_threshold: int = 50  # Consolidate when conversation reaches this length
-    summary_length: int = 200  # Target summary length in words
-    relevance_threshold: float = 0.7  # Minimum relevance score for memory retention
+    # Performance Configuration
+    batch_size: int = 32
+    max_concurrent_operations: int = 10
+    cache_ttl: int = 3600  # 1 hour
     
-    # Context management
-    max_context_tokens: int = 4000
-    context_compression_ratio: float = 0.5
+    # Security Configuration
+    api_key_header: str = "X-API-Key"
+    rate_limit_per_minute: int = 100
     
     class Config:
         env_file = ".env"
         case_sensitive = False
-        protected_namespaces = ('settings_',)
 
-# Create global settings instance
+
+# Global settings instance
 settings = Settings()

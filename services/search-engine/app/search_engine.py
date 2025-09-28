@@ -1,517 +1,398 @@
 """
-Core search engine logic for semantic, hybrid, and keyword search
+Core Search Engine Implementation
 """
-import logging
 import asyncio
 import time
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime
-import httpx
+import uuid
+from typing import List, Optional, Dict, Any, Tuple
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from datetime import datetime
+import logging
 
-from .config import settings
-from .models import (
-    SearchType, ContentType, SearchRequest, SemanticSearchRequest, 
-    HybridSearchRequest, SearchResponse, SearchResult, SearchAnalytics
-)
-from .vector_store import vector_manager
-from .cache import cache_manager
-from .query_processor import query_processor
-from .database import db_manager
+from app.models import SearchRequest, SearchResponse, SearchResult, SearchType, ContentType
+from app.database import db_manager
+from app.vector_store import vector_store
+from app.embeddings import cached_embedding_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
+
 
 class SearchEngine:
     """Core search engine implementation"""
     
     def __init__(self):
-        self.embedding_model: Optional[SentenceTransformer] = None
-        self._start_time = datetime.utcnow()
+        self.cache = {}  # Simple in-memory cache
+        self.cache_ttl = settings.cache_ttl
+        self.max_concurrent_searches = settings.max_concurrent_searches
+        self._semaphore = asyncio.Semaphore(self.max_concurrent_searches)
     
-    async def initialize(self):
-        """Initialize the search engine"""
-        try:
-            # Initialize embedding model
-            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-            logger.info("Search engine initialized successfully")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize search engine: {e}")
-            raise
-    
-    async def close(self):
-        """Close search engine resources"""
-        if self.embedding_model:
-            # SentenceTransformer doesn't have explicit cleanup
-            self.embedding_model = None
-            logger.info("Search engine resources closed")
-    
-    def _generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding for text"""
-        if not self.embedding_model:
-            raise RuntimeError("Embedding model not initialized")
-        
-        try:
-            embedding = self.embedding_model.encode(text)
-            return embedding.tolist()
-        except Exception as e:
-            logger.error(f"Failed to generate embedding: {e}")
-            raise
-    
-    async def semantic_search(
-        self,
-        request: SemanticSearchRequest,
-        session_id: Optional[str] = None
-    ) -> SearchResponse:
-        """Perform semantic search using vector similarity"""
+    async def search(self, request: SearchRequest) -> SearchResponse:
+        """Perform search based on request"""
         start_time = time.time()
+        search_id = str(uuid.uuid4())
         
         try:
-            # Process query
-            processed_query = await query_processor.process_query(
-                request.query,
-                SearchType.SEMANTIC,
-                expand_query=request.expand_query
+            # Acquire semaphore for concurrency control
+            async with self._semaphore:
+                # Check cache first
+                if request.use_cache:
+                    cached_result = self._get_cached_result(request)
+                    if cached_result:
+                        cached_result.cached = True
+                        return cached_result
+                
+                # Perform search based on type
+                if request.search_type == SearchType.SEMANTIC:
+                    results = await self._semantic_search(request)
+                elif request.search_type == SearchType.KEYWORD:
+                    results = await self._keyword_search(request)
+                elif request.search_type == SearchType.HYBRID:
+                    results = await self._hybrid_search(request)
+                elif request.search_type == SearchType.FILTERED:
+                    results = await self._filtered_search(request)
+                else:
+                    raise ValueError(f"Unsupported search type: {request.search_type}")
+                
+                # Create response
+                execution_time_ms = (time.time() - start_time) * 1000
+                response = SearchResponse(
+                    query=request.query,
+                    search_type=request.search_type,
+                    total_results=len(results),
+                    results=results,
+                    execution_time_ms=execution_time_ms,
+                    cached=False,
+                    search_id=search_id
+                )
+                
+                # Cache result
+                if request.use_cache:
+                    self._cache_result(request, response)
+                
+                # Log search
+                await db_manager.log_search(
+                    query=request.query,
+                    search_type=request.search_type.value,
+                    results_count=len(results),
+                    execution_time_ms=execution_time_ms,
+                    cached=False
+                )
+                
+                return response
+                
+        except Exception as e:
+            logger.error(f"Search error: {str(e)}")
+            execution_time_ms = (time.time() - start_time) * 1000
+            
+            # Log failed search
+            await db_manager.log_search(
+                query=request.query,
+                search_type=request.search_type.value,
+                results_count=0,
+                execution_time_ms=execution_time_ms,
+                cached=False
             )
             
-            # Check cache first
-            cached_results = await cache_manager.get_search_results(
+            raise Exception(f"Search failed: {str(e)}")
+    
+    async def _semantic_search(self, request: SearchRequest) -> List[SearchResult]:
+        """Perform semantic search using vector similarity"""
+        try:
+            # Generate query embedding
+            query_embedding = await cached_embedding_service.generate_embedding(
+                request.query, 
+                use_cache=request.use_cache
+            )
+            
+            # Search vector store
+            vector_results = await vector_store.search_similar(
+                query_embedding=query_embedding,
+                limit=request.limit,
+                filters=self._build_vector_filters(request)
+            )
+            
+            # Get content details from database
+            results = []
+            for vector_result in vector_results:
+                content_id = vector_result["id"]
+                content_data = await db_manager.get_content(content_id)
+                
+                if content_data:
+                    # Apply content type filter
+                    if request.content_types:
+                        content_type = ContentType(content_data["content_type"])
+                        if content_type not in request.content_types:
+                            continue
+                    
+                    result = SearchResult(
+                        id=content_data["id"],
+                        content=content_data["content"],
+                        content_type=ContentType(content_data["content_type"]),
+                        score=vector_result["score"],
+                        metadata=content_data["metadata"] if request.include_metadata else None,
+                        created_at=content_data["created_at"],
+                        updated_at=content_data["updated_at"]
+                    )
+                    results.append(result)
+            
+            return results[:request.limit]
+            
+        except Exception as e:
+            logger.error(f"Semantic search error: {str(e)}")
+            return []
+    
+    async def _keyword_search(self, request: SearchRequest) -> List[SearchResult]:
+        """Perform keyword search using full-text search"""
+        try:
+            # Search database
+            db_results = await db_manager.search_content(
                 query=request.query,
-                search_type=SearchType.SEMANTIC.value,
                 content_types=[ct.value for ct in request.content_types] if request.content_types else None,
                 limit=request.limit,
-                filters=request.filters
+                offset=request.offset
             )
-            
-            if cached_results:
-                logger.info(f"Returning cached semantic search results for: {request.query}")
-                return SearchResponse(**cached_results['results'])
-            
-            # Generate query embedding
-            query_embedding = self._generate_embedding(processed_query['corrected_query'])
-            
-            # Perform vector search
-            search_results = []
-            content_types = request.content_types or [ContentType.TEXT, ContentType.IMAGE, ContentType.VIDEO]
-            
-            for content_type in content_types:
-                results = await vector_manager.search_semantic(
-                    query_vector=query_embedding,
-                    content_type=content_type,
-                    limit=request.limit,
-                    score_threshold=request.similarity_threshold,
-                    filters=request.filters
-                )
-                search_results.extend(results)
-            
-            # Sort by score and limit results
-            search_results.sort(key=lambda x: x['score'], reverse=True)
-            search_results = search_results[:request.limit]
             
             # Convert to SearchResult objects
             results = []
-            for result in search_results:
-                results.append(SearchResult(
-                    id=result['id'],
-                    title=result['payload'].get('title', 'Untitled'),
-                    content=result['payload'].get('content', ''),
-                    content_type=ContentType(result['content_type']),
-                    score=result['score'],
-                    metadata=result['payload'],
-                    url=result['payload'].get('url'),
-                    created_at=result['payload'].get('created_at'),
-                    updated_at=result['payload'].get('updated_at')
-                ))
-            
-            processing_time = (time.time() - start_time) * 1000
-            
-            # Create response
-            response = SearchResponse(
-                query=request.query,
-                search_type=SearchType.SEMANTIC,
-                results=results,
-                total_count=len(results),
-                limit=request.limit,
-                offset=request.offset,
-                processing_time_ms=processing_time,
-                suggestions=await query_processor.generate_search_suggestions(request.query),
-                filters_applied=request.filters or {},
-                metadata={
-                    'processed_query': processed_query,
-                    'embedding_model': 'all-MiniLM-L6-v2',
-                    'similarity_threshold': request.similarity_threshold
-                }
-            )
-            
-            # Cache results
-            await cache_manager.set_search_results(
-                query=request.query,
-                search_type=SearchType.SEMANTIC.value,
-                results=response.dict(),
-                content_types=[ct.value for ct in request.content_types] if request.content_types else None,
-                limit=request.limit,
-                filters=request.filters
-            )
-            
-            # Log analytics
-            await self._log_search_analytics(
-                request.query,
-                SearchType.SEMANTIC,
-                len(results),
-                processing_time,
-                session_id,
-                request.filters
-            )
-            
-            return response
-            
-        except Exception as e:
-            logger.error(f"Semantic search failed: {e}")
-            raise
-    
-    async def hybrid_search(
-        self,
-        request: HybridSearchRequest,
-        session_id: Optional[str] = None
-    ) -> SearchResponse:
-        """Perform hybrid search combining semantic and keyword search"""
-        start_time = time.time()
-        
-        try:
-            # Process query
-            processed_query = await query_processor.process_query(
-                request.query,
-                SearchType.HYBRID
-            )
-            
-            # Check cache first
-            cached_results = await cache_manager.get_search_results(
-                query=request.query,
-                search_type=SearchType.HYBRID.value,
-                content_types=[ct.value for ct in request.content_types] if request.content_types else None,
-                limit=request.limit,
-                filters=request.filters
-            )
-            
-            if cached_results:
-                logger.info(f"Returning cached hybrid search results for: {request.query}")
-                return SearchResponse(**cached_results['results'])
-            
-            # Perform semantic search
-            semantic_request = SemanticSearchRequest(
-                query=request.query,
-                content_types=request.content_types,
-                limit=request.limit,
-                filters=request.filters,
-                similarity_threshold=request.similarity_threshold
-            )
-            semantic_response = await self.semantic_search(semantic_request, session_id)
-            
-            # Perform keyword search (simplified implementation)
-            keyword_results = await self._keyword_search(
-                request.query,
-                request.content_types or [ContentType.TEXT, ContentType.IMAGE, ContentType.VIDEO],
-                request.limit,
-                request.filters
-            )
-            
-            # Fuse results using reciprocal rank fusion
-            fused_results = self._fuse_results(
-                semantic_response.results,
-                keyword_results,
-                request.semantic_weight,
-                request.keyword_weight,
-                request.fusion_method
-            )
-            
-            processing_time = (time.time() - start_time) * 1000
-            
-            # Create response
-            response = SearchResponse(
-                query=request.query,
-                search_type=SearchType.HYBRID,
-                results=fused_results[:request.limit],
-                total_count=len(fused_results),
-                limit=request.limit,
-                offset=request.offset,
-                processing_time_ms=processing_time,
-                suggestions=await query_processor.generate_search_suggestions(request.query),
-                filters_applied=request.filters or {},
-                metadata={
-                    'processed_query': processed_query,
-                    'semantic_weight': request.semantic_weight,
-                    'keyword_weight': request.keyword_weight,
-                    'fusion_method': request.fusion_method,
-                    'semantic_results_count': len(semantic_response.results),
-                    'keyword_results_count': len(keyword_results)
-                }
-            )
-            
-            # Cache results
-            await cache_manager.set_search_results(
-                query=request.query,
-                search_type=SearchType.HYBRID.value,
-                results=response.dict(),
-                content_types=[ct.value for ct in request.content_types] if request.content_types else None,
-                limit=request.limit,
-                filters=request.filters
-            )
-            
-            # Log analytics
-            await self._log_search_analytics(
-                request.query,
-                SearchType.HYBRID,
-                len(fused_results),
-                processing_time,
-                session_id,
-                request.filters
-            )
-            
-            return response
-            
-        except Exception as e:
-            logger.error(f"Hybrid search failed: {e}")
-            raise
-    
-    async def _keyword_search(
-        self,
-        query: str,
-        content_types: List[ContentType],
-        limit: int,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[SearchResult]:
-        """Perform keyword-based search (simplified implementation)"""
-        try:
-            # This is a simplified keyword search implementation
-            # In a real system, you would use a full-text search engine like Elasticsearch
-            
-            # For now, we'll use a basic text matching approach
-            # This would typically involve querying a full-text search index
-            
-            results = []
-            
-            # Simulate keyword search results
-            # In practice, this would query a full-text search index
-            for content_type in content_types:
-                # This is a placeholder - real implementation would search text indices
-                # and return actual results based on keyword matching
-                pass
+            for db_result in db_results:
+                result = SearchResult(
+                    id=db_result["id"],
+                    content=db_result["content"],
+                    content_type=ContentType(db_result["content_type"]),
+                    score=db_result["score"],
+                    metadata=db_result["metadata"] if request.include_metadata else None,
+                    created_at=db_result["created_at"],
+                    updated_at=db_result["updated_at"]
+                )
+                results.append(result)
             
             return results
             
         except Exception as e:
-            logger.error(f"Keyword search failed: {e}")
+            logger.error(f"Keyword search error: {str(e)}")
             return []
     
-    def _fuse_results(
-        self,
-        semantic_results: List[SearchResult],
-        keyword_results: List[SearchResult],
-        semantic_weight: float,
-        keyword_weight: float,
-        fusion_method: str
-    ) -> List[SearchResult]:
-        """Fuse semantic and keyword search results"""
-        if fusion_method == "rrf":
-            return self._reciprocal_rank_fusion(semantic_results, keyword_results)
-        elif fusion_method == "weighted":
-            return self._weighted_fusion(semantic_results, keyword_results, semantic_weight, keyword_weight)
-        else:
-            # Default to RRF
-            return self._reciprocal_rank_fusion(semantic_results, keyword_results)
+    async def _hybrid_search(self, request: SearchRequest) -> List[SearchResult]:
+        """Perform hybrid search combining semantic and keyword search"""
+        try:
+            # Run both searches concurrently
+            semantic_task = self._semantic_search(request)
+            keyword_task = self._keyword_search(request)
+            
+            semantic_results, keyword_results = await asyncio.gather(
+                semantic_task, keyword_task, return_exceptions=True
+            )
+            
+            # Handle exceptions
+            if isinstance(semantic_results, Exception):
+                logger.error(f"Semantic search failed: {semantic_results}")
+                semantic_results = []
+            
+            if isinstance(keyword_results, Exception):
+                logger.error(f"Keyword search failed: {keyword_results}")
+                keyword_results = []
+            
+            # Combine and rank results
+            combined_results = self._combine_search_results(
+                semantic_results, keyword_results, request.limit
+            )
+            
+            return combined_results
+            
+        except Exception as e:
+            logger.error(f"Hybrid search error: {str(e)}")
+            return []
     
-    def _reciprocal_rank_fusion(
-        self,
-        semantic_results: List[SearchResult],
-        keyword_results: List[SearchResult],
-        k: int = 60
-    ) -> List[SearchResult]:
-        """Reciprocal Rank Fusion algorithm"""
-        scores = {}
+    async def _filtered_search(self, request: SearchRequest) -> List[SearchResult]:
+        """Perform filtered search with custom filters"""
+        try:
+            # Start with semantic search
+            results = await self._semantic_search(request)
+            
+            # Apply custom filters
+            if request.filters:
+                results = self._apply_custom_filters(results, request.filters)
+            
+            return results[:request.limit]
+            
+        except Exception as e:
+            logger.error(f"Filtered search error: {str(e)}")
+            return []
+    
+    def _combine_search_results(self, semantic_results: List[SearchResult], 
+                              keyword_results: List[SearchResult], 
+                              limit: int) -> List[SearchResult]:
+        """Combine and rank search results"""
+        # Create a dictionary to track combined scores
+        combined_scores = {}
         
-        # Add semantic results
-        for rank, result in enumerate(semantic_results):
-            score = 1.0 / (k + rank + 1)
-            if result.id in scores:
-                scores[result.id]['score'] += score
+        # Add semantic results with weight 0.7
+        for result in semantic_results:
+            combined_scores[result.id] = {
+                "result": result,
+                "semantic_score": result.score,
+                "keyword_score": 0.0,
+                "combined_score": result.score * 0.7
+            }
+        
+        # Add keyword results with weight 0.3
+        for result in keyword_results:
+            if result.id in combined_scores:
+                # Update existing result
+                combined_scores[result.id]["keyword_score"] = result.score
+                combined_scores[result.id]["combined_score"] += result.score * 0.3
             else:
-                scores[result.id] = {'result': result, 'score': score}
+                # Add new result
+                combined_scores[result.id] = {
+                    "result": result,
+                    "semantic_score": 0.0,
+                    "keyword_score": result.score,
+                    "combined_score": result.score * 0.3
+                }
         
-        # Add keyword results
-        for rank, result in enumerate(keyword_results):
-            score = 1.0 / (k + rank + 1)
-            if result.id in scores:
-                scores[result.id]['score'] += score
+        # Sort by combined score and return top results
+        sorted_results = sorted(
+            combined_scores.values(),
+            key=lambda x: x["combined_score"],
+            reverse=True
+        )
+        
+        # Update scores in results
+        final_results = []
+        for item in sorted_results[:limit]:
+            result = item["result"]
+            result.score = item["combined_score"]
+            final_results.append(result)
+        
+        return final_results
+    
+    def _apply_custom_filters(self, results: List[SearchResult], 
+                            filters: Dict[str, Any]) -> List[SearchResult]:
+        """Apply custom filters to search results"""
+        filtered_results = []
+        
+        for result in results:
+            include_result = True
+            
+            for filter_key, filter_value in filters.items():
+                if filter_key == "created_after":
+                    if result.created_at < datetime.fromisoformat(filter_value):
+                        include_result = False
+                        break
+                elif filter_key == "created_before":
+                    if result.created_at > datetime.fromisoformat(filter_value):
+                        include_result = False
+                        break
+                elif filter_key == "min_score":
+                    if result.score < float(filter_value):
+                        include_result = False
+                        break
+                elif result.metadata and filter_key in result.metadata:
+                    if result.metadata[filter_key] != filter_value:
+                        include_result = False
+                        break
+            
+            if include_result:
+                filtered_results.append(result)
+        
+        return filtered_results
+    
+    def _build_vector_filters(self, request: SearchRequest) -> Optional[Dict[str, Any]]:
+        """Build filters for vector search"""
+        filters = {}
+        
+        if request.content_types:
+            filters["content_type"] = [ct.value for ct in request.content_types]
+        
+        if request.filters:
+            # Add custom filters that are compatible with vector search
+            for key, value in request.filters.items():
+                if key in ["content_type", "source", "category"]:
+                    filters[key] = value
+        
+        return filters if filters else None
+    
+    def _get_cached_result(self, request: SearchRequest) -> Optional[SearchResponse]:
+        """Get cached search result"""
+        cache_key = self._generate_cache_key(request)
+        
+        if cache_key in self.cache:
+            cached_item = self.cache[cache_key]
+            # Check if cache entry is still valid
+            if time.time() - cached_item["timestamp"] < self.cache_ttl:
+                return cached_item["response"]
             else:
-                scores[result.id] = {'result': result, 'score': score}
+                # Remove expired cache entry
+                del self.cache[cache_key]
         
-        # Sort by combined score
-        fused_results = []
-        for item in sorted(scores.values(), key=lambda x: x['score'], reverse=True):
-            result = item['result']
-            result.score = item['score']
-            fused_results.append(result)
-        
-        return fused_results
+        return None
     
-    def _weighted_fusion(
-        self,
-        semantic_results: List[SearchResult],
-        keyword_results: List[SearchResult],
-        semantic_weight: float,
-        keyword_weight: float
-    ) -> List[SearchResult]:
-        """Weighted fusion of results"""
-        scores = {}
+    def _cache_result(self, request: SearchRequest, response: SearchResponse):
+        """Cache search result"""
+        cache_key = self._generate_cache_key(request)
         
-        # Normalize semantic scores
-        if semantic_results:
-            max_semantic_score = max(result.score for result in semantic_results)
-            for result in semantic_results:
-                normalized_score = result.score / max_semantic_score if max_semantic_score > 0 else 0
-                weighted_score = normalized_score * semantic_weight
-                scores[result.id] = {'result': result, 'score': weighted_score}
+        self.cache[cache_key] = {
+            "response": response,
+            "timestamp": time.time()
+        }
         
-        # Normalize keyword scores
-        if keyword_results:
-            max_keyword_score = max(result.score for result in keyword_results)
-            for result in keyword_results:
-                normalized_score = result.score / max_keyword_score if max_keyword_score > 0 else 0
-                weighted_score = normalized_score * keyword_weight
-                if result.id in scores:
-                    scores[result.id]['score'] += weighted_score
-                else:
-                    scores[result.id] = {'result': result, 'score': weighted_score}
-        
-        # Sort by combined score
-        fused_results = []
-        for item in sorted(scores.values(), key=lambda x: x['score'], reverse=True):
-            result = item['result']
-            result.score = item['score']
-            fused_results.append(result)
-        
-        return fused_results
+        # Simple cache size management
+        if len(self.cache) > settings.result_cache_size:
+            # Remove oldest entries
+            oldest_keys = sorted(
+                self.cache.keys(),
+                key=lambda k: self.cache[k]["timestamp"]
+            )[:len(self.cache) - settings.result_cache_size]
+            
+            for key in oldest_keys:
+                del self.cache[key]
     
-    async def autocomplete_search(
-        self,
-        partial_query: str,
-        limit: int = 10
-    ) -> List[str]:
-        """Generate autocomplete suggestions"""
+    def _generate_cache_key(self, request: SearchRequest) -> str:
+        """Generate cache key for request"""
+        # Create a hashable representation of the request
+        key_parts = [
+            request.query,
+            request.search_type.value,
+            request.limit,
+            request.offset,
+            str(sorted(request.content_types)) if request.content_types else None,
+            str(sorted(request.filters.items())) if request.filters else None,
+            request.include_metadata
+        ]
+        
+        return str(hash(tuple(key_parts)))
+    
+    async def get_search_stats(self) -> Dict[str, Any]:
+        """Get search engine statistics"""
         try:
-            # Check cache first
-            cached_suggestions = await cache_manager.get_autocomplete_suggestions(
-                partial_query, limit
-            )
+            # Get database stats
+            db_stats = await db_manager.get_search_stats()
             
-            if cached_suggestions:
-                return cached_suggestions
+            # Get vector store info
+            vector_info = await vector_store.get_collection_info()
             
-            # Generate suggestions
-            suggestions = await query_processor.generate_autocomplete_suggestions(
-                partial_query, limit
-            )
+            # Get cache info
+            cache_info = cached_embedding_service.get_cache_info()
             
-            # Cache suggestions
-            await cache_manager.set_autocomplete_suggestions(
-                partial_query, suggestions, limit
-            )
-            
-            return suggestions
+            return {
+                "total_searches": db_stats["total_searches"],
+                "average_search_time_ms": db_stats["average_execution_time_ms"],
+                "cache_hit_rate": db_stats["cache_hit_rate"],
+                "vector_store_points": vector_info.get("points_count", 0),
+                "embedding_cache_size": cache_info["cache_size"],
+                "result_cache_size": len(self.cache)
+            }
             
         except Exception as e:
-            logger.error(f"Autocomplete search failed: {e}")
-            return []
+            logger.error(f"Error getting search stats: {str(e)}")
+            return {}
     
-    async def get_search_suggestions(
-        self,
-        query: str,
-        limit: int = 10
-    ) -> List[Dict[str, Any]]:
-        """Get search suggestions for a query"""
-        try:
-            # Check cache first
-            cached_suggestions = await cache_manager.get_search_suggestions(query, limit)
-            
-            if cached_suggestions:
-                return cached_suggestions
-            
-            # Generate suggestions
-            suggestions = await query_processor.generate_search_suggestions(query, limit)
-            
-            # Convert to dict format for caching
-            suggestions_dict = [suggestion.dict() for suggestion in suggestions]
-            
-            # Cache suggestions
-            await cache_manager.set_search_suggestions(query, suggestions_dict, limit)
-            
-            return suggestions_dict
-            
-        except Exception as e:
-            logger.error(f"Failed to get search suggestions: {e}")
-            return []
-    
-    async def _log_search_analytics(
-        self,
-        query: str,
-        search_type: SearchType,
-        results_count: int,
-        processing_time_ms: float,
-        session_id: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None
-    ):
-        """Log search analytics"""
-        try:
-            analytics = SearchAnalytics(
-                query=query,
-                search_type=search_type,
-                results_count=results_count,
-                processing_time_ms=processing_time_ms,
-                session_id=session_id,
-                filters=filters
-            )
-            
-            await db_manager.log_search_analytics(analytics)
-            
-        except Exception as e:
-            logger.error(f"Failed to log search analytics: {e}")
-    
-    async def get_search_analytics(
-        self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        user_id: Optional[str] = None,
-        limit: int = 100
-    ) -> List[Dict[str, Any]]:
-        """Get search analytics data"""
-        return await db_manager.get_search_analytics(start_date, end_date, user_id, limit)
-    
-    async def get_popular_queries(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """Get popular search queries"""
-        return await db_manager.get_popular_queries(limit)
-    
-    async def health_check(self) -> bool:
-        """Check search engine health"""
-        try:
-            # Check embedding model
-            if not self.embedding_model:
-                return False
-            
-            # Test embedding generation
-            test_embedding = self._generate_embedding("test query")
-            if not test_embedding or len(test_embedding) == 0:
-                return False
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Search engine health check failed: {e}")
-            return False
-    
-    def get_uptime(self) -> float:
-        """Get service uptime in seconds"""
-        return (datetime.utcnow() - self._start_time).total_seconds()
+    def clear_cache(self):
+        """Clear all caches"""
+        self.cache.clear()
+        cached_embedding_service.clear_cache()
+
 
 # Global search engine instance
 search_engine = SearchEngine()
