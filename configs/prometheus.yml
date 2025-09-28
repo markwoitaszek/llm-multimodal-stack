@@ -25,12 +25,16 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 30s
 
-  # LiteLLM metrics (disabled - LiteLLM doesn't expose /metrics endpoint)
+  # LiteLLM metrics (disabled - requires LiteLLM Enterprise)
+  # Prometheus metrics is only available in LiteLLM Enterprise
+  # See: https://docs.litellm.ai/docs/proxy/prometheus
   # - job_name: 'litellm'
   #   static_configs:
   #     - targets: ['litellm:4000']
   #   metrics_path: '/metrics'
   #   scrape_interval: 30s
+  #   authorization:
+  #     credentials: 'Bearer sk-your-secure-master-key'
 
   # PostgreSQL metrics (requires postgres_exporter)
   - job_name: 'postgres'
