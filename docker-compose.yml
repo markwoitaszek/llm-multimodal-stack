@@ -108,7 +108,7 @@ services:
 
   # LiteLLM proxy router
   litellm:
-    image: ghcr.io/berriai/litellm:v1.57.0
+    image: ghcr.io/berriai/litellm:main-latest
     container_name: multimodal-litellm
     ports:
       - "4000:4000"
@@ -300,7 +300,7 @@ services:
 
   # n8n Workflow Management Platform
   n8n:
-    image: n8nio/n8n:v1.85.0
+    image: n8nio/n8n:latest
     container_name: multimodal-n8n
     ports:
       - "5678:5678"
