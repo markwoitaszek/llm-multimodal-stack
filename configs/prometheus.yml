@@ -25,12 +25,16 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 30s
 
-  # LiteLLM metrics
-  - job_name: 'litellm'
-    static_configs:
-      - targets: ['litellm:4000']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
+  # LiteLLM metrics (disabled - requires LiteLLM Enterprise)
+  # Prometheus metrics is only available in LiteLLM Enterprise
+  # See: https://docs.litellm.ai/docs/proxy/prometheus
+  # - job_name: 'litellm'
+  #   static_configs:
+  #     - targets: ['litellm:4000']
+  #   metrics_path: '/metrics'
+  #   scrape_interval: 30s
+  #   authorization:
+  #     credentials: 'Bearer sk-your-secure-master-key'
 
   # PostgreSQL metrics (requires postgres_exporter)
   - job_name: 'postgres'
@@ -43,6 +47,8 @@ scrape_configs:
     static_configs:
       - targets: ['redis-exporter:9121']
     scrape_interval: 30s
+    # Redis service is now available at redis:6379
+    # Add direct Redis monitoring if redis_exporter is deployed
 
   # Qdrant metrics
   - job_name: 'qdrant'

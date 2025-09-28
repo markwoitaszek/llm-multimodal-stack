@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "minioadmin")
     minio_secure: bool = False
     
+    # Redis settings (for caching)
+    redis_host: str = os.getenv("REDIS_HOST", "localhost")
+    redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
+    redis_db: int = int(os.getenv("REDIS_DB", "1"))
+    
     # Multimodal worker settings
     multimodal_worker_url: str = os.getenv("MULTIMODAL_WORKER_URL", "http://localhost:8001")
     

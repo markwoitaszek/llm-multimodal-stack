@@ -56,7 +56,7 @@ echo "📋 Docker Services Status:"
 echo "=========================="
 
 # Check Docker services
-services=("qdrant" "postgres" "minio" "vllm" "litellm" "multimodal-worker" "retrieval-proxy" "openwebui")
+services=("qdrant" "postgres" "redis" "minio" "vllm" "litellm" "multimodal-worker" "retrieval-proxy" "openwebui")
 docker_healthy=0
 
 for service in "${services[@]}"; do
@@ -89,6 +89,16 @@ else
 fi
 ((total_http_checks++))
 
+# Redis
+echo -n "Checking Redis... "
+if docker-compose exec -T redis redis-cli ping > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Healthy${NC}"
+    ((http_healthy++))
+else
+    echo -e "${RED}❌ Unhealthy${NC}"
+fi
+((total_http_checks++))
+
 # MinIO
 ((total_http_checks++))
 if check_service "MinIO" "http://localhost:9000/minio/health/live"; then
@@ -103,7 +113,8 @@ fi
 
 # LiteLLM
 ((total_http_checks++))
-if check_service "LiteLLM" "http://localhost:4000/health" 200 "Authorization: Bearer sk-zfiSGe7bXx85c0hlkcjp+4SGtAYqXR/y8jBY9DWusm0="; then
+LITELLM_KEY=${LITELLM_MASTER_KEY:-sk-your-secure-master-key}
+if check_service "LiteLLM" "http://localhost:4000/health" 200 "Authorization: Bearer $LITELLM_KEY"; then
     ((http_healthy++))
 fi
 

@@ -37,7 +37,7 @@ fi
 # Create necessary directories
 echo "📁 Creating directories..."
 mkdir -p models
-mkdir -p data/{qdrant,postgres,minio}
+mkdir -p data/{qdrant,postgres,redis,minio}
 mkdir -p logs
 
 # Set permissions

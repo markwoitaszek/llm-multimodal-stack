@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     minio_bucket_documents: str = "documents"
     minio_secure: bool = False
     
+    # Redis settings (for model caching)
+    redis_host: str = os.getenv("REDIS_HOST", "localhost")
+    redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
+    redis_db: int = int(os.getenv("REDIS_DB", "0"))
+    
     # Processing settings
     max_file_size: int = 100 * 1024 * 1024  # 100MB
     max_video_duration: int = 3600  # 1 hour in seconds

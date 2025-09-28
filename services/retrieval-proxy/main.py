@@ -16,6 +16,7 @@ from app.database import DatabaseManager
 from app.vector_store import VectorStoreManager
 from app.retrieval import RetrievalEngine
 from app.api import router
+from app.cache import cache_manager
 
 # Configure logging
 logging.basicConfig(
@@ -44,6 +45,7 @@ async def lifespan(app: FastAPI):
         # Initialize connections
         await db_manager.initialize()
         await vector_manager.initialize()
+        await cache_manager.initialize()
         
         # Initialize retrieval engine
         retrieval_engine = RetrievalEngine(db_manager, vector_manager)
@@ -52,6 +54,7 @@ async def lifespan(app: FastAPI):
         app.state.db_manager = db_manager
         app.state.vector_manager = vector_manager
         app.state.retrieval_engine = retrieval_engine
+        app.state.cache_manager = cache_manager
         
         logger.info("Retrieval Proxy Service initialized successfully")
         
@@ -66,6 +69,8 @@ async def lifespan(app: FastAPI):
             await db_manager.close()
         if vector_manager:
             await vector_manager.close()
+        if cache_manager:
+            await cache_manager.close()
 
 # Create FastAPI app
 app = FastAPI(

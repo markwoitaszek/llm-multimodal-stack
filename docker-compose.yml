@@ -45,6 +45,24 @@ services:
     networks:
       - multimodal-net
 
+  # Redis for caching and agent memory
+  redis:
+    image: redis:7-alpine
+    container_name: multimodal-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
   # MinIO S3-compatible storage
   minio:
     image: minio/minio:latest
@@ -150,6 +168,9 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
     volumes:
       - multimodal_cache:/app/cache
       - /tmp:/tmp
@@ -166,6 +187,8 @@ services:
       postgres:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
@@ -196,12 +219,17 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=1
     depends_on:
       multimodal-worker:
         condition: service_healthy
       qdrant:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
@@ -256,10 +284,15 @@ services:
       - LLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
       - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
       - RETRIEVAL_PROXY_URL=http://retrieval-proxy:8002
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=2
     depends_on:
       postgres:
         condition: service_healthy
       qdrant:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       vllm:
         condition: service_healthy
@@ -340,6 +373,7 @@ services:
 volumes:
   qdrant_data:
   postgres_data:
+  redis_data:
   minio_data:
   vllm_cache:
   multimodal_cache:
