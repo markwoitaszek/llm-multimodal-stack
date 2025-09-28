@@ -367,32 +367,60 @@ async def health_check(
     db_manager: DatabaseManager = Depends(get_db_manager),
     cache_manager: CacheManager = Depends(get_cache_manager)
 ):
-    """Health check endpoint"""
+    """Health check endpoint with comprehensive system status"""
     try:
-        # Check database connection
-        try:
-            async with db_manager.get_connection() as conn:
-                await conn.fetchval("SELECT 1")
-            db_status = "healthy"
-        except Exception:
-            db_status = "unhealthy"
+        # Check database connection using dedicated health check method
+        db_health = await db_manager.health_check()
+        db_status = db_health["status"]
         
-        # Check Redis connection
-        try:
-            await cache_manager.redis.ping()
-            redis_status = "healthy"
-        except Exception:
-            redis_status = "unhealthy"
+        # Check Redis connection using dedicated health check method
+        redis_health = await cache_manager.health_check()
+        redis_status = redis_health["status"]
         
-        # Get memory stats
+        # Get memory stats with comprehensive error handling
+        stats_model = None
         try:
-            memory_stats = await db_manager.get_memory_stats()
-            stats_model = MemoryStats(**memory_stats)
-        except Exception:
-            stats_model = None
+            if db_status == "healthy":
+                memory_stats = await db_manager.get_memory_stats()
+                if memory_stats:
+                    # Ensure all required fields are present with defaults
+                    stats_data = {
+                        "total_conversations": memory_stats.get("total_conversations", 0),
+                        "total_messages": memory_stats.get("total_messages", 0),
+                        "total_knowledge_items": memory_stats.get("total_knowledge_items", 0),
+                        "total_summaries": memory_stats.get("total_summaries", 0),
+                        "active_conversations": memory_stats.get("active_conversations", 0),
+                        "cache_hit_rate": 0.0,  # Will be calculated from Redis stats
+                        "memory_usage_mb": 0.0   # Will be calculated from Redis stats
+                    }
+                    
+                    # Get cache hit rate from Redis if available
+                    if redis_status == "healthy":
+                        try:
+                            cache_stats = await cache_manager.get_cache_stats()
+                            if cache_stats.get("status") == "connected":
+                                stats_data["cache_hit_rate"] = cache_stats.get("hit_rate", 0.0)
+                                # Convert Redis memory usage to MB
+                                used_memory = cache_stats.get("used_memory", 0)
+                                stats_data["memory_usage_mb"] = used_memory / (1024 * 1024)
+                        except Exception as e:
+                            logger.warning(f"Failed to get cache stats for health check: {e}")
+                    
+                    stats_model = MemoryStats(**stats_data)
+        except Exception as e:
+            logger.warning(f"Failed to get memory stats for health check: {e}")
         
-        return HealthResponse(
-            status="healthy" if db_status == "healthy" and redis_status == "healthy" else "degraded",
+        # Determine overall status
+        if db_status == "healthy" and redis_status == "healthy":
+            overall_status = "healthy"
+        elif db_status == "healthy" or redis_status == "healthy":
+            overall_status = "degraded"
+        else:
+            overall_status = "unhealthy"
+        
+        # Create health response
+        health_response = HealthResponse(
+            status=overall_status,
             service="memory-system",
             version="1.0.0",
             timestamp=datetime.utcnow(),
@@ -401,8 +429,18 @@ async def health_check(
             memory_stats=stats_model
         )
         
+        # Log health check results
+        if overall_status == "healthy":
+            logger.info("Health check passed - all systems healthy")
+        elif overall_status == "degraded":
+            logger.warning(f"Health check degraded - DB: {db_status}, Redis: {redis_status}")
+        else:
+            logger.error(f"Health check failed - DB: {db_status}, Redis: {redis_status}")
+        
+        return health_response
+        
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        logger.error(f"Health check endpoint failed: {e}")
         return HealthResponse(
             status="unhealthy",
             service="memory-system",

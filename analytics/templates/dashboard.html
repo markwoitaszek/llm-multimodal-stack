@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics & Insights Dashboard - Multimodal LLM Stack</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8fafc;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #1e293b;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .refresh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .refresh-indicator.auto-refresh {
+            color: #10b981;
+        }
+
+        .refresh-indicator.auto-refresh::before {
+            content: "🔄";
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .dashboard-container {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .widget {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+
+        .widget:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .widget-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .widget-content {
+            min-height: 200px;
+        }
+
+        /* Metric Cards */
+        .metric-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-card.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .metric-card.critical {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .metric-card.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Insights Panel */
+        .insights-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .insight-item {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid #e2e8f0;
+        }
+
+        .insight-item.info {
+            background: #f0f9ff;
+            border-left-color: #3b82f6;
+        }
+
+        .insight-item.warning {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+        }
+
+        .insight-item.critical {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+        }
+
+        .insight-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1e293b;
+        }
+
+        .insight-description {
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .insight-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .insight-severity {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .insight-severity.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .insight-severity.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .insight-severity.critical {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        /* Event Log */
+        .event-log {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .event-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+        }
+
+        .event-item:last-child {
+            border-bottom: none;
+        }
+
+        .event-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .event-icon.success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .event-icon.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .event-icon.error {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .event-details {
+            flex: 1;
+        }
+
+        .event-service {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .event-endpoint {
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        .event-time {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #64748b;
+        }
+
+        .loading::after {
+            content: "";
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 0.5rem;
+        }
+
+        /* Error States */
+        .error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #ef4444;
+            text-align: center;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 1rem;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .metric-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-container {
+                height: 250px;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0f172a;
+                color: #e2e8f0;
+            }
+
+            .header {
+                background: #1e293b;
+                border-bottom-color: #334155;
+            }
+
+            .widget {
+                background: #1e293b;
+                border-color: #334155;
+            }
+
+            .widget-title {
+                color: #e2e8f0;
+            }
+
+            .insight-title {
+                color: #e2e8f0;
+            }
+
+            .event-service {
+                color: #e2e8f0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Analytics & Insights Dashboard</h1>
+        <div class="header-controls">
+            <div class="refresh-indicator" id="refreshIndicator">
+                Last updated: <span id="lastUpdated">Never</span>
+            </div>
+            <button onclick="toggleAutoRefresh()" id="autoRefreshBtn">Auto Refresh: ON</button>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="dashboard-grid">
+            <!-- Overview Metrics -->
+            <div class="widget" style="grid-column: span 12;">
+                <div class="widget-header">
+                    <h2 class="widget-title">Overview Metrics</h2>
+                </div>
+                <div class="widget-content">
+                    <div class="metric-cards" id="overviewMetrics">
+                        <div class="loading">Loading metrics...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Chart -->
+            <div class="widget" style="grid-column: span 8;">
+                <div class="widget-header">
+                    <h2 class="widget-title">System Performance</h2>
+                </div>
+                <div class="widget-content">
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Service Metrics -->
+            <div class="widget" style="grid-column: span 4;">
+                <div class="widget-header">
+                    <h2 class="widget-title">Service Metrics</h2>
+                </div>
+                <div class="widget-content">
+                    <div class="chart-container">
+                        <canvas id="serviceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Insights Panel -->
+            <div class="widget" style="grid-column: span 6;">
+                <div class="widget-header">
+                    <h2 class="widget-title">Insights & Alerts</h2>
+                </div>
+                <div class="widget-content">
+                    <div class="insights-list" id="insightsList">
+                        <div class="loading">Loading insights...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Events -->
+            <div class="widget" style="grid-column: span 6;">
+                <div class="widget-header">
+                    <h2 class="widget-title">Recent Events</h2>
+                </div>
+                <div class="widget-content">
+                    <div class="event-log" id="eventLog">
+                        <div class="loading">Loading events...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AnalyticsDashboard {
+            constructor() {
+                this.autoRefresh = true;
+                this.refreshInterval = 30000; // 30 seconds
+                this.refreshTimer = null;
+                this.websocket = null;
+                this.charts = {};
+                
+                this.initializeCharts();
+                this.connectWebSocket();
+                this.loadInitialData();
+                this.startAutoRefresh();
+            }
+
+            initializeCharts() {
+                // Performance Chart
+                const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+                this.charts.performance = new Chart(performanceCtx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [
+                            {
+                                label: 'CPU %',
+                                data: [],
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                tension: 0.4
+                            },
+                            {
+                                label: 'Memory %',
+                                data: [],
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                tension: 0.4
+                            },
+                            {
+                                label: 'Disk %',
+                                data: [],
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                tension: 0.4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            }
+                        }
+                    }
+                });
+
+                // Service Chart
+                const serviceCtx = document.getElementById('serviceChart').getContext('2d');
+                this.charts.service = new Chart(serviceCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            data: [],
+                            backgroundColor: [
+                                '#3b82f6',
+                                '#ef4444',
+                                '#10b981',
+                                '#f59e0b',
+                                '#8b5cf6'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                
+                this.websocket = new WebSocket(wsUrl);
+                
+                this.websocket.onopen = () => {
+                    console.log('WebSocket connected');
+                    // Subscribe to real-time updates
+                    this.websocket.send(JSON.stringify({
+                        type: 'subscribe',
+                        subscription: { metric_type: 'overview' }
+                    }));
+                    this.websocket.send(JSON.stringify({
+                        type: 'subscribe',
+                        subscription: { metric_type: 'performance' }
+                    }));
+                    this.websocket.send(JSON.stringify({
+                        type: 'subscribe',
+                        subscription: { metric_type: 'insights' }
+                    }));
+                };
+                
+                this.websocket.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    this.handleWebSocketMessage(message);
+                };
+                
+                this.websocket.onclose = () => {
+                    console.log('WebSocket disconnected');
+                    // Reconnect after 5 seconds
+                    setTimeout(() => this.connectWebSocket(), 5000);
+                };
+                
+                this.websocket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+            }
+
+            handleWebSocketMessage(message) {
+                switch (message.type) {
+                    case 'overview_metrics':
+                        this.updateOverviewMetrics(message.data);
+                        break;
+                    case 'performance_metrics':
+                        this.updatePerformanceChart(message.data);
+                        break;
+                    case 'insights':
+                        this.updateInsights(message.data);
+                        break;
+                    case 'pong':
+                        // Keep-alive response
+                        break;
+                }
+            }
+
+            async loadInitialData() {
+                try {
+                    await Promise.all([
+                        this.loadOverviewMetrics(),
+                        this.loadPerformanceData(),
+                        this.loadServiceData(),
+                        this.loadInsights(),
+                        this.loadRecentEvents()
+                    ]);
+                } catch (error) {
+                    console.error('Error loading initial data:', error);
+                }
+            }
+
+            async loadOverviewMetrics() {
+                try {
+                    const response = await fetch('/api/metrics/overview');
+                    const data = await response.json();
+                    this.updateOverviewMetrics(data);
+                } catch (error) {
+                    console.error('Error loading overview metrics:', error);
+                    this.showError('overviewMetrics', 'Failed to load overview metrics');
+                }
+            }
+
+            updateOverviewMetrics(data) {
+                const container = document.getElementById('overviewMetrics');
+                
+                if (data.error) {
+                    this.showError('overviewMetrics', data.error);
+                    return;
+                }
+
+                const metrics = [
+                    {
+                        label: 'Total Requests',
+                        value: data.total_requests || 0,
+                        type: 'success'
+                    },
+                    {
+                        label: 'Unique Users',
+                        value: data.unique_users || 0,
+                        type: 'success'
+                    },
+                    {
+                        label: 'Error Rate',
+                        value: `${((data.error_rate || 0) * 100).toFixed(1)}%`,
+                        type: data.error_rate > 0.05 ? 'critical' : 'success'
+                    },
+                    {
+                        label: 'Avg Response Time',
+                        value: `${(data.avg_response_time || 0).toFixed(0)}ms`,
+                        type: data.avg_response_time > 1000 ? 'warning' : 'success'
+                    }
+                ];
+
+                container.innerHTML = metrics.map(metric => `
+                    <div class="metric-card ${metric.type}">
+                        <div class="metric-value">${metric.value}</div>
+                        <div class="metric-label">${metric.label}</div>
+                    </div>
+                `).join('');
+            }
+
+            async loadPerformanceData() {
+                try {
+                    const response = await fetch('/api/metrics/performance?hours=24');
+                    const data = await response.json();
+                    this.updatePerformanceChart(data);
+                } catch (error) {
+                    console.error('Error loading performance data:', error);
+                }
+            }
+
+            updatePerformanceChart(data) {
+                if (data.error || !data.labels) {
+                    return;
+                }
+
+                this.charts.performance.data.labels = data.labels.map(label => 
+                    new Date(label).toLocaleTimeString()
+                );
+                this.charts.performance.data.datasets[0].data = data.datasets[0].data;
+                this.charts.performance.data.datasets[1].data = data.datasets[1].data;
+                this.charts.performance.data.datasets[2].data = data.datasets[2].data;
+                this.charts.performance.update();
+            }
+
+            async loadServiceData() {
+                try {
+                    const response = await fetch('/api/metrics/services');
+                    const data = await response.json();
+                    this.updateServiceChart(data);
+                } catch (error) {
+                    console.error('Error loading service data:', error);
+                }
+            }
+
+            updateServiceChart(data) {
+                if (data.error || !data.labels) {
+                    return;
+                }
+
+                this.charts.service.data.labels = data.labels;
+                this.charts.service.data.datasets[0].data = data.datasets[0].data;
+                this.charts.service.update();
+            }
+
+            async loadInsights() {
+                try {
+                    const response = await fetch('/api/insights');
+                    const data = await response.json();
+                    this.updateInsights(data);
+                } catch (error) {
+                    console.error('Error loading insights:', error);
+                    this.showError('insightsList', 'Failed to load insights');
+                }
+            }
+
+            updateInsights(data) {
+                const container = document.getElementById('insightsList');
+                
+                if (data.error || !data.insights) {
+                    this.showError('insightsList', 'No insights available');
+                    return;
+                }
+
+                if (data.insights.length === 0) {
+                    container.innerHTML = '<div class="insight-item info"><div class="insight-title">No Insights</div><div class="insight-description">System is running normally with no alerts.</div></div>';
+                    return;
+                }
+
+                container.innerHTML = data.insights.map(insight => `
+                    <div class="insight-item ${insight.severity}">
+                        <div class="insight-title">${insight.title}</div>
+                        <div class="insight-description">${insight.description}</div>
+                        <div class="insight-meta">
+                            <span class="insight-severity ${insight.severity}">${insight.severity}</span>
+                            <span>${new Date(insight.timestamp).toLocaleString()}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            async loadRecentEvents() {
+                try {
+                    const response = await fetch('/api/events/recent?limit=20');
+                    const data = await response.json();
+                    this.updateEventLog(data);
+                } catch (error) {
+                    console.error('Error loading recent events:', error);
+                    this.showError('eventLog', 'Failed to load recent events');
+                }
+            }
+
+            updateEventLog(data) {
+                const container = document.getElementById('eventLog');
+                
+                if (data.error || !data.events) {
+                    this.showError('eventLog', 'No events available');
+                    return;
+                }
+
+                if (data.events.length === 0) {
+                    container.innerHTML = '<div class="event-item"><div class="event-details">No recent events</div></div>';
+                    return;
+                }
+
+                container.innerHTML = data.events.map(event => {
+                    const statusClass = event.status_code >= 400 ? 'error' : 
+                                      event.status_code >= 300 ? 'warning' : 'success';
+                    const statusIcon = event.status_code >= 400 ? '❌' : 
+                                     event.status_code >= 300 ? '⚠️' : '✅';
+                    
+                    return `
+                        <div class="event-item">
+                            <div class="event-icon ${statusClass}">${statusIcon}</div>
+                            <div class="event-details">
+                                <div class="event-service">${event.service}</div>
+                                <div class="event-endpoint">${event.endpoint}</div>
+                            </div>
+                            <div class="event-time">${new Date(event.timestamp).toLocaleTimeString()}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            showError(containerId, message) {
+                const container = document.getElementById(containerId);
+                container.innerHTML = `<div class="error">${message}</div>`;
+            }
+
+            startAutoRefresh() {
+                if (this.autoRefresh) {
+                    this.refreshTimer = setInterval(() => {
+                        this.loadInitialData();
+                        this.updateLastUpdated();
+                    }, this.refreshInterval);
+                }
+            }
+
+            stopAutoRefresh() {
+                if (this.refreshTimer) {
+                    clearInterval(this.refreshTimer);
+                    this.refreshTimer = null;
+                }
+            }
+
+            updateLastUpdated() {
+                const indicator = document.getElementById('refreshIndicator');
+                const lastUpdated = document.getElementById('lastUpdated');
+                
+                indicator.classList.add('auto-refresh');
+                lastUpdated.textContent = new Date().toLocaleTimeString();
+                
+                setTimeout(() => {
+                    indicator.classList.remove('auto-refresh');
+                }, 1000);
+            }
+
+            toggleAutoRefresh() {
+                this.autoRefresh = !this.autoRefresh;
+                const button = document.getElementById('autoRefreshBtn');
+                
+                if (this.autoRefresh) {
+                    button.textContent = 'Auto Refresh: ON';
+                    this.startAutoRefresh();
+                } else {
+                    button.textContent = 'Auto Refresh: OFF';
+                    this.stopAutoRefresh();
+                }
+            }
+        }
+
+        // Global functions
+        function toggleAutoRefresh() {
+            if (window.dashboard) {
+                window.dashboard.toggleAutoRefresh();
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.dashboard = new AnalyticsDashboard();
+        });
+    </script>
+</body>
+</html>
