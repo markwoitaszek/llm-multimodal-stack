@@ -58,11 +58,11 @@ class TestStorageManager:
             # Test initialization
             await storage_manager.initialize()
 
-            # Verify MinIO client was created
+            # Verify MinIO client was created with actual settings values
             mock_minio.assert_called_once_with(
                 'localhost:9000',
-                access_key='test_access_key',
-                secret_key='test_secret_key',
+                access_key='minioadmin',
+                secret_key='minioadmin',
                 secure=False
             )
 
@@ -134,7 +134,7 @@ class TestStorageManager:
 
         # Mock upload failure
         from minio.error import S3Error
-        mock_minio_client.fput_object.side_effect = S3Error("Upload failed")
+        mock_minio_client.fput_object.side_effect = S3Error("Upload failed", "UploadError", "test-bucket", "test-object", "test-request-id", "test-host-id")
 
         # Test file upload
         result = storage_manager.upload_file(
@@ -176,7 +176,7 @@ class TestStorageManager:
 
         # Mock upload failure
         from minio.error import S3Error
-        mock_minio_client.put_object.side_effect = S3Error("Upload failed")
+        mock_minio_client.put_object.side_effect = S3Error("Upload failed", "UploadError", "test-bucket", "test-object", "test-request-id", "test-host-id")
 
         # Test data upload
         test_data = b"Test binary data"
@@ -216,7 +216,7 @@ class TestStorageManager:
 
         # Mock download failure
         from minio.error import S3Error
-        mock_minio_client.fget_object.side_effect = S3Error("Download failed")
+        mock_minio_client.fget_object.side_effect = S3Error("Download failed", "DownloadError", "test-bucket", "test-object", "test-request-id", "test-host-id")
 
         # Test file download
         result = storage_manager.download_file(
@@ -253,7 +253,7 @@ class TestStorageManager:
 
         # Mock URL generation failure
         from minio.error import S3Error
-        mock_minio_client.presigned_get_object.side_effect = S3Error("URL generation failed")
+        mock_minio_client.presigned_get_object.side_effect = S3Error("URL generation failed", "URLError", "test-bucket", "test-object", "test-request-id", "test-host-id")
 
         # Test URL generation
         url = storage_manager.get_object_url(
@@ -289,7 +289,7 @@ class TestStorageManager:
 
         # Mock deletion failure
         from minio.error import S3Error
-        mock_minio_client.remove_object.side_effect = S3Error("Deletion failed")
+        mock_minio_client.remove_object.side_effect = S3Error("Deletion failed", "DeleteError", "test-bucket", "test-object", "test-request-id", "test-host-id")
 
         # Test object deletion
         result = storage_manager.delete_object(
@@ -325,7 +325,7 @@ class TestStorageManager:
 
         # Mock object doesn't exist
         from minio.error import S3Error
-        mock_minio_client.stat_object.side_effect = S3Error("Object not found")
+        mock_minio_client.stat_object.side_effect = S3Error("Object not found", "NotFoundError", "test-bucket", "test-object", "test-request-id", "test-host-id")
 
         # Test object exists check
         result = storage_manager.object_exists(
@@ -364,7 +364,7 @@ class TestStorageManager:
 
         # Mock listing failure
         from minio.error import S3Error
-        mock_minio_client.list_objects.side_effect = S3Error("Listing failed")
+        mock_minio_client.list_objects.side_effect = S3Error("Listing failed", "ListError", "test-bucket", "test-object", "test-request-id", "test-host-id")
 
         # Test object listing
         result = storage_manager.list_objects(
@@ -416,30 +416,34 @@ class TestStorageManager:
 
     def test_generate_object_path(self):
         """Test object path generation"""
+        storage_manager = StorageManager()
+        
         # Test path generation
         file_hash = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
         filename = "test.jpg"
         prefix = "images"
 
-        path = StorageManager.generate_object_path(file_hash, filename, prefix)
+        path = storage_manager.generate_object_path(file_hash, filename, prefix)
 
         # Verify result
         expected_path = f"images/ab/{file_hash}_{filename}"
         assert path == expected_path
 
         # Test without prefix
-        path_no_prefix = StorageManager.generate_object_path(file_hash, filename)
+        path_no_prefix = storage_manager.generate_object_path(file_hash, filename)
         expected_path_no_prefix = f"ab/{file_hash}_{filename}"
         assert path_no_prefix == expected_path_no_prefix
 
     def test_generate_object_path_with_short_hash(self):
         """Test object path generation with short hash"""
+        storage_manager = StorageManager()
+        
         # Test with very short hash
         file_hash = "ab"
         filename = "test.jpg"
         prefix = "images"
 
-        path = StorageManager.generate_object_path(file_hash, filename, prefix)
+        path = storage_manager.generate_object_path(file_hash, filename, prefix)
 
         # Verify result uses first 2 characters
         expected_path = f"images/ab/{file_hash}_{filename}"

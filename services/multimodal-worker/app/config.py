@@ -4,6 +4,7 @@ Configuration settings for the multimodal worker service
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     # Service settings
@@ -75,10 +76,12 @@ class Settings(BaseSettings):
     supported_video_formats: list = [".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv"]
     video_thumbnail_size: tuple = (320, 240)
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-        protected_namespaces = ('settings_',)
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        protected_namespaces=('settings_',),
+        extra='ignore'
+    )
 
 # Create global settings instance
 settings = Settings()

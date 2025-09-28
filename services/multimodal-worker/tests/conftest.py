@@ -137,3 +137,45 @@ def test_processing_response():
         },
         "success": True
     }
+
+@pytest.fixture
+def mock_asyncpg_pool():
+    """Mock asyncpg connection pool with proper async context manager"""
+    mock_pool = AsyncMock()
+    mock_conn = AsyncMock()
+    
+    # Mock the async context manager for pool.acquire()
+    mock_acquire = AsyncMock()
+    mock_acquire.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_acquire.__aexit__ = AsyncMock(return_value=None)
+    mock_pool.acquire.return_value = mock_acquire
+    
+    # Mock connection methods
+    mock_conn.fetchrow.return_value = None
+    mock_conn.fetch.return_value = []
+    mock_conn.execute.return_value = "INSERT 0 1"
+    
+    return mock_pool
+
+@pytest.fixture
+def mock_asyncpg_create_pool():
+    """Mock asyncpg.create_pool function"""
+    mock_pool = AsyncMock()
+    mock_conn = AsyncMock()
+    
+    # Mock the async context manager for pool.acquire()
+    mock_acquire = AsyncMock()
+    mock_acquire.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_acquire.__aexit__ = AsyncMock(return_value=None)
+    mock_pool.acquire.return_value = mock_acquire
+    
+    # Mock connection methods
+    mock_conn.fetchrow.return_value = None
+    mock_conn.fetch.return_value = []
+    mock_conn.execute.return_value = "INSERT 0 1"
+    
+    # Make the mock pool awaitable
+    async def create_pool_mock(*args, **kwargs):
+        return mock_pool
+    
+    return create_pool_mock

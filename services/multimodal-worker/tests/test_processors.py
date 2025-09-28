@@ -11,7 +11,11 @@ import tempfile
 import os
 import cv2
 
-from app.processors import ImageProcessor, VideoProcessor, TextProcessor
+# Mock moviepy import before importing processors
+import sys
+from unittest.mock import patch, Mock
+with patch.dict('sys.modules', {'moviepy.editor': Mock()}):
+    from app.processors import ImageProcessor, VideoProcessor, TextProcessor
 
 
 class TestImageProcessor:

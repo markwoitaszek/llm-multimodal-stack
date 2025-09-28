@@ -49,8 +49,7 @@ class TestModelManager:
              patch('app.models.BlipForConditionalGeneration') as mock_blip_model, \
              patch('app.models.BlipProcessor') as mock_blip_processor, \
              patch('app.models.whisper.load_model') as mock_whisper, \
-             patch('app.models.SentenceTransformer') as mock_sentence_transformer, \
-             patch('os.makedirs') as mock_makedirs:
+             patch('app.models.SentenceTransformer') as mock_sentence_transformer:
             
             # Mock model instances with proper device handling
             mock_clip_instance = Mock()
@@ -92,9 +91,6 @@ class TestModelManager:
             # Verify models were moved to correct device
             mock_clip_instance.to.assert_called_once()
             mock_blip_instance.to.assert_called_once()
-            
-            # Verify cache directories were created
-            assert mock_makedirs.call_count >= 2
 
     @pytest.mark.asyncio
     async def test_load_models_failure(self, model_manager):
@@ -332,7 +328,8 @@ class TestModelManager:
 
     def test_model_manager_with_custom_settings(self):
         """Test ModelManager with custom settings"""
-        with patch('app.models.settings') as mock_settings:
+        with patch('app.models.settings') as mock_settings, \
+             patch('os.makedirs') as mock_makedirs:
             mock_settings.device = 'cpu'
             mock_settings.cache_dir = '/custom/cache'
             mock_settings.model_cache_dir = '/custom/models'

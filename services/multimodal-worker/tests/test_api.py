@@ -12,7 +12,11 @@ import os
 from io import BytesIO
 from PIL import Image
 
-from main import app
+# Mock moviepy import before importing main
+import sys
+from unittest.mock import patch, Mock
+with patch.dict('sys.modules', {'moviepy.editor': Mock()}):
+    from main import app
 
 
 class TestMultimodalWorkerAPI:
