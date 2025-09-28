@@ -7,6 +7,7 @@ on:
     types: [opened, closed, ready_for_review]
   project_card:
     types: [moved]
+  workflow_dispatch:
 
 jobs:
   # Auto-assign issues to project boards
