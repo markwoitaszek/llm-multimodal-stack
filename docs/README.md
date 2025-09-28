@@ -15,6 +15,8 @@ docs/
 ├── swagger-ui.html            # Enhanced Swagger UI interface
 ├── serve-docs.py              # HTTP server for documentation
 ├── api-reference.md           # Enhanced API reference
+├── gpu-configuration-guide.md # GPU setup and tensor parallelism guide
+├── docker-compose-usage-guide.md # Docker Compose configurations guide
 └── README.md                  # This file
 ```
 
@@ -60,6 +62,30 @@ The documentation is now integrated with the AI Agents Web Interface for a seaml
    ```
 
 2. **Open**: http://localhost:8080/swagger-ui.html
+
+## 🚀 GPU Configuration
+
+### Multi-GPU Setup (Dual RTX 3090)
+For optimal performance with dual RTX 3090 GPUs and NVLink:
+
+1. **Start with tensor parallelism:**
+   ```bash
+   docker-compose -f docker-compose.optimized.yml -f docker-compose.override.yml up -d
+   ```
+
+2. **Verify GPU utilization:**
+   ```bash
+   nvidia-smi
+   ```
+
+3. **Test tensor parallelism:**
+   ```bash
+   curl -X POST http://localhost:8000/v1/completions \
+     -H "Content-Type: application/json" \
+     -d '{"model": "microsoft/DialoGPT-small", "prompt": "Hello", "max_tokens": 50}'
+   ```
+
+📖 **Detailed Guide**: [GPU Configuration Guide](./gpu-configuration-guide.md)
 
 ## 📚 API Services
 
