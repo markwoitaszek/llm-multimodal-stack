@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Playground - Multimodal LLM Stack</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .back-link {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .playground-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .playground-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .playground-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .service-selector {
+            margin-bottom: 20px;
+        }
+
+        .service-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .service-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            transition: border-color 0.3s ease;
+        }
+
+        .service-selector select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .endpoint-selector {
+            margin-bottom: 20px;
+        }
+
+        .endpoint-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .endpoint-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            transition: border-color 0.3s ease;
+        }
+
+        .endpoint-selector select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .code-editor {
+            margin-bottom: 20px;
+        }
+
+        .code-editor label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .code-editor textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            background: #f8f9fa;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .code-editor textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .playground-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .response-section {
+            margin-top: 20px;
+        }
+
+        .response-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .response-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            min-height: 100px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        .response-output.success {
+            background: #1a202c;
+            border-left: 4px solid #48bb78;
+        }
+
+        .response-output.error {
+            background: #1a202c;
+            border-left: 4px solid #f56565;
+        }
+
+        .response-output.loading {
+            background: #1a202c;
+            border-left: 4px solid #ed8936;
+        }
+
+        .examples-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .examples-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .example-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .example-tab {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .example-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .example-tab:hover:not(.active) {
+            background: #e9ecef;
+        }
+
+        .example-content {
+            display: none;
+        }
+
+        .example-content.active {
+            display: block;
+        }
+
+        .example-description {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            color: #666;
+        }
+
+        .example-code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            overflow-x: auto;
+            margin-bottom: 15px;
+        }
+
+        .example-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .status-indicator.online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-indicator.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-indicator.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2.5rem;
+            }
+
+            .playground-layout {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .playground-section {
+                padding: 20px;
+            }
+
+            .playground-section h2 {
+                font-size: 1.5rem;
+            }
+
+            .examples-section {
+                padding: 20px;
+            }
+
+            .examples-section h2 {
+                font-size: 1.5rem;
+            }
+
+            .playground-controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .example-tabs {
+                flex-direction: column;
+            }
+
+            .example-tab {
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .playground-section {
+                padding: 15px;
+            }
+
+            .examples-section {
+                padding: 15px;
+            }
+
+            .code-editor textarea {
+                min-height: 150px;
+                font-size: 0.8rem;
+            }
+
+            .response-output {
+                font-size: 0.8rem;
+                padding: 15px;
+            }
+
+            .example-code {
+                font-size: 0.8rem;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Documentation</a>
+
+        <div class="header">
+            <h1>🎮 API Playground</h1>
+            <p>Interactive testing environment for the Multimodal LLM Stack APIs</p>
+        </div>
+
+        <div class="playground-layout">
+            <div class="playground-section">
+                <h2>🚀 Live API Testing</h2>
+                
+                <div class="service-selector">
+                    <label for="serviceSelect">Select Service:</label>
+                    <select id="serviceSelect">
+                        <option value="litellm">LiteLLM Router (Port 4000)</option>
+                        <option value="multimodal">Multimodal Worker (Port 8001)</option>
+                        <option value="retrieval">Retrieval Proxy (Port 8002)</option>
+                        <option value="agents">AI Agents (Port 8003)</option>
+                    </select>
+                </div>
+
+                <div class="endpoint-selector">
+                    <label for="endpointSelect">Select Endpoint:</label>
+                    <select id="endpointSelect">
+                        <option value="chat">Chat Completions</option>
+                        <option value="models">List Models</option>
+                    </select>
+                </div>
+
+                <div class="code-editor">
+                    <label for="requestBody">Request Body (JSON):</label>
+                    <textarea id="requestBody" placeholder="Enter your JSON request here...">{
+  "model": "gpt-3.5-turbo",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello, how are you?"
+    }
+  ],
+  "max_tokens": 150
+}</textarea>
+                </div>
+
+                <div class="playground-controls">
+                    <button class="btn btn-primary" onclick="executeRequest()">
+                        ▶️ Execute Request
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResponse()">
+                        🗑️ Clear Response
+                    </button>
+                    <button class="btn btn-success" onclick="copyRequest()">
+                        📋 Copy Request
+                    </button>
+                </div>
+
+                <div class="response-section">
+                    <h3>Response:</h3>
+                    <div id="responseOutput" class="response-output">
+                        Click "Execute Request" to see the response here...
+                    </div>
+                </div>
+            </div>
+
+            <div class="playground-section">
+                <h2>📊 Service Status</h2>
+                
+                <div id="serviceStatus">
+                    <div class="status-indicator loading">
+                        <span>🔄</span>
+                        <span>Checking service status...</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h3>Quick Actions:</h3>
+                    <div class="playground-controls">
+                        <button class="btn btn-primary" onclick="checkAllServices()">
+                            🔍 Check All Services
+                        </button>
+                        <button class="btn btn-secondary" onclick="openSwaggerUI()">
+                            📖 Open Swagger UI
+                        </button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h3>Service Endpoints:</h3>
+                    <div id="endpointList">
+                        <p>Select a service to see available endpoints...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="examples-section">
+            <h2>💡 Interactive Examples</h2>
+            
+            <div class="example-tabs">
+                <div class="example-tab active" onclick="showExample('chat')">💬 Chat Completions</div>
+                <div class="example-tab" onclick="showExample('image')">🖼️ Image Processing</div>
+                <div class="example-tab" onclick="showExample('search')">🔍 Multimodal Search</div>
+                <div class="example-tab" onclick="showExample('agent')">🤖 AI Agent</div>
+            </div>
+
+            <div id="chat-example" class="example-content active">
+                <div class="example-description">
+                    <strong>Chat Completions:</strong> Send a message to the LiteLLM Router and get an AI response. This example shows how to use the OpenAI-compatible chat completions API.
+                </div>
+                <div class="example-code">{
+  "model": "gpt-3.5-turbo",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant."
+    },
+    {
+      "role": "user",
+      "content": "Explain quantum computing in simple terms."
+    }
+  ],
+  "max_tokens": 200,
+  "temperature": 0.7
+}</div>
+                <div class="example-actions">
+                    <button class="btn btn-primary" onclick="loadExample('chat')">📥 Load Example</button>
+                    <button class="btn btn-success" onclick="executeExample('chat')">▶️ Run Example</button>
+                </div>
+            </div>
+
+            <div id="image-example" class="example-content">
+                <div class="example-description">
+                    <strong>Image Processing:</strong> Process an image with the Multimodal Worker to generate captions, extract features, or create embeddings.
+                </div>
+                <div class="example-code">{
+  "file": "base64_encoded_image_data",
+  "tasks": ["caption", "embedding"],
+  "model": "clip-vit-base-patch32"
+}</div>
+                <div class="example-actions">
+                    <button class="btn btn-primary" onclick="loadExample('image')">📥 Load Example</button>
+                    <button class="btn btn-success" onclick="executeExample('image')">▶️ Run Example</button>
+                </div>
+            </div>
+
+            <div id="search-example" class="example-content">
+                <div class="example-description">
+                    <strong>Multimodal Search:</strong> Search across text, images, and videos using the Retrieval Proxy with unified search capabilities.
+                </div>
+                <div class="example-code">{
+  "query": "sunset over mountains",
+  "modalities": ["text", "image"],
+  "limit": 10,
+  "filters": {
+    "date_range": {
+      "start": "2024-01-01",
+      "end": "2024-12-31"
+    }
+  }
+}</div>
+                <div class="example-actions">
+                    <button class="btn btn-primary" onclick="loadExample('search')">📥 Load Example</button>
+                    <button class="btn btn-success" onclick="executeExample('search')">▶️ Run Example</button>
+                </div>
+            </div>
+
+            <div id="agent-example" class="example-content">
+                <div class="example-description">
+                    <strong>AI Agent:</strong> Create and execute an AI agent that can perform complex tasks autonomously using the AI Agents service.
+                </div>
+                <div class="example-code">{
+  "goal": "Research the latest trends in artificial intelligence",
+  "tools": ["web_search", "text_analysis"],
+  "max_iterations": 5,
+  "context": "Focus on recent developments in 2024"
+}</div>
+                <div class="example-actions">
+                    <button class="btn btn-primary" onclick="loadExample('agent')">📥 Load Example</button>
+                    <button class="btn btn-success" onclick="executeExample('agent')">▶️ Run Example</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Service configurations
+        const services = {
+            litellm: {
+                name: 'LiteLLM Router',
+                port: 4000,
+                baseUrl: 'http://localhost:4000',
+                endpoints: {
+                    chat: '/v1/chat/completions',
+                    models: '/v1/models'
+                }
+            },
+            multimodal: {
+                name: 'Multimodal Worker',
+                port: 8001,
+                baseUrl: 'http://localhost:8001',
+                endpoints: {
+                    image: '/process/image',
+                    video: '/process/video',
+                    text: '/process/text',
+                    status: '/models/status'
+                }
+            },
+            retrieval: {
+                name: 'Retrieval Proxy',
+                port: 8002,
+                baseUrl: 'http://localhost:8002',
+                endpoints: {
+                    search: '/search',
+                    sessions: '/search/sessions',
+                    status: '/status'
+                }
+            },
+            agents: {
+                name: 'AI Agents',
+                port: 8003,
+                baseUrl: 'http://localhost:8003',
+                endpoints: {
+                    agents: '/agents',
+                    execute: '/agents/{agent_id}/execute',
+                    templates: '/templates',
+                    status: '/status'
+                }
+            }
+        };
+
+        // Example data
+        const examples = {
+            chat: {
+                service: 'litellm',
+                endpoint: 'chat',
+                request: {
+                    "model": "gpt-3.5-turbo",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a helpful assistant."
+                        },
+                        {
+                            "role": "user",
+                            "content": "Explain quantum computing in simple terms."
+                        }
+                    ],
+                    "max_tokens": 200,
+                    "temperature": 0.7
+                }
+            },
+            image: {
+                service: 'multimodal',
+                endpoint: 'image',
+                request: {
+                    "file": "base64_encoded_image_data",
+                    "tasks": ["caption", "embedding"],
+                    "model": "clip-vit-base-patch32"
+                }
+            },
+            search: {
+                service: 'retrieval',
+                endpoint: 'search',
+                request: {
+                    "query": "sunset over mountains",
+                    "modalities": ["text", "image"],
+                    "limit": 10,
+                    "filters": {
+                        "date_range": {
+                            "start": "2024-01-01",
+                            "end": "2024-12-31"
+                        }
+                    }
+                }
+            },
+            agent: {
+                service: 'agents',
+                endpoint: 'agents',
+                request: {
+                    "goal": "Research the latest trends in artificial intelligence",
+                    "tools": ["web_search", "text_analysis"],
+                    "max_iterations": 5,
+                    "context": "Focus on recent developments in 2024"
+                }
+            }
+        };
+
+        // Initialize the playground
+        document.addEventListener('DOMContentLoaded', function() {
+            updateEndpointOptions();
+            checkAllServices();
+            updateEndpointList();
+            
+            // Add event listeners
+            document.getElementById('serviceSelect').addEventListener('change', updateEndpointOptions);
+            document.getElementById('serviceSelect').addEventListener('change', updateEndpointList);
+        });
+
+        function updateEndpointOptions() {
+            const serviceSelect = document.getElementById('serviceSelect');
+            const endpointSelect = document.getElementById('endpointSelect');
+            const selectedService = serviceSelect.value;
+            
+            // Clear existing options
+            endpointSelect.innerHTML = '';
+            
+            // Add service-specific endpoints
+            const service = services[selectedService];
+            Object.keys(service.endpoints).forEach(endpoint => {
+                const option = document.createElement('option');
+                option.value = endpoint;
+                option.textContent = endpoint.charAt(0).toUpperCase() + endpoint.slice(1);
+                endpointSelect.appendChild(option);
+            });
+        }
+
+        function updateEndpointList() {
+            const serviceSelect = document.getElementById('serviceSelect');
+            const endpointList = document.getElementById('endpointList');
+            const selectedService = serviceSelect.value;
+            const service = services[selectedService];
+            
+            let html = `<h4>${service.name} Endpoints:</h4><ul>`;
+            Object.entries(service.endpoints).forEach(([name, path]) => {
+                html += `<li><strong>${name}:</strong> <code>${path}</code></li>`;
+            });
+            html += '</ul>';
+            
+            endpointList.innerHTML = html;
+        }
+
+        async function executeRequest() {
+            const serviceSelect = document.getElementById('serviceSelect');
+            const endpointSelect = document.getElementById('endpointSelect');
+            const requestBody = document.getElementById('requestBody');
+            const responseOutput = document.getElementById('responseOutput');
+            
+            const service = services[serviceSelect.value];
+            const endpoint = service.endpoints[endpointSelect.value];
+            const url = service.baseUrl + endpoint;
+            
+            // Show loading state
+            responseOutput.className = 'response-output loading';
+            responseOutput.textContent = 'Executing request...';
+            
+            try {
+                const requestData = JSON.parse(requestBody.value);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const responseData = await response.json();
+                
+                // Show success response
+                responseOutput.className = 'response-output success';
+                responseOutput.textContent = JSON.stringify(responseData, null, 2);
+                
+            } catch (error) {
+                // Show error response
+                responseOutput.className = 'response-output error';
+                responseOutput.textContent = `Error: ${error.message}\n\nNote: This is a demo playground. In a real implementation, you would need:\n- Running services\n- Proper authentication\n- CORS configuration\n- Error handling`;
+            }
+        }
+
+        function clearResponse() {
+            const responseOutput = document.getElementById('responseOutput');
+            responseOutput.className = 'response-output';
+            responseOutput.textContent = 'Click "Execute Request" to see the response here...';
+        }
+
+        function copyRequest() {
+            const requestBody = document.getElementById('requestBody');
+            requestBody.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✅ Copied!';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+            }, 2000);
+        }
+
+        async function checkAllServices() {
+            const serviceStatus = document.getElementById('serviceStatus');
+            serviceStatus.innerHTML = '<div class="status-indicator loading"><span>🔄</span><span>Checking service status...</span></div>';
+            
+            let statusHtml = '';
+            
+            for (const [key, service] of Object.entries(services)) {
+                try {
+                    const response = await fetch(`${service.baseUrl}/status`, {
+                        method: 'GET',
+                        timeout: 3000
+                    });
+                    
+                    if (response.ok) {
+                        statusHtml += `<div class="status-indicator online"><span>✅</span><span>${service.name} (Port ${service.port}) - Online</span></div>`;
+                    } else {
+                        statusHtml += `<div class="status-indicator offline"><span>❌</span><span>${service.name} (Port ${service.port}) - Error</span></div>`;
+                    }
+                } catch (error) {
+                    statusHtml += `<div class="status-indicator offline"><span>❌</span><span>${service.name} (Port ${service.port}) - Offline</span></div>`;
+                }
+            }
+            
+            serviceStatus.innerHTML = statusHtml || '<div class="status-indicator offline"><span>❌</span><span>All services offline</span></div>';
+        }
+
+        function openSwaggerUI() {
+            window.open('swagger-ui.html', '_blank');
+        }
+
+        function showExample(exampleType) {
+            // Hide all examples
+            document.querySelectorAll('.example-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.example-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected example
+            document.getElementById(exampleType + '-example').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function loadExample(exampleType) {
+            const example = examples[exampleType];
+            if (!example) return;
+            
+            // Set service and endpoint
+            document.getElementById('serviceSelect').value = example.service;
+            updateEndpointOptions();
+            document.getElementById('endpointSelect').value = example.endpoint;
+            updateEndpointList();
+            
+            // Set request body
+            document.getElementById('requestBody').value = JSON.stringify(example.request, null, 2);
+        }
+
+        function executeExample(exampleType) {
+            loadExample(exampleType);
+            setTimeout(() => {
+                executeRequest();
+            }, 500);
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'Enter':
+                        e.preventDefault();
+                        executeRequest();
+                        break;
+                    case 'k':
+                        e.preventDefault();
+                        clearResponse();
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

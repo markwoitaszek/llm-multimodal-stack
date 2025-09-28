@@ -1,0 +1,1138 @@
+openapi: 3.0.3
+info:
+  title: Retrieval Proxy API
+  description: Unified search and context bundling for multimodal content
+  version: 1.0.0
+  contact:
+    name: Multimodal LLM Stack
+    url: https://github.com/your-org/llm-multimodal-stack
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8002
+    description: Local development server
+  - url: https://api.your-domain.com
+    description: Production server
+
+paths:
+  /api/v1/search:
+    post:
+      summary: Perform multimodal search
+      description: Search across text, image, and video content with unified results
+      operationId: searchMultimodal
+      tags:
+        - Search
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+            examples:
+              basic_search:
+                summary: Basic text search
+                value:
+                  query: "artificial intelligence machine learning"
+                  modalities: ["text"]
+                  limit: 10
+              multimodal_search:
+                summary: Multimodal search
+                value:
+                  query: "cat sitting on chair"
+                  modalities: ["text", "image", "video"]
+                  limit: 20
+                  filters:
+                    file_types: ["jpg", "png", "mp4"]
+                    min_score: 0.7
+                  score_threshold: 0.8
+              filtered_search:
+                summary: Search with filters
+                value:
+                  query: "machine learning tutorial"
+                  modalities: ["text", "video"]
+                  limit: 5
+                  filters:
+                    file_types: ["pdf", "txt", "mp4"]
+                    date_range:
+                      start: "2024-01-01"
+                      end: "2024-12-31"
+                  score_threshold: 0.9
+      responses:
+        '200':
+          description: Search completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+              examples:
+                success:
+                  summary: Successful search results
+                  value:
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    query: "artificial intelligence machine learning"
+                    modalities: ["text", "image", "video"]
+                    results_count: 5
+                    results:
+                      - embedding_id: "550e8400-e29b-41d4-a716-446655440001"
+                        score: 0.95
+                        modality: "text"
+                        content_type: "text"
+                        content: "Machine learning is a subset of artificial intelligence..."
+                        document_id: "550e8400-e29b-41d4-a716-446655440002"
+                        filename: "ai_basics.pdf"
+                        file_type: "pdf"
+                        citations:
+                          source: "ai_basics.pdf"
+                          type: "text"
+                          document_id: "550e8400-e29b-41d4-a716-446655440002"
+                        artifacts:
+                          view_url: "/api/v1/artifacts/document/550e8400-e29b-41d4-a716-446655440002"
+                    context_bundle:
+                      query: "artificial intelligence machine learning"
+                      sections:
+                        - type: "text"
+                          title: "Relevant Text Content"
+                          content: "[1] Machine learning is a subset..."
+                          count: 3
+                      unified_context: "# Search Results for: artificial intelligence..."
+                      total_results: 5
+                      context_length: 1250
+                      citations: []
+                    metadata:
+                      search_timestamp: "2024-01-01T12:00:00Z"
+                      filters_applied: {}
+                      score_threshold: 0.8
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/search/sessions:
+    get:
+      summary: Get search sessions
+      description: Retrieve recent search sessions
+      operationId: getSearchSessions
+      tags:
+        - Search Sessions
+      parameters:
+        - name: limit
+          in: query
+          description: Number of sessions to retrieve
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+      responses:
+        '200':
+          description: Search sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSessionsResponse'
+              examples:
+                success:
+                  summary: Recent search sessions
+                  value:
+                    sessions:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        session_name: null
+                        query: "artificial intelligence"
+                        filters: {}
+                        results_count: 5
+                        context_bundle: {}
+                        created_at: "2024-01-01T12:00:00Z"
+                    count: 1
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/context/{session_id}:
+    get:
+      summary: Get context bundle
+      description: Retrieve context bundle for a search session
+      operationId: getContextBundle
+      tags:
+        - Context Bundling
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: Search session ID
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: format
+          in: query
+          description: Output format for the context
+          required: false
+          schema:
+            type: string
+            enum: [markdown, json, plain]
+            default: markdown
+            example: "markdown"
+      responses:
+        '200':
+          description: Context bundle retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextBundleResponse'
+              examples:
+                markdown_format:
+                  summary: Context in markdown format
+                  value:
+                    context: "# Search Results for: artificial intelligence...\n\n## Relevant Text Content (3 items)\n\n[1] Machine learning is a subset..."
+                json_format:
+                  summary: Context in JSON format
+                  value:
+                    context:
+                      query: "artificial intelligence"
+                      sections: []
+                      unified_context: "# Search Results for: artificial intelligence..."
+                      total_results: 5
+                      context_length: 1250
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/artifacts/image/{document_id}:
+    get:
+      summary: Get image artifact
+      description: Retrieve image artifact by document ID
+      operationId: getImageArtifact
+      tags:
+        - Artifacts
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          description: Document ID
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Image artifact retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageArtifactResponse'
+              examples:
+                success:
+                  summary: Image artifact metadata
+                  value:
+                    document_id: "550e8400-e29b-41d4-a716-446655440000"
+                    image_path: "images/ab/abcd1234_photo.jpg"
+                    format: "jpg"
+                    filename: "photo.jpg"
+                    view_url: "/api/v1/artifacts/image/550e8400-e29b-41d4-a716-446655440000"
+                    download_url: "/api/v1/artifacts/download/550e8400-e29b-41d4-a716-446655440000"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/artifacts/video/{document_id}:
+    get:
+      summary: Get video artifact
+      description: Retrieve video artifact by document ID
+      operationId: getVideoArtifact
+      tags:
+        - Artifacts
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          description: Document ID
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Video artifact retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoArtifactResponse'
+              examples:
+                success:
+                  summary: Video artifact metadata
+                  value:
+                    document_id: "550e8400-e29b-41d4-a716-446655440000"
+                    video_path: "videos/cd/cdef5678_video.mp4"
+                    duration: 30.5
+                    format: "mp4"
+                    filename: "video.mp4"
+                    view_url: "/api/v1/artifacts/video/550e8400-e29b-41d4-a716-446655440000"
+                    download_url: "/api/v1/artifacts/download/550e8400-e29b-41d4-a716-446655440000"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/artifacts/keyframe/{keyframe_id}:
+    get:
+      summary: Get keyframe artifact
+      description: Retrieve keyframe artifact by keyframe ID
+      operationId: getKeyframeArtifact
+      tags:
+        - Artifacts
+      parameters:
+        - name: keyframe_id
+          in: path
+          required: true
+          description: Keyframe ID
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Keyframe artifact retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyframeArtifactResponse'
+              examples:
+                success:
+                  summary: Keyframe artifact metadata
+                  value:
+                    keyframe_id: "550e8400-e29b-41d4-a716-446655440000"
+                    keyframe_path: "keyframes/ef/efgh9012_keyframe.jpg"
+                    timestamp: 15.2
+                    video_path: "videos/cd/cdef5678_video.mp4"
+                    filename: "video.mp4"
+                    view_url: "/api/v1/artifacts/keyframe/550e8400-e29b-41d4-a716-446655440000"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/stats:
+    get:
+      summary: Get system statistics
+      description: Retrieve system statistics including database and vector store metrics
+      operationId: getSystemStats
+      tags:
+        - System Statistics
+      responses:
+        '200':
+          description: System statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatsResponse'
+              examples:
+                success:
+                  summary: System statistics
+                  value:
+                    database:
+                      documents:
+                        text: 150
+                        image: 75
+                        video: 25
+                      totals:
+                        documents: 250
+                        text_chunks: 1500
+                        images: 75
+                        videos: 25
+                        keyframes: 125
+                    vector_store:
+                      text:
+                        name: "text_embeddings"
+                        vectors_count: 1500
+                        points_count: 1500
+                      image:
+                        name: "image_embeddings"
+                        vectors_count: 200
+                        points_count: 200
+                    timestamp: "2024-01-01T12:00:00Z"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/status:
+    get:
+      summary: Get service status
+      description: Check the health status of the retrieval proxy service
+      operationId: getServiceStatus
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceStatusResponse'
+              examples:
+                healthy:
+                  summary: Service is healthy
+                  value:
+                    service: "retrieval-proxy"
+                    status: "healthy"
+                    components:
+                      database: "healthy"
+                      vector_store: "healthy"
+                    version: "1.0.0"
+                degraded:
+                  summary: Service is degraded
+                  value:
+                    service: "retrieval-proxy"
+                    status: "degraded"
+                    components:
+                      database: "healthy"
+                      vector_store: "unhealthy"
+                    version: "1.0.0"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/cache/stats:
+    get:
+      summary: Get cache statistics
+      description: Retrieve cache performance statistics
+      operationId: getCacheStats
+      tags:
+        - Cache Management
+      responses:
+        '200':
+          description: Cache statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheStatsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/cache/clear:
+    delete:
+      summary: Clear cache
+      description: Clear all cache entries
+      operationId: clearCache
+      tags:
+        - Cache Management
+      responses:
+        '200':
+          description: Cache cleared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Cache cleared successfully"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/cache/search/{pattern}:
+    delete:
+      summary: Invalidate search cache
+      description: Invalidate search cache entries matching pattern
+      operationId: invalidateSearchCache
+      tags:
+        - Cache Management
+      parameters:
+        - name: pattern
+          in: path
+          required: true
+          description: Pattern to match cache entries
+          schema:
+            type: string
+            example: "machine learning"
+      responses:
+        '200':
+          description: Cache entries invalidated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalidated 5 cache entries"
+                  pattern:
+                    type: string
+                    example: "machine learning"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /health:
+    get:
+      summary: Health check
+      description: Check the health status of the retrieval proxy service
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Service is healthy
+                  value:
+                    status: "healthy"
+                    service: "retrieval-proxy"
+                    version: "1.0.0"
+
+components:
+  schemas:
+    SearchRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: Search query
+          example: "artificial intelligence machine learning"
+        modalities:
+          type: array
+          items:
+            type: string
+            enum: [text, image, video]
+          description: Content types to search
+          example: ["text", "image", "video"]
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Maximum number of results
+          example: 10
+        filters:
+          type: object
+          description: Additional filters
+          properties:
+            file_types:
+              type: array
+              items:
+                type: string
+              description: File types to include
+              example: ["pdf", "txt", "jpg", "mp4"]
+            min_score:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Minimum similarity score
+              example: 0.7
+            date_range:
+              type: object
+              properties:
+                start:
+                  type: string
+                  format: date
+                  description: Start date
+                  example: "2024-01-01"
+                end:
+                  type: string
+                  format: date
+                  description: End date
+                  example: "2024-12-31"
+          additionalProperties: true
+        score_threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Minimum similarity score threshold
+          example: 0.8
+
+    SearchResponse:
+      type: object
+      required:
+        - session_id
+        - query
+        - modalities
+        - results_count
+        - results
+        - context_bundle
+        - metadata
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          description: Unique session identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        query:
+          type: string
+          description: The search query
+          example: "artificial intelligence machine learning"
+        modalities:
+          type: array
+          items:
+            type: string
+            enum: [text, image, video]
+          description: Content types searched
+          example: ["text", "image", "video"]
+        results_count:
+          type: integer
+          description: Number of results returned
+          example: 5
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        context_bundle:
+          $ref: '#/components/schemas/ContextBundle'
+        metadata:
+          type: object
+          description: Search metadata
+          properties:
+            search_timestamp:
+              type: string
+              format: date-time
+              example: "2024-01-01T12:00:00Z"
+            filters_applied:
+              type: object
+              additionalProperties: true
+            score_threshold:
+              type: number
+              example: 0.8
+          additionalProperties: true
+
+    SearchResult:
+      type: object
+      required:
+        - embedding_id
+        - score
+        - modality
+        - content_type
+        - content
+        - document_id
+        - filename
+        - file_type
+        - citations
+        - artifacts
+      properties:
+        embedding_id:
+          type: string
+          format: uuid
+          description: Unique embedding identifier
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Similarity score
+          example: 0.95
+        modality:
+          type: string
+          enum: [text, image, video]
+          description: Content modality
+          example: "text"
+        content_type:
+          type: string
+          description: Type of content
+          example: "text"
+        content:
+          type: string
+          description: Content snippet or description
+          example: "Machine learning is a subset of artificial intelligence..."
+        document_id:
+          type: string
+          format: uuid
+          description: Document identifier
+          example: "550e8400-e29b-41d4-a716-446655440002"
+        filename:
+          type: string
+          description: Original filename
+          example: "ai_basics.pdf"
+        file_type:
+          type: string
+          description: File type/extension
+          example: "pdf"
+        citations:
+          type: object
+          description: Citation information
+          properties:
+            source:
+              type: string
+              example: "ai_basics.pdf"
+            type:
+              type: string
+              example: "text"
+            document_id:
+              type: string
+              format: uuid
+              example: "550e8400-e29b-41d4-a716-446655440002"
+          additionalProperties: true
+        artifacts:
+          type: object
+          description: Artifact access information
+          properties:
+            view_url:
+              type: string
+              example: "/api/v1/artifacts/document/550e8400-e29b-41d4-a716-446655440002"
+          additionalProperties: true
+
+    ContextBundle:
+      type: object
+      required:
+        - query
+        - sections
+        - unified_context
+        - total_results
+        - context_length
+        - citations
+      properties:
+        query:
+          type: string
+          description: The search query
+          example: "artificial intelligence machine learning"
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                example: "text"
+              title:
+                type: string
+                example: "Relevant Text Content"
+              content:
+                type: string
+                example: "[1] Machine learning is a subset..."
+              count:
+                type: integer
+                example: 3
+            additionalProperties: true
+        unified_context:
+          type: string
+          description: Unified context in markdown format
+          example: "# Search Results for: artificial intelligence..."
+        total_results:
+          type: integer
+          description: Total number of results
+          example: 5
+        context_length:
+          type: integer
+          description: Total context length in characters
+          example: 1250
+        citations:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    SearchSessionsResponse:
+      type: object
+      required:
+        - sessions
+        - count
+      properties:
+        sessions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: "550e8400-e29b-41d4-a716-446655440000"
+              session_name:
+                type: string
+                nullable: true
+                example: null
+              query:
+                type: string
+                example: "artificial intelligence"
+              filters:
+                type: object
+                additionalProperties: true
+              results_count:
+                type: integer
+                example: 5
+              context_bundle:
+                type: object
+                additionalProperties: true
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-01T12:00:00Z"
+        count:
+          type: integer
+          description: Number of sessions returned
+          example: 1
+
+    ContextBundleResponse:
+      type: object
+      required:
+        - context
+      properties:
+        context:
+          oneOf:
+            - type: string
+              description: Context in markdown or plain text format
+            - type: object
+              description: Context in JSON format
+              additionalProperties: true
+
+    ImageArtifactResponse:
+      type: object
+      required:
+        - document_id
+        - image_path
+        - format
+        - filename
+        - view_url
+        - download_url
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        image_path:
+          type: string
+          description: Path to the image in storage
+          example: "images/ab/abcd1234_photo.jpg"
+        format:
+          type: string
+          description: Image format
+          example: "jpg"
+        filename:
+          type: string
+          description: Original filename
+          example: "photo.jpg"
+        view_url:
+          type: string
+          description: URL to view the image
+          example: "/api/v1/artifacts/image/550e8400-e29b-41d4-a716-446655440000"
+        download_url:
+          type: string
+          description: URL to download the image
+          example: "/api/v1/artifacts/download/550e8400-e29b-41d4-a716-446655440000"
+
+    VideoArtifactResponse:
+      type: object
+      required:
+        - document_id
+        - video_path
+        - duration
+        - format
+        - filename
+        - view_url
+        - download_url
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        video_path:
+          type: string
+          description: Path to the video in storage
+          example: "videos/cd/cdef5678_video.mp4"
+        duration:
+          type: number
+          description: Video duration in seconds
+          example: 30.5
+        format:
+          type: string
+          description: Video format
+          example: "mp4"
+        filename:
+          type: string
+          description: Original filename
+          example: "video.mp4"
+        view_url:
+          type: string
+          description: URL to view the video
+          example: "/api/v1/artifacts/video/550e8400-e29b-41d4-a716-446655440000"
+        download_url:
+          type: string
+          description: URL to download the video
+          example: "/api/v1/artifacts/download/550e8400-e29b-41d4-a716-446655440000"
+
+    KeyframeArtifactResponse:
+      type: object
+      required:
+        - keyframe_id
+        - keyframe_path
+        - timestamp
+        - video_path
+        - filename
+        - view_url
+      properties:
+        keyframe_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        keyframe_path:
+          type: string
+          description: Path to the keyframe in storage
+          example: "keyframes/ef/efgh9012_keyframe.jpg"
+        timestamp:
+          type: number
+          description: Timestamp in seconds
+          example: 15.2
+        video_path:
+          type: string
+          description: Path to the source video
+          example: "videos/cd/cdef5678_video.mp4"
+        filename:
+          type: string
+          description: Original video filename
+          example: "video.mp4"
+        view_url:
+          type: string
+          description: URL to view the keyframe
+          example: "/api/v1/artifacts/keyframe/550e8400-e29b-41d4-a716-446655440000"
+
+    SystemStatsResponse:
+      type: object
+      required:
+        - database
+        - vector_store
+        - timestamp
+      properties:
+        database:
+          type: object
+          properties:
+            documents:
+              type: object
+              properties:
+                text:
+                  type: integer
+                  example: 150
+                image:
+                  type: integer
+                  example: 75
+                video:
+                  type: integer
+                  example: 25
+              additionalProperties: true
+            totals:
+              type: object
+              properties:
+                documents:
+                  type: integer
+                  example: 250
+                text_chunks:
+                  type: integer
+                  example: 1500
+                images:
+                  type: integer
+                  example: 75
+                videos:
+                  type: integer
+                  example: 25
+                keyframes:
+                  type: integer
+                  example: 125
+              additionalProperties: true
+          additionalProperties: true
+        vector_store:
+          type: object
+          properties:
+            text:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "text_embeddings"
+                vectors_count:
+                  type: integer
+                  example: 1500
+                points_count:
+                  type: integer
+                  example: 1500
+              additionalProperties: true
+            image:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "image_embeddings"
+                vectors_count:
+                  type: integer
+                  example: 200
+                points_count:
+                  type: integer
+                  example: 200
+              additionalProperties: true
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00Z"
+
+    ServiceStatusResponse:
+      type: object
+      required:
+        - service
+        - status
+        - components
+        - version
+      properties:
+        service:
+          type: string
+          example: "retrieval-proxy"
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          example: "healthy"
+        components:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [healthy, unhealthy]
+              example: "healthy"
+            vector_store:
+              type: string
+              enum: [healthy, unhealthy]
+              example: "healthy"
+          additionalProperties: true
+        version:
+          type: string
+          example: "1.0.0"
+
+    CacheStatsResponse:
+      type: object
+      properties:
+        total_entries:
+          type: integer
+          description: Total number of cache entries
+          example: 150
+        hit_rate:
+          type: number
+          format: float
+          description: Cache hit rate (0.0 to 1.0)
+          example: 0.85
+        memory_usage:
+          type: string
+          description: Memory usage of the cache
+          example: "45.2 MB"
+        last_cleared:
+          type: string
+          format: date-time
+          description: When the cache was last cleared
+          example: "2024-01-01T12:00:00Z"
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - version
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          description: The health status of the service
+          example: "healthy"
+        service:
+          type: string
+          description: The name of the service
+          example: "retrieval-proxy"
+        version:
+          type: string
+          description: The version of the service
+          example: "1.0.0"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+        - error_code
+        - timestamp
+      properties:
+        detail:
+          type: string
+          description: A human-readable error message
+          example: "Invalid search parameters"
+        error_code:
+          type: string
+          description: The error code
+          example: "INVALID_PARAMETERS"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2024-01-01T12:00:00Z"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_query:
+              summary: Invalid search query
+              value:
+                detail: "Search query cannot be empty"
+                error_code: "INVALID_QUERY"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    UnprocessableEntity:
+      description: Unprocessable entity - validation errors
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validation_error:
+              summary: Validation error
+              value:
+                detail: "Limit must be between 1 and 100"
+                error_code: "VALIDATION_ERROR"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            session_not_found:
+              summary: Session not found
+              value:
+                detail: "Session with ID '550e8400-e29b-41d4-a716-446655440000' not found"
+                error_code: "SESSION_NOT_FOUND"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            server_error:
+              summary: Internal server error
+              value:
+                detail: "An internal server error occurred"
+                error_code: "INTERNAL_SERVER_ERROR"
+                timestamp: "2024-01-01T12:00:00Z"
+
+tags:
+  - name: Search
+    description: Perform multimodal search across content
+  - name: Search Sessions
+    description: Manage search sessions
+  - name: Context Bundling
+    description: Retrieve context bundles for search results
+  - name: Artifacts
+    description: Access image, video, and keyframe artifacts
+  - name: System Statistics
+    description: Get system statistics and metrics
+  - name: Health
+    description: Health check endpoints
+  - name: Cache Management
+    description: Manage cache operations
