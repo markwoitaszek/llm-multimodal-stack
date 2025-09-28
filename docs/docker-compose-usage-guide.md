@@ -43,10 +43,16 @@ The Multimodal LLM Stack uses multiple Docker Compose configurations for differe
 ### **Override Files**
 
 #### **6. `docker-compose.override.yml` - GPU Settings**
-- **Purpose**: GPU resource allocation
-- **Size**: 478B
-- **Services**: GPU configuration overrides
+- **Purpose**: GPU resource allocation and tensor parallelism
+- **Size**: 1.2KB
+- **Services**: GPU configuration overrides with multi-GPU support
 - **Usage**: Automatically loaded (GPU systems)
+
+#### **7. `docker-compose.multi-gpu.yml` - Multi-GPU Configuration**
+- **Purpose**: Dedicated multi-GPU setup with tensor parallelism
+- **Size**: 3.1KB
+- **Services**: vLLM with tensor-parallel-size=2, multimodal-worker
+- **Usage**: Dual RTX 3090 systems with NVLink
 
 ---
 
@@ -76,6 +82,23 @@ docker-compose -f docker-compose.optimized.yml logs -f
 
 # Stop services
 docker-compose -f docker-compose.optimized.yml down
+```
+
+#### **Multi-GPU Development (Dual RTX 3090)**
+```bash
+# Start with tensor parallelism on both GPUs
+docker-compose -f docker-compose.optimized.yml -f docker-compose.override.yml up -d
+
+# Alternative: Use dedicated multi-GPU configuration
+docker-compose -f docker-compose.multi-gpu.yml up -d
+
+# Check GPU utilization
+nvidia-smi
+
+# Test tensor parallelism
+curl -X POST http://localhost:8000/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "microsoft/DialoGPT-small", "prompt": "Hello", "max_tokens": 50}'
 ```
 
 ### **Testing Environment**
@@ -267,6 +290,24 @@ docker-compose -f docker-compose.optimized.yml up -d
 docker system prune -a
 ```
 
+#### **GPU Issues**
+```bash
+# Check GPU status
+nvidia-smi
+
+# Check NVLink status
+nvidia-smi nvlink --status
+
+# Check GPU topology
+nvidia-smi topo -m
+
+# Restart with tensor parallelism
+docker-compose -f docker-compose.optimized.yml -f docker-compose.override.yml restart vllm
+
+# Check vLLM logs for GPU issues
+docker logs multimodal-vllm --tail 50
+```
+
 ---
 
 ## 📊 **Best Practices**
@@ -330,6 +371,8 @@ docker-compose ps
 | **Production** | Main + Prod | `docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d` |
 | **Database Dev** | Enhanced DB | `docker-compose -f docker-compose.enhanced-postgres.yml up -d` |
 | **GPU Systems** | Main + Override | `docker-compose up -d` (auto-loads override) |
+| **Multi-GPU (RTX 3090)** | Optimized + Override | `docker-compose -f docker-compose.optimized.yml -f docker-compose.override.yml up -d` |
+| **Dedicated Multi-GPU** | Multi-GPU Config | `docker-compose -f docker-compose.multi-gpu.yml up -d` |
 
 ---
 
