@@ -123,6 +123,24 @@ jobs:
                   labelsToAdd.push('merged-to-feature');
                 }
                 
+                // Add pipeline-related labels based on issue content
+                const issueBody = issue.data.body || '';
+                if (issueBody.includes('pipeline') || issueBody.includes('workflow') || issueBody.includes('CI/CD')) {
+                  labelsToAdd.push('pipeline-failure');
+                }
+                if (issueBody.includes('security') || issueBody.includes('vulnerability') || issueBody.includes('Checkov') || issueBody.includes('CodeQL')) {
+                  labelsToAdd.push('security-scan');
+                }
+                if (issueBody.includes('Docker') || issueBody.includes('container') || issueBody.includes('Trivy')) {
+                  labelsToAdd.push('container-security');
+                }
+                if (issueBody.includes('dependency') || issueBody.includes('package') || issueBody.includes('safety')) {
+                  labelsToAdd.push('dependency-security');
+                }
+                if (issueBody.includes('GitHub Actions') || issueBody.includes('workflow') || issueBody.includes('permission')) {
+                  labelsToAdd.push('workflow-security');
+                }
+                
                 const newLabels = [...new Set([...currentLabels, ...labelsToAdd])];
                 
                 await github.rest.issues.update({
