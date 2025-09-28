@@ -43,6 +43,8 @@ scrape_configs:
     static_configs:
       - targets: ['redis-exporter:9121']
     scrape_interval: 30s
+    # Redis service is now available at redis:6379
+    # Add direct Redis monitoring if redis_exporter is deployed
 
   # Qdrant metrics
   - job_name: 'qdrant'

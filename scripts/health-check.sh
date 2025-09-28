@@ -56,7 +56,7 @@ echo "📋 Docker Services Status:"
 echo "=========================="
 
 # Check Docker services
-services=("qdrant" "postgres" "minio" "vllm" "litellm" "multimodal-worker" "retrieval-proxy" "openwebui")
+services=("qdrant" "postgres" "redis" "minio" "vllm" "litellm" "multimodal-worker" "retrieval-proxy" "openwebui")
 docker_healthy=0
 
 for service in "${services[@]}"; do
@@ -82,6 +82,16 @@ fi
 # PostgreSQL (indirect check via pg_isready)
 echo -n "Checking PostgreSQL... "
 if docker-compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Healthy${NC}"
+    ((http_healthy++))
+else
+    echo -e "${RED}❌ Unhealthy${NC}"
+fi
+((total_http_checks++))
+
+# Redis
+echo -n "Checking Redis... "
+if docker-compose exec -T redis redis-cli ping > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Healthy${NC}"
     ((http_healthy++))
 else
