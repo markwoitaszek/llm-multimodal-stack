@@ -6,6 +6,7 @@ import pytest_asyncio
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 import tempfile
 import os
+import hashlib
 from io import BytesIO
 
 from app.storage import StorageManager
@@ -17,340 +18,523 @@ class TestStorageManager:
     @pytest.fixture
     def storage_manager(self):
         """Create StorageManager instance for testing"""
-        return StorageManager()
+        with patch('app.storage.settings') as mock_settings:
+            mock_settings.minio_endpoint = 'localhost:9000'
+            mock_settings.minio_access_key = 'test_access_key'
+            mock_settings.minio_secret_key = 'test_secret_key'
+            mock_settings.minio_secure = False
+            mock_settings.minio_bucket_images = 'test-images'
+            mock_settings.minio_bucket_videos = 'test-videos'
+            mock_settings.minio_bucket_documents = 'test-documents'
+            return StorageManager()
+
+    @pytest.fixture
+    def mock_minio_client(self):
+        """Create mock MinIO client"""
+        client = Mock()
+        client.bucket_exists.return_value = False
+        client.make_bucket.return_value = None
+        client.fput_object.return_value = None
+        client.put_object.return_value = None
+        client.fget_object.return_value = None
+        client.presigned_get_object.return_value = "https://test-url.com"
+        client.remove_object.return_value = None
+        client.stat_object.return_value = Mock()
+        client.list_objects.return_value = [Mock(object_name="test1.jpg"), Mock(object_name="test2.jpg")]
+        return client
+
+    @pytest.fixture
+    def temp_file(self):
+        """Create a temporary file for testing"""
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp_file:
+            tmp_file.write("Test file content")
+            yield tmp_file.name
+        os.unlink(tmp_file.name)
 
     @pytest.mark.asyncio
-    @patch('app.storage.Minio')
-    async def test_storage_manager_initialization(self, mock_minio, storage_manager):
-        """Test StorageManager initialization"""
-        assert storage_manager is not None
-        assert hasattr(storage_manager, 'client')
-        assert hasattr(storage_manager, 'bucket_name')
-
-    @pytest.mark.asyncio
-    @patch('app.storage.Minio')
-    async def test_initialize_success(self, mock_minio, storage_manager):
+    async def test_initialize_success(self, storage_manager, mock_minio_client):
         """Test successful storage initialization"""
-        # Mock MinIO client
-        mock_client = AsyncMock()
-        mock_minio.return_value = mock_client
-        mock_client.bucket_exists.return_value = True
-
-        # Test initialization
-        await storage_manager.initialize()
-
-        # Verify client was created
-        mock_minio.assert_called_once()
-        assert storage_manager.client == mock_client
-
-    @pytest.mark.asyncio
-    @patch('app.storage.Minio')
-    async def test_initialize_create_bucket(self, mock_minio, storage_manager):
-        """Test storage initialization with bucket creation"""
-        # Mock MinIO client
-        mock_client = AsyncMock()
-        mock_minio.return_value = mock_client
-        mock_client.bucket_exists.return_value = False
-
-        # Test initialization
-        await storage_manager.initialize()
-
-        # Verify bucket was created
-        mock_client.make_bucket.assert_called_once()
-
-    @pytest.mark.asyncio
-    @patch('app.storage.Minio')
-    async def test_initialize_failure(self, mock_minio, storage_manager):
-        """Test storage initialization failure"""
-        # Mock MinIO client failure
-        mock_minio.side_effect = Exception("Connection failed")
-
-        # Test initialization
-        with pytest.raises(Exception, match="Connection failed"):
+        with patch('app.storage.Minio', return_value=mock_minio_client) as mock_minio:
+            # Test initialization
             await storage_manager.initialize()
 
+            # Verify MinIO client was created
+            mock_minio.assert_called_once_with(
+                'localhost:9000',
+                access_key='test_access_key',
+                secret_key='test_secret_key',
+                secure=False
+            )
+
+            # Verify buckets were checked and created
+            assert mock_minio_client.bucket_exists.call_count == 3
+            assert mock_minio_client.make_bucket.call_count == 3
+
+            # Verify client was stored
+            assert storage_manager.client == mock_minio_client
+
     @pytest.mark.asyncio
-    async def test_upload_file_success(self, storage_manager):
+    async def test_initialize_with_existing_buckets(self, storage_manager, mock_minio_client):
+        """Test initialization when buckets already exist"""
+        # Mock existing buckets
+        mock_minio_client.bucket_exists.return_value = True
+
+        with patch('app.storage.Minio', return_value=mock_minio_client) as mock_minio:
+            # Test initialization
+            await storage_manager.initialize()
+
+            # Verify buckets were checked but not created
+            assert mock_minio_client.bucket_exists.call_count == 3
+            assert mock_minio_client.make_bucket.call_count == 0
+
+    @pytest.mark.asyncio
+    async def test_initialize_failure(self, storage_manager):
+        """Test storage initialization failure"""
+        with patch('app.storage.Minio', side_effect=Exception("Connection failed")):
+            # Test that exception is raised
+            with pytest.raises(Exception, match="Connection failed"):
+                await storage_manager.initialize()
+
+    @pytest.mark.asyncio
+    async def test_close(self, storage_manager, mock_minio_client):
+        """Test storage manager closure"""
+        storage_manager.client = mock_minio_client
+
+        # Test close
+        await storage_manager.close()
+
+        # Should not raise exception (MinIO doesn't need explicit closing)
+
+    def test_upload_file_success(self, storage_manager, mock_minio_client, temp_file):
         """Test successful file upload"""
-        # Mock client
-        mock_client = AsyncMock()
-        storage_manager.client = mock_client
+        storage_manager.client = mock_minio_client
 
-        # Create test file
-        test_content = b"test file content"
-        test_file = BytesIO(test_content)
-
-        # Test upload
-        result = await storage_manager.upload_file(
-            test_file,
-            "test_file.jpg",
+        # Test file upload
+        result = storage_manager.upload_file(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg",
+            file_path=temp_file,
             content_type="image/jpeg"
         )
 
         # Verify result
-        assert result == "test_file.jpg"
-        mock_client.put_object.assert_called_once()
+        assert result is True
 
-    @pytest.mark.asyncio
-    async def test_upload_file_failure(self, storage_manager):
+        # Verify MinIO client was called
+        mock_minio_client.fput_object.assert_called_once_with(
+            "test-bucket",
+            "test-object.jpg",
+            temp_file,
+            content_type="image/jpeg"
+        )
+
+    def test_upload_file_failure(self, storage_manager, mock_minio_client, temp_file):
         """Test file upload failure"""
-        # Mock client with failure
-        mock_client = AsyncMock()
-        mock_client.put_object.side_effect = Exception("Upload failed")
-        storage_manager.client = mock_client
+        storage_manager.client = mock_minio_client
 
-        # Create test file
-        test_content = b"test file content"
-        test_file = BytesIO(test_content)
+        # Mock upload failure
+        from minio.error import S3Error
+        mock_minio_client.fput_object.side_effect = S3Error("Upload failed")
 
-        # Test upload
-        with pytest.raises(Exception, match="Upload failed"):
-            await storage_manager.upload_file(
-                test_file,
-                "test_file.jpg",
-                content_type="image/jpeg"
-            )
-
-    @pytest.mark.asyncio
-    async def test_download_file_success(self, storage_manager):
-        """Test successful file download"""
-        # Mock client
-        mock_client = AsyncMock()
-        mock_response = Mock()
-        mock_response.read.return_value = b"downloaded content"
-        mock_client.get_object.return_value = mock_response
-        storage_manager.client = mock_client
-
-        # Test download
-        result = await storage_manager.download_file("test_file.jpg")
-
-        # Verify result
-        assert result == b"downloaded content"
-        mock_client.get_object.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_download_file_failure(self, storage_manager):
-        """Test file download failure"""
-        # Mock client with failure
-        mock_client = AsyncMock()
-        mock_client.get_object.side_effect = Exception("Download failed")
-        storage_manager.client = mock_client
-
-        # Test download
-        with pytest.raises(Exception, match="Download failed"):
-            await storage_manager.download_file("test_file.jpg")
-
-    @pytest.mark.asyncio
-    async def test_delete_file_success(self, storage_manager):
-        """Test successful file deletion"""
-        # Mock client
-        mock_client = AsyncMock()
-        storage_manager.client = mock_client
-
-        # Test deletion
-        result = await storage_manager.delete_file("test_file.jpg")
-
-        # Verify result
-        assert result is True
-        mock_client.remove_object.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_delete_file_failure(self, storage_manager):
-        """Test file deletion failure"""
-        # Mock client with failure
-        mock_client = AsyncMock()
-        mock_client.remove_object.side_effect = Exception("Delete failed")
-        storage_manager.client = mock_client
-
-        # Test deletion
-        with pytest.raises(Exception, match="Delete failed"):
-            await storage_manager.delete_file("test_file.jpg")
-
-    @pytest.mark.asyncio
-    async def test_list_files_success(self, storage_manager):
-        """Test successful file listing"""
-        # Mock client
-        mock_client = AsyncMock()
-        mock_objects = [
-            Mock(object_name="file1.jpg"),
-            Mock(object_name="file2.mp4"),
-            Mock(object_name="file3.txt")
-        ]
-        mock_client.list_objects.return_value = mock_objects
-        storage_manager.client = mock_client
-
-        # Test listing
-        result = await storage_manager.list_files(prefix="file")
-
-        # Verify result
-        assert len(result) == 3
-        assert "file1.jpg" in result
-        assert "file2.mp4" in result
-        assert "file3.txt" in result
-
-    @pytest.mark.asyncio
-    async def test_list_files_with_prefix(self, storage_manager):
-        """Test file listing with prefix filter"""
-        # Mock client
-        mock_client = AsyncMock()
-        mock_objects = [
-            Mock(object_name="image1.jpg"),
-            Mock(object_name="image2.png"),
-            Mock(object_name="video1.mp4")
-        ]
-        mock_client.list_objects.return_value = mock_objects
-        storage_manager.client = mock_client
-
-        # Test listing with prefix
-        result = await storage_manager.list_files(prefix="image")
-
-        # Verify result
-        assert len(result) == 2
-        assert "image1.jpg" in result
-        assert "image2.png" in result
-        assert "video1.mp4" not in result
-
-    @pytest.mark.asyncio
-    async def test_file_exists_success(self, storage_manager):
-        """Test file existence check"""
-        # Mock client
-        mock_client = AsyncMock()
-        mock_client.stat_object.return_value = Mock(size=1024)
-        storage_manager.client = mock_client
-
-        # Test existence check
-        result = await storage_manager.file_exists("test_file.jpg")
-
-        # Verify result
-        assert result is True
-        mock_client.stat_object.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_file_exists_not_found(self, storage_manager):
-        """Test file existence check for non-existent file"""
-        # Mock client
-        mock_client = AsyncMock()
-        mock_client.stat_object.side_effect = Exception("File not found")
-        storage_manager.client = mock_client
-
-        # Test existence check
-        result = await storage_manager.file_exists("nonexistent_file.jpg")
+        # Test file upload
+        result = storage_manager.upload_file(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg",
+            file_path=temp_file
+        )
 
         # Verify result
         assert result is False
 
-    @pytest.mark.asyncio
-    async def test_get_file_info_success(self, storage_manager):
-        """Test getting file information"""
-        # Mock client
-        mock_client = AsyncMock()
-        mock_stat = Mock(
-            size=1024,
-            last_modified="2024-01-01T00:00:00Z",
-            content_type="image/jpeg"
+    def test_upload_data_success(self, storage_manager, mock_minio_client):
+        """Test successful data upload"""
+        storage_manager.client = mock_minio_client
+
+        # Test data upload
+        test_data = b"Test binary data"
+        result = storage_manager.upload_data(
+            bucket_name="test-bucket",
+            object_name="test-object.bin",
+            data=test_data,
+            content_type="application/octet-stream"
         )
-        mock_client.stat_object.return_value = mock_stat
-        storage_manager.client = mock_client
-
-        # Test getting file info
-        result = await storage_manager.get_file_info("test_file.jpg")
-
-        # Verify result
-        assert result["size"] == 1024
-        assert result["last_modified"] == "2024-01-01T00:00:00Z"
-        assert result["content_type"] == "image/jpeg"
-
-    @pytest.mark.asyncio
-    async def test_get_file_url_success(self, storage_manager):
-        """Test getting file URL"""
-        # Mock client
-        mock_client = AsyncMock()
-        mock_client.presigned_get_object.return_value = "http://test-url.com/file.jpg"
-        storage_manager.client = mock_client
-
-        # Test getting file URL
-        result = await storage_manager.get_file_url("test_file.jpg", expires_in=3600)
-
-        # Verify result
-        assert result == "http://test-url.com/file.jpg"
-        mock_client.presigned_get_object.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_health_check(self, storage_manager):
-        """Test storage health check"""
-        # Mock client
-        mock_client = AsyncMock()
-        mock_client.bucket_exists.return_value = True
-        storage_manager.client = mock_client
-
-        # Test health check
-        result = await storage_manager.health_check()
-
-        # Verify result
-        assert result["status"] == "healthy"
-        assert "response_time_ms" in result
-
-    @pytest.mark.asyncio
-    async def test_health_check_failure(self, storage_manager):
-        """Test storage health check failure"""
-        # Mock client with failure
-        mock_client = AsyncMock()
-        mock_client.bucket_exists.side_effect = Exception("Connection failed")
-        storage_manager.client = mock_client
-
-        # Test health check
-        result = await storage_manager.health_check()
-
-        # Verify result
-        assert result["status"] == "unhealthy"
-        assert "error" in result
-
-    @pytest.mark.asyncio
-    async def test_copy_file_success(self, storage_manager):
-        """Test successful file copying"""
-        # Mock client
-        mock_client = AsyncMock()
-        storage_manager.client = mock_client
-
-        # Test copying
-        result = await storage_manager.copy_file("source_file.jpg", "dest_file.jpg")
 
         # Verify result
         assert result is True
-        mock_client.copy_object.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_move_file_success(self, storage_manager):
-        """Test successful file moving"""
-        # Mock client
-        mock_client = AsyncMock()
-        storage_manager.client = mock_client
+        # Verify MinIO client was called
+        mock_minio_client.put_object.assert_called_once()
+        call_args = mock_minio_client.put_object.call_args
+        assert call_args[0][0] == "test-bucket"  # bucket_name
+        assert call_args[0][1] == "test-object.bin"  # object_name
+        assert call_args[1]['length'] == len(test_data)
+        assert call_args[1]['content_type'] == "application/octet-stream"
 
-        # Test moving
-        result = await storage_manager.move_file("source_file.jpg", "dest_file.jpg")
+    def test_upload_data_failure(self, storage_manager, mock_minio_client):
+        """Test data upload failure"""
+        storage_manager.client = mock_minio_client
+
+        # Mock upload failure
+        from minio.error import S3Error
+        mock_minio_client.put_object.side_effect = S3Error("Upload failed")
+
+        # Test data upload
+        test_data = b"Test binary data"
+        result = storage_manager.upload_data(
+            bucket_name="test-bucket",
+            object_name="test-object.bin",
+            data=test_data
+        )
+
+        # Verify result
+        assert result is False
+
+    def test_download_file_success(self, storage_manager, mock_minio_client, temp_file):
+        """Test successful file download"""
+        storage_manager.client = mock_minio_client
+
+        # Test file download
+        result = storage_manager.download_file(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg",
+            file_path=temp_file
+        )
 
         # Verify result
         assert result is True
-        mock_client.copy_object.assert_called_once()
-        mock_client.remove_object.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_get_storage_stats(self, storage_manager):
-        """Test getting storage statistics"""
-        # Mock client
-        mock_client = AsyncMock()
-        mock_objects = [
-            Mock(size=1024),
-            Mock(size=2048),
-            Mock(size=512)
-        ]
-        mock_client.list_objects.return_value = mock_objects
-        storage_manager.client = mock_client
+        # Verify MinIO client was called
+        mock_minio_client.fget_object.assert_called_once_with(
+            "test-bucket",
+            "test-object.jpg",
+            temp_file
+        )
 
-        # Test getting stats
-        result = await storage_manager.get_storage_stats()
+    def test_download_file_failure(self, storage_manager, mock_minio_client, temp_file):
+        """Test file download failure"""
+        storage_manager.client = mock_minio_client
+
+        # Mock download failure
+        from minio.error import S3Error
+        mock_minio_client.fget_object.side_effect = S3Error("Download failed")
+
+        # Test file download
+        result = storage_manager.download_file(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg",
+            file_path=temp_file
+        )
 
         # Verify result
-        assert result["total_files"] == 3
-        assert result["total_size_bytes"] == 3584
-        assert result["avg_file_size_bytes"] == 1194
+        assert result is False
+
+    def test_get_object_url_success(self, storage_manager, mock_minio_client):
+        """Test successful object URL generation"""
+        storage_manager.client = mock_minio_client
+
+        # Test URL generation
+        url = storage_manager.get_object_url(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg"
+        )
+
+        # Verify result
+        assert url == "https://test-url.com"
+
+        # Verify MinIO client was called
+        mock_minio_client.presigned_get_object.assert_called_once()
+        call_args = mock_minio_client.presigned_get_object.call_args
+        assert call_args[0][0] == "test-bucket"  # bucket_name
+        assert call_args[0][1] == "test-object.jpg"  # object_name
+
+    def test_get_object_url_failure(self, storage_manager, mock_minio_client):
+        """Test object URL generation failure"""
+        storage_manager.client = mock_minio_client
+
+        # Mock URL generation failure
+        from minio.error import S3Error
+        mock_minio_client.presigned_get_object.side_effect = S3Error("URL generation failed")
+
+        # Test URL generation
+        url = storage_manager.get_object_url(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg"
+        )
+
+        # Verify result
+        assert url == ""
+
+    def test_delete_object_success(self, storage_manager, mock_minio_client):
+        """Test successful object deletion"""
+        storage_manager.client = mock_minio_client
+
+        # Test object deletion
+        result = storage_manager.delete_object(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg"
+        )
+
+        # Verify result
+        assert result is True
+
+        # Verify MinIO client was called
+        mock_minio_client.remove_object.assert_called_once_with(
+            "test-bucket",
+            "test-object.jpg"
+        )
+
+    def test_delete_object_failure(self, storage_manager, mock_minio_client):
+        """Test object deletion failure"""
+        storage_manager.client = mock_minio_client
+
+        # Mock deletion failure
+        from minio.error import S3Error
+        mock_minio_client.remove_object.side_effect = S3Error("Deletion failed")
+
+        # Test object deletion
+        result = storage_manager.delete_object(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg"
+        )
+
+        # Verify result
+        assert result is False
+
+    def test_object_exists_true(self, storage_manager, mock_minio_client):
+        """Test object exists check when object exists"""
+        storage_manager.client = mock_minio_client
+
+        # Test object exists check
+        result = storage_manager.object_exists(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg"
+        )
+
+        # Verify result
+        assert result is True
+
+        # Verify MinIO client was called
+        mock_minio_client.stat_object.assert_called_once_with(
+            "test-bucket",
+            "test-object.jpg"
+        )
+
+    def test_object_exists_false(self, storage_manager, mock_minio_client):
+        """Test object exists check when object doesn't exist"""
+        storage_manager.client = mock_minio_client
+
+        # Mock object doesn't exist
+        from minio.error import S3Error
+        mock_minio_client.stat_object.side_effect = S3Error("Object not found")
+
+        # Test object exists check
+        result = storage_manager.object_exists(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg"
+        )
+
+        # Verify result
+        assert result is False
+
+    def test_list_objects_success(self, storage_manager, mock_minio_client):
+        """Test successful object listing"""
+        storage_manager.client = mock_minio_client
+
+        # Test object listing
+        result = storage_manager.list_objects(
+            bucket_name="test-bucket",
+            prefix="test/"
+        )
+
+        # Verify result
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert "test1.jpg" in result
+        assert "test2.jpg" in result
+
+        # Verify MinIO client was called
+        mock_minio_client.list_objects.assert_called_once_with(
+            "test-bucket",
+            prefix="test/"
+        )
+
+    def test_list_objects_failure(self, storage_manager, mock_minio_client):
+        """Test object listing failure"""
+        storage_manager.client = mock_minio_client
+
+        # Mock listing failure
+        from minio.error import S3Error
+        mock_minio_client.list_objects.side_effect = S3Error("Listing failed")
+
+        # Test object listing
+        result = storage_manager.list_objects(
+            bucket_name="test-bucket",
+            prefix="test/"
+        )
+
+        # Verify result
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_calculate_file_hash(self, temp_file):
+        """Test file hash calculation"""
+        # Test hash calculation
+        hash_result = StorageManager.calculate_file_hash(temp_file)
+
+        # Verify result
+        assert isinstance(hash_result, str)
+        assert len(hash_result) == 64  # SHA-256 hex length
+
+        # Verify hash is consistent
+        hash_result2 = StorageManager.calculate_file_hash(temp_file)
+        assert hash_result == hash_result2
+
+        # Verify hash changes with content
+        with open(temp_file, 'w') as f:
+            f.write("Different content")
+        hash_result3 = StorageManager.calculate_file_hash(temp_file)
+        assert hash_result != hash_result3
+
+    def test_calculate_data_hash(self):
+        """Test data hash calculation"""
+        # Test hash calculation
+        test_data = b"Test binary data"
+        hash_result = StorageManager.calculate_data_hash(test_data)
+
+        # Verify result
+        assert isinstance(hash_result, str)
+        assert len(hash_result) == 64  # SHA-256 hex length
+
+        # Verify hash is consistent
+        hash_result2 = StorageManager.calculate_data_hash(test_data)
+        assert hash_result == hash_result2
+
+        # Verify hash changes with different data
+        test_data2 = b"Different binary data"
+        hash_result3 = StorageManager.calculate_data_hash(test_data2)
+        assert hash_result != hash_result3
+
+    def test_generate_object_path(self):
+        """Test object path generation"""
+        # Test path generation
+        file_hash = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        filename = "test.jpg"
+        prefix = "images"
+
+        path = StorageManager.generate_object_path(file_hash, filename, prefix)
+
+        # Verify result
+        expected_path = f"images/ab/{file_hash}_{filename}"
+        assert path == expected_path
+
+        # Test without prefix
+        path_no_prefix = StorageManager.generate_object_path(file_hash, filename)
+        expected_path_no_prefix = f"ab/{file_hash}_{filename}"
+        assert path_no_prefix == expected_path_no_prefix
+
+    def test_generate_object_path_with_short_hash(self):
+        """Test object path generation with short hash"""
+        # Test with very short hash
+        file_hash = "ab"
+        filename = "test.jpg"
+        prefix = "images"
+
+        path = StorageManager.generate_object_path(file_hash, filename, prefix)
+
+        # Verify result uses first 2 characters
+        expected_path = f"images/ab/{file_hash}_{filename}"
+        assert path == expected_path
+
+    def test_storage_manager_initialization(self, storage_manager):
+        """Test StorageManager initialization"""
+        # Verify initial state
+        assert storage_manager.client is None
+        assert isinstance(storage_manager.buckets, list)
+        assert len(storage_manager.buckets) == 3
+        assert "test-images" in storage_manager.buckets
+        assert "test-videos" in storage_manager.buckets
+        assert "test-documents" in storage_manager.buckets
+
+    def test_upload_file_without_content_type(self, storage_manager, mock_minio_client, temp_file):
+        """Test file upload without content type"""
+        storage_manager.client = mock_minio_client
+
+        # Test file upload without content type
+        result = storage_manager.upload_file(
+            bucket_name="test-bucket",
+            object_name="test-object.jpg",
+            file_path=temp_file
+        )
+
+        # Verify result
+        assert result is True
+
+        # Verify MinIO client was called without content_type
+        mock_minio_client.fput_object.assert_called_once_with(
+            "test-bucket",
+            "test-object.jpg",
+            temp_file,
+            content_type=None
+        )
+
+    def test_upload_data_without_content_type(self, storage_manager, mock_minio_client):
+        """Test data upload without content type"""
+        storage_manager.client = mock_minio_client
+
+        # Test data upload without content type
+        test_data = b"Test binary data"
+        result = storage_manager.upload_data(
+            bucket_name="test-bucket",
+            object_name="test-object.bin",
+            data=test_data
+        )
+
+        # Verify result
+        assert result is True
+
+        # Verify MinIO client was called without content_type
+        call_args = mock_minio_client.put_object.call_args
+        assert call_args[1]['content_type'] is None
+
+    def test_list_objects_without_prefix(self, storage_manager, mock_minio_client):
+        """Test object listing without prefix"""
+        storage_manager.client = mock_minio_client
+
+        # Test object listing without prefix
+        result = storage_manager.list_objects("test-bucket")
+
+        # Verify result
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+        # Verify MinIO client was called with empty prefix
+        mock_minio_client.list_objects.assert_called_once_with(
+            "test-bucket",
+            prefix=""
+        )
+
+    @pytest.mark.asyncio
+    async def test_initialize_with_mixed_bucket_states(self, storage_manager, mock_minio_client):
+        """Test initialization with some buckets existing and some not"""
+        # Mock mixed bucket states
+        def bucket_exists_side_effect(bucket_name):
+            return bucket_name == "test-images"  # Only images bucket exists
+
+        mock_minio_client.bucket_exists.side_effect = bucket_exists_side_effect
+
+        with patch('app.storage.Minio', return_value=mock_minio_client) as mock_minio:
+            # Test initialization
+            await storage_manager.initialize()
+
+            # Verify buckets were checked
+            assert mock_minio_client.bucket_exists.call_count == 3
+
+            # Verify only non-existing buckets were created
+            assert mock_minio_client.make_bucket.call_count == 2  # videos and documents
+
+            # Verify correct buckets were created
+            make_bucket_calls = mock_minio_client.make_bucket.call_args_list
+            created_buckets = [call[0][0] for call in make_bucket_calls]
+            assert "test-videos" in created_buckets
+            assert "test-documents" in created_buckets
+            assert "test-images" not in created_buckets

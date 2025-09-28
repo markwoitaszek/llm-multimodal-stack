@@ -1,395 +1,661 @@
 """
-Unit tests for tools in ai-agents service
+Unit tests for Tools in ai-agents service
 """
 import pytest
 import pytest_asyncio
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
-import json
+import httpx
 
-from app.tools import ToolManager, SearchContentTool, GenerateTextTool, WebSearchTool, AnalyzeImageTool
+from app.tools import (
+    ImageAnalysisTool, SearchTool, TextGenerationTool, 
+    WebSearchTool, ToolRegistry
+)
 
 
-class TestToolManager:
-    """Test cases for ToolManager"""
+class TestImageAnalysisTool:
+    """Test cases for ImageAnalysisTool"""
 
     @pytest.fixture
-    def tool_manager(self):
-        """Create ToolManager instance for testing"""
-        return ToolManager()
+    def tool(self):
+        """Create tool instance"""
+        return ImageAnalysisTool()
+
+    def test_tool_properties(self, tool):
+        """Test tool basic properties"""
+        assert tool.name == "analyze_image"
+        assert "image" in tool.description.lower()
+        assert tool.args_schema == tool.ImageAnalysisInput
+
+    def test_input_schema(self, tool):
+        """Test input schema validation"""
+        # Test valid input
+        valid_input = tool.ImageAnalysisInput(image_url="https://example.com/image.jpg")
+        assert valid_input.image_url == "https://example.com/image.jpg"
+
+        # Test required field
+        with pytest.raises(ValueError):
+            tool.ImageAnalysisInput()
 
     @pytest.mark.asyncio
-    async def test_tool_manager_initialization(self, tool_manager):
-        """Test ToolManager initialization"""
-        assert tool_manager is not None
-        assert hasattr(tool_manager, 'tools')
-        assert hasattr(tool_manager, 'tool_registry')
-
-    @pytest.mark.asyncio
-    async def test_register_tool_success(self, tool_manager):
-        """Test successful tool registration"""
-        # Create mock tool
-        mock_tool = Mock()
-        mock_tool.name = "test_tool"
-        mock_tool.description = "Test tool for unit testing"
-
-        # Test tool registration
-        result = await tool_manager.register_tool(mock_tool)
-
-        # Verify result
-        assert result["success"] is True
-        assert "test_tool" in tool_manager.tools
-
-    @pytest.mark.asyncio
-    async def test_get_tool_success(self, tool_manager):
-        """Test successful tool retrieval"""
-        # Register a tool
-        mock_tool = Mock()
-        mock_tool.name = "test_tool"
-        tool_manager.tools["test_tool"] = mock_tool
-
-        # Test tool retrieval
-        result = await tool_manager.get_tool("test_tool")
-
-        # Verify result
-        assert result == mock_tool
-
-    @pytest.mark.asyncio
-    async def test_get_tool_not_found(self, tool_manager):
-        """Test tool retrieval for non-existent tool"""
-        # Test tool retrieval
-        result = await tool_manager.get_tool("nonexistent_tool")
-
-        # Verify result
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_list_tools_success(self, tool_manager):
-        """Test successful tool listing"""
-        # Register multiple tools
-        tool1 = Mock()
-        tool1.name = "tool1"
-        tool1.description = "Tool 1"
-        tool2 = Mock()
-        tool2.name = "tool2"
-        tool2.description = "Tool 2"
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_analyze_image_from_url_success(self, mock_client_class, tool):
+        """Test successful image analysis from URL"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
         
-        tool_manager.tools = {"tool1": tool1, "tool2": tool2}
-
-        # Test tool listing
-        result = await tool_manager.list_tools()
-
-        # Verify result
-        assert len(result) == 2
-        assert "tool1" in result
-        assert "tool2" in result
-
-    @pytest.mark.asyncio
-    async def test_execute_tool_success(self, tool_manager):
-        """Test successful tool execution"""
-        # Register a tool
-        mock_tool = Mock()
-        mock_tool.name = "test_tool"
-        mock_tool.execute.return_value = {"success": True, "result": "Tool executed"}
-        tool_manager.tools["test_tool"] = mock_tool
-
-        # Test tool execution
-        result = await tool_manager.execute_tool("test_tool", {"param": "value"})
-
-        # Verify result
-        assert result["success"] is True
-        assert result["result"] == "Tool executed"
-        mock_tool.execute.assert_called_once_with({"param": "value"})
-
-    @pytest.mark.asyncio
-    async def test_execute_tool_not_found(self, tool_manager):
-        """Test tool execution for non-existent tool"""
-        # Test tool execution
-        result = await tool_manager.execute_tool("nonexistent_tool", {})
-
-        # Verify result
-        assert result["success"] is False
-        assert "error" in result
-
-    @pytest.mark.asyncio
-    async def test_validate_tool_parameters_success(self, tool_manager):
-        """Test successful tool parameter validation"""
-        # Register a tool with schema
-        mock_tool = Mock()
-        mock_tool.name = "test_tool"
-        mock_tool.parameters_schema = {
-            "type": "object",
-            "properties": {
-                "param1": {"type": "string"},
-                "param2": {"type": "number"}
-            },
-            "required": ["param1"]
+        # Mock image download
+        mock_img_response = Mock()
+        mock_img_response.content = b"fake_image_data"
+        mock_client.get.return_value = mock_img_response
+        
+        # Mock multimodal worker response
+        mock_analysis_response = Mock()
+        mock_analysis_response.json.return_value = {
+            "success": True,
+            "data": {
+                "caption": "A beautiful landscape with mountains and trees"
+            }
         }
-        tool_manager.tools["test_tool"] = mock_tool
+        mock_client.post.return_value = mock_analysis_response
 
-        # Test parameter validation
-        result = await tool_manager.validate_tool_parameters(
-            "test_tool",
-            {"param1": "value", "param2": 123}
-        )
+        # Test image analysis
+        result = await tool._arun("https://example.com/image.jpg")
 
         # Verify result
-        assert result["valid"] is True
-        assert len(result["errors"]) == 0
+        assert "Image analysis: A beautiful landscape with mountains and trees" in result
+
+        # Verify HTTP calls
+        mock_client.get.assert_called_once_with("https://example.com/image.jpg")
+        mock_client.post.assert_called_once()
+        post_call_args = mock_client.post.call_args
+        assert "/api/v1/process/image" in post_call_args[0][0]
 
     @pytest.mark.asyncio
-    async def test_validate_tool_parameters_invalid(self, tool_manager):
-        """Test tool parameter validation with invalid parameters"""
-        # Register a tool with schema
-        mock_tool = Mock()
-        mock_tool.name = "test_tool"
-        mock_tool.parameters_schema = {
-            "type": "object",
-            "properties": {
-                "param1": {"type": "string"}
-            },
-            "required": ["param1"]
+    @patch('app.tools.httpx.AsyncClient')
+    @patch('builtins.open', create=True)
+    async def test_analyze_image_from_file_success(self, mock_open, mock_client_class, tool):
+        """Test successful image analysis from file"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock file reading
+        mock_file = Mock()
+        mock_file.read.return_value = b"fake_image_data"
+        mock_open.return_value.__enter__.return_value = mock_file
+        
+        # Mock multimodal worker response
+        mock_analysis_response = Mock()
+        mock_analysis_response.json.return_value = {
+            "success": True,
+            "data": {
+                "caption": "A portrait of a person"
+            }
         }
-        tool_manager.tools["test_tool"] = mock_tool
+        mock_client.post.return_value = mock_analysis_response
 
-        # Test parameter validation
-        result = await tool_manager.validate_tool_parameters(
-            "test_tool",
-            {"param2": "value"}  # Missing required param1
-        )
+        # Test image analysis
+        result = await tool._arun("/path/to/image.jpg")
 
         # Verify result
-        assert result["valid"] is False
-        assert len(result["errors"]) > 0
+        assert "Image analysis: A portrait of a person" in result
+
+        # Verify file was read
+        mock_open.assert_called_once_with("/path/to/image.jpg", 'rb')
+
+        # Verify HTTP call
+        mock_client.post.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_analyze_image_failure(self, mock_client_class, tool):
+        """Test image analysis failure"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock image download
+        mock_img_response = Mock()
+        mock_img_response.content = b"fake_image_data"
+        mock_client.get.return_value = mock_img_response
+        
+        # Mock multimodal worker failure
+        mock_analysis_response = Mock()
+        mock_analysis_response.json.return_value = {
+            "success": False,
+            "error": "Image processing failed"
+        }
+        mock_client.post.return_value = mock_analysis_response
+
+        # Test image analysis
+        result = await tool._arun("https://example.com/image.jpg")
+
+        # Verify error result
+        assert "Image analysis failed: Image processing failed" in result
+
+    @pytest.mark.asyncio
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_analyze_image_http_error(self, mock_client_class, tool):
+        """Test image analysis with HTTP error"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock HTTP error
+        mock_client.get.side_effect = httpx.HTTPError("Network error")
+
+        # Test image analysis
+        result = await tool._arun("https://example.com/image.jpg")
+
+        # Verify error result
+        assert "Error analyzing image: Network error" in result
+
+    def test_sync_wrapper(self, tool):
+        """Test synchronous wrapper"""
+        with patch.object(tool, '_arun', return_value="Test result") as mock_arun:
+            result = tool._run("https://example.com/image.jpg")
+            assert result == "Test result"
+            mock_arun.assert_called_once_with("https://example.com/image.jpg")
 
 
-class TestSearchContentTool:
-    """Test cases for SearchContentTool"""
+class TestSearchTool:
+    """Test cases for SearchTool"""
 
     @pytest.fixture
-    def search_tool(self, mock_http_client):
-        """Create SearchContentTool instance for testing"""
-        return SearchContentTool(mock_http_client)
+    def tool(self):
+        """Create tool instance"""
+        return SearchTool()
+
+    def test_tool_properties(self, tool):
+        """Test tool basic properties"""
+        assert tool.name == "search_content"
+        assert "search" in tool.description.lower()
+        assert tool.args_schema == tool.SearchInput
+
+    def test_input_schema(self, tool):
+        """Test input schema validation"""
+        # Test valid input with defaults
+        valid_input = tool.SearchInput(query="test query")
+        assert valid_input.query == "test query"
+        assert valid_input.modalities == ["text", "image", "video"]
+        assert valid_input.limit == 5
+
+        # Test custom input
+        custom_input = tool.SearchInput(
+            query="test query",
+            modalities=["text"],
+            limit=10
+        )
+        assert custom_input.query == "test query"
+        assert custom_input.modalities == ["text"]
+        assert custom_input.limit == 10
+
+        # Test required field
+        with pytest.raises(ValueError):
+            tool.SearchInput()
 
     @pytest.mark.asyncio
-    async def test_search_content_tool_initialization(self, search_tool):
-        """Test SearchContentTool initialization"""
-        assert search_tool is not None
-        assert search_tool.name == "search_content"
-        assert hasattr(search_tool, 'http_client')
-
-    @pytest.mark.asyncio
-    async def test_execute_search_success(self, search_tool, mock_http_client):
-        """Test successful search execution"""
-        # Mock HTTP response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "success": True,
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_search_content_success(self, mock_client_class, tool):
+        """Test successful content search"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock search response
+        mock_search_response = Mock()
+        mock_search_response.json.return_value = {
             "results": [
-                {"content": "Test result 1", "score": 0.95},
-                {"content": "Test result 2", "score": 0.87}
+                {
+                    "content": "First search result",
+                    "filename": "doc1.txt",
+                    "score": 0.95
+                },
+                {
+                    "content": "Second search result",
+                    "filename": "doc2.txt",
+                    "score": 0.87
+                }
             ]
         }
-        mock_http_client.post.return_value = mock_response
+        mock_client.post.return_value = mock_search_response
 
-        # Test search execution
-        result = await search_tool.execute({
-            "query": "test query",
-            "content_types": ["text"],
-            "limit": 10
-        })
+        # Test content search
+        result = await tool._arun("test query", ["text"], 5)
 
         # Verify result
-        assert result["success"] is True
-        assert len(result["results"]) == 2
-        assert result["results"][0]["content"] == "Test result 1"
+        assert "Search results for 'test query':" in result
+        assert "First search result" in result
+        assert "Second search result" in result
+        assert "doc1.txt" in result
+        assert "doc2.txt" in result
+        assert "0.95" in result
+        assert "0.87" in result
+
+        # Verify HTTP call
+        mock_client.post.assert_called_once()
+        post_call_args = mock_client.post.call_args
+        assert "/api/v1/search" in post_call_args[0][0]
+        assert post_call_args[1]["json"]["query"] == "test query"
+        assert post_call_args[1]["json"]["modalities"] == ["text"]
+        assert post_call_args[1]["json"]["limit"] == 5
 
     @pytest.mark.asyncio
-    async def test_execute_search_failure(self, search_tool, mock_http_client):
-        """Test search execution failure"""
-        # Mock HTTP error
-        mock_http_client.post.side_effect = Exception("HTTP error")
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_search_content_no_results(self, mock_client_class, tool):
+        """Test content search with no results"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock empty search response
+        mock_search_response = Mock()
+        mock_search_response.json.return_value = {"results": []}
+        mock_client.post.return_value = mock_search_response
 
-        # Test search execution
-        result = await search_tool.execute({
-            "query": "test query",
-            "content_types": ["text"],
-            "limit": 10
-        })
+        # Test content search
+        result = await tool._arun("test query")
 
         # Verify result
-        assert result["success"] is False
-        assert "error" in result
+        assert "No results found for query: test query" in result
+
+    @pytest.mark.asyncio
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_search_content_with_defaults(self, mock_client_class, tool):
+        """Test content search with default parameters"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock search response
+        mock_search_response = Mock()
+        mock_search_response.json.return_value = {"results": []}
+        mock_client.post.return_value = mock_search_response
+
+        # Test content search with minimal parameters
+        result = await tool._arun("test query")
+
+        # Verify HTTP call with defaults
+        mock_client.post.assert_called_once()
+        post_call_args = mock_client.post.call_args
+        assert post_call_args[1]["json"]["modalities"] == ["text", "image", "video"]
+        assert post_call_args[1]["json"]["limit"] == 5
+
+    @pytest.mark.asyncio
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_search_content_http_error(self, mock_client_class, tool):
+        """Test content search with HTTP error"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock HTTP error
+        mock_client.post.side_effect = httpx.HTTPError("Network error")
+
+        # Test content search
+        result = await tool._arun("test query")
+
+        # Verify error result
+        assert "Error searching content: Network error" in result
+
+    def test_sync_wrapper(self, tool):
+        """Test synchronous wrapper"""
+        with patch.object(tool, '_arun', return_value="Search results") as mock_arun:
+            result = tool._run("test query", ["text"], 5)
+            assert result == "Search results"
+            mock_arun.assert_called_once_with("test query", ["text"], 5)
 
 
-class TestGenerateTextTool:
-    """Test cases for GenerateTextTool"""
+class TestTextGenerationTool:
+    """Test cases for TextGenerationTool"""
 
     @pytest.fixture
-    def generate_tool(self, mock_http_client):
-        """Create GenerateTextTool instance for testing"""
-        return GenerateTextTool(mock_http_client)
+    def tool(self):
+        """Create tool instance"""
+        return TextGenerationTool()
+
+    def test_tool_properties(self, tool):
+        """Test tool basic properties"""
+        assert tool.name == "generate_text"
+        assert "generate" in tool.description.lower()
+        assert tool.args_schema == tool.TextGenerationInput
+
+    def test_input_schema(self, tool):
+        """Test input schema validation"""
+        # Test valid input with defaults
+        valid_input = tool.TextGenerationInput(prompt="Generate text")
+        assert valid_input.prompt == "Generate text"
+        assert valid_input.max_tokens == 200
+
+        # Test custom input
+        custom_input = tool.TextGenerationInput(
+            prompt="Generate text",
+            max_tokens=500
+        )
+        assert custom_input.prompt == "Generate text"
+        assert custom_input.max_tokens == 500
+
+        # Test required field
+        with pytest.raises(ValueError):
+            tool.TextGenerationInput()
 
     @pytest.mark.asyncio
-    async def test_generate_text_tool_initialization(self, generate_tool):
-        """Test GenerateTextTool initialization"""
-        assert generate_tool is not None
-        assert generate_tool.name == "generate_text"
-        assert hasattr(generate_tool, 'http_client')
-
-    @pytest.mark.asyncio
-    async def test_execute_generate_success(self, generate_tool, mock_http_client):
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_generate_text_success(self, mock_client_class, tool):
         """Test successful text generation"""
-        # Mock HTTP response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "success": True,
-            "generated_text": "This is generated text based on the prompt."
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock LLM response
+        mock_llm_response = Mock()
+        mock_llm_response.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "This is the generated text response."
+                    }
+                }
+            ]
         }
-        mock_http_client.post.return_value = mock_response
+        mock_client.post.return_value = mock_llm_response
 
         # Test text generation
-        result = await generate_tool.execute({
-            "prompt": "Generate a test response",
-            "max_tokens": 100,
-            "temperature": 0.7
-        })
+        result = await tool._arun("Generate a story about a cat", 300)
 
         # Verify result
-        assert result["success"] is True
-        assert "generated_text" in result
-        assert result["generated_text"] == "This is generated text based on the prompt."
+        assert result == "This is the generated text response."
+
+        # Verify HTTP call
+        mock_client.post.assert_called_once()
+        post_call_args = mock_client.post.call_args
+        assert "/chat/completions" in post_call_args[0][0]
+        assert post_call_args[1]["json"]["messages"][0]["content"] == "Generate a story about a cat"
+        assert post_call_args[1]["json"]["max_tokens"] == 300
 
     @pytest.mark.asyncio
-    async def test_execute_generate_failure(self, generate_tool, mock_http_client):
-        """Test text generation failure"""
-        # Mock HTTP error
-        mock_http_client.post.side_effect = Exception("HTTP error")
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_generate_text_no_response(self, mock_client_class, tool):
+        """Test text generation with no response"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock LLM response with no choices
+        mock_llm_response = Mock()
+        mock_llm_response.json.return_value = {"choices": []}
+        mock_client.post.return_value = mock_llm_response
 
         # Test text generation
-        result = await generate_tool.execute({
-            "prompt": "Generate a test response",
-            "max_tokens": 100
-        })
+        result = await tool._arun("Generate text")
 
         # Verify result
-        assert result["success"] is False
-        assert "error" in result
+        assert result == "No response generated"
+
+    @pytest.mark.asyncio
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_generate_text_with_defaults(self, mock_client_class, tool):
+        """Test text generation with default parameters"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock LLM response
+        mock_llm_response = Mock()
+        mock_llm_response.json.return_value = {
+            "choices": [{"message": {"content": "Generated text"}}]
+        }
+        mock_client.post.return_value = mock_llm_response
+
+        # Test text generation with minimal parameters
+        result = await tool._arun("Generate text")
+
+        # Verify HTTP call with defaults
+        mock_client.post.assert_called_once()
+        post_call_args = mock_client.post.call_args
+        assert post_call_args[1]["json"]["max_tokens"] == 200
+
+    @pytest.mark.asyncio
+    @patch('app.tools.httpx.AsyncClient')
+    async def test_generate_text_http_error(self, mock_client_class, tool):
+        """Test text generation with HTTP error"""
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+        
+        # Mock HTTP error
+        mock_client.post.side_effect = httpx.HTTPError("LLM service error")
+
+        # Test text generation
+        result = await tool._arun("Generate text")
+
+        # Verify error result
+        assert "Error generating text: LLM service error" in result
+
+    def test_sync_wrapper(self, tool):
+        """Test synchronous wrapper"""
+        with patch.object(tool, '_arun', return_value="Generated text") as mock_arun:
+            result = tool._run("Generate text", 200)
+            assert result == "Generated text"
+            mock_arun.assert_called_once_with("Generate text", 200)
 
 
 class TestWebSearchTool:
     """Test cases for WebSearchTool"""
 
     @pytest.fixture
-    def web_search_tool(self, mock_http_client):
-        """Create WebSearchTool instance for testing"""
-        return WebSearchTool(mock_http_client)
+    def tool(self):
+        """Create tool instance"""
+        return WebSearchTool()
+
+    def test_tool_properties(self, tool):
+        """Test tool basic properties"""
+        assert tool.name == "web_search"
+        assert "web" in tool.description.lower()
+        assert tool.args_schema == tool.WebSearchInput
+
+    def test_input_schema(self, tool):
+        """Test input schema validation"""
+        # Test valid input
+        valid_input = tool.WebSearchInput(query="test query")
+        assert valid_input.query == "test query"
+
+        # Test required field
+        with pytest.raises(ValueError):
+            tool.WebSearchInput()
+
+    def test_web_search_placeholder(self, tool):
+        """Test web search placeholder implementation"""
+        result = tool._run("test query")
+        
+        # Verify placeholder response
+        assert "Web search for 'test query'" in result
+        assert "Feature coming soon!" in result
+        assert "search_content" in result
 
     @pytest.mark.asyncio
-    async def test_web_search_tool_initialization(self, web_search_tool):
-        """Test WebSearchTool initialization"""
-        assert web_search_tool is not None
-        assert web_search_tool.name == "web_search"
-        assert hasattr(web_search_tool, 'http_client')
-
-    @pytest.mark.asyncio
-    async def test_execute_web_search_success(self, web_search_tool, mock_http_client):
-        """Test successful web search"""
-        # Mock HTTP response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "success": True,
-            "results": [
-                {"title": "Test Result 1", "url": "https://example.com/1", "snippet": "Snippet 1"},
-                {"title": "Test Result 2", "url": "https://example.com/2", "snippet": "Snippet 2"}
-            ]
-        }
-        mock_http_client.post.return_value = mock_response
-
-        # Test web search
-        result = await web_search_tool.execute({
-            "query": "test search query",
-            "limit": 5
-        })
-
-        # Verify result
-        assert result["success"] is True
-        assert len(result["results"]) == 2
-        assert result["results"][0]["title"] == "Test Result 1"
-
-    @pytest.mark.asyncio
-    async def test_execute_web_search_failure(self, web_search_tool, mock_http_client):
-        """Test web search failure"""
-        # Mock HTTP error
-        mock_http_client.post.side_effect = Exception("HTTP error")
-
-        # Test web search
-        result = await web_search_tool.execute({
-            "query": "test search query",
-            "limit": 5
-        })
-
-        # Verify result
-        assert result["success"] is False
-        assert "error" in result
+    async def test_web_search_async_wrapper(self, tool):
+        """Test web search async wrapper"""
+        result = await tool._arun("test query")
+        
+        # Verify same result as sync version
+        assert "Web search for 'test query'" in result
+        assert "Feature coming soon!" in result
 
 
-class TestAnalyzeImageTool:
-    """Test cases for AnalyzeImageTool"""
+class TestToolRegistry:
+    """Test cases for ToolRegistry"""
 
     @pytest.fixture
-    def analyze_image_tool(self, mock_http_client):
-        """Create AnalyzeImageTool instance for testing"""
-        return AnalyzeImageTool(mock_http_client)
+    def registry(self):
+        """Create tool registry instance"""
+        return ToolRegistry()
 
     @pytest.mark.asyncio
-    async def test_analyze_image_tool_initialization(self, analyze_image_tool):
-        """Test AnalyzeImageTool initialization"""
-        assert analyze_image_tool is not None
-        assert analyze_image_tool.name == "analyze_image"
-        assert hasattr(analyze_image_tool, 'http_client')
+    @patch('app.tools.settings')
+    async def test_initialize_success(self, mock_settings, registry):
+        """Test successful tool registry initialization"""
+        # Setup settings
+        mock_settings.enable_web_search = True
+
+        # Test initialization
+        await registry.initialize()
+
+        # Verify tools were registered
+        assert "analyze_image" in registry.tools
+        assert "search_content" in registry.tools
+        assert "generate_text" in registry.tools
+        assert "web_search" in registry.tools
+
+        # Verify tool types
+        assert isinstance(registry.tools["analyze_image"], ImageAnalysisTool)
+        assert isinstance(registry.tools["search_content"], SearchTool)
+        assert isinstance(registry.tools["generate_text"], TextGenerationTool)
+        assert isinstance(registry.tools["web_search"], WebSearchTool)
 
     @pytest.mark.asyncio
-    async def test_execute_analyze_image_success(self, analyze_image_tool, mock_http_client):
-        """Test successful image analysis"""
-        # Mock HTTP response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "success": True,
-            "analysis": {
-                "caption": "A test image showing various objects",
-                "objects": ["object1", "object2"],
-                "confidence": 0.95
-            }
-        }
-        mock_http_client.post.return_value = mock_response
+    @patch('app.tools.settings')
+    async def test_initialize_without_web_search(self, mock_settings, registry):
+        """Test tool registry initialization without web search"""
+        # Setup settings
+        mock_settings.enable_web_search = False
 
-        # Test image analysis
-        result = await analyze_image_tool.execute({
-            "image_data": "base64_encoded_image_data",
-            "analysis_type": "full"
-        })
+        # Test initialization
+        await registry.initialize()
 
-        # Verify result
-        assert result["success"] is True
-        assert "analysis" in result
-        assert result["analysis"]["caption"] == "A test image showing various objects"
+        # Verify tools were registered
+        assert "analyze_image" in registry.tools
+        assert "search_content" in registry.tools
+        assert "generate_text" in registry.tools
+        assert "web_search" not in registry.tools
 
     @pytest.mark.asyncio
-    async def test_execute_analyze_image_failure(self, analyze_image_tool, mock_http_client):
-        """Test image analysis failure"""
-        # Mock HTTP error
-        mock_http_client.post.side_effect = Exception("HTTP error")
+    @patch('app.tools.settings')
+    async def test_initialize_failure(self, mock_settings, registry):
+        """Test tool registry initialization failure"""
+        # Setup settings to raise exception
+        mock_settings.enable_web_search = True
+        mock_settings.side_effect = Exception("Settings error")
 
-        # Test image analysis
-        result = await analyze_image_tool.execute({
-            "image_data": "base64_encoded_image_data",
-            "analysis_type": "full"
-        })
+        # Test initialization should raise exception
+        with pytest.raises(Exception, match="Settings error"):
+            await registry.initialize()
 
-        # Verify result
-        assert result["success"] is False
-        assert "error" in result
+    @pytest.mark.asyncio
+    @patch('app.tools.settings')
+    async def test_get_tools_all(self, mock_settings, registry):
+        """Test getting all tools"""
+        # Setup settings
+        mock_settings.enable_web_search = True
+
+        # Initialize registry
+        await registry.initialize()
+
+        # Test getting all tools
+        tools = await registry.get_tools()
+
+        # Verify all tools returned
+        assert len(tools) == 4
+        tool_names = [tool.name for tool in tools]
+        assert "analyze_image" in tool_names
+        assert "search_content" in tool_names
+        assert "generate_text" in tool_names
+        assert "web_search" in tool_names
+
+    @pytest.mark.asyncio
+    @patch('app.tools.settings')
+    async def test_get_tools_specific(self, mock_settings, registry):
+        """Test getting specific tools"""
+        # Setup settings
+        mock_settings.enable_web_search = True
+
+        # Initialize registry
+        await registry.initialize()
+
+        # Test getting specific tools
+        tools = await registry.get_tools(["analyze_image", "search_content"])
+
+        # Verify specific tools returned
+        assert len(tools) == 2
+        tool_names = [tool.name for tool in tools]
+        assert "analyze_image" in tool_names
+        assert "search_content" in tool_names
+        assert "generate_text" not in tool_names
+
+    @pytest.mark.asyncio
+    @patch('app.tools.settings')
+    async def test_get_tools_nonexistent(self, mock_settings, registry):
+        """Test getting non-existent tools"""
+        # Setup settings
+        mock_settings.enable_web_search = True
+
+        # Initialize registry
+        await registry.initialize()
+
+        # Test getting non-existent tools
+        tools = await registry.get_tools(["nonexistent_tool"])
+
+        # Verify empty list returned
+        assert tools == []
+
+    @pytest.mark.asyncio
+    @patch('app.tools.settings')
+    async def test_list_available_tools(self, mock_settings, registry):
+        """Test listing available tools"""
+        # Setup settings
+        mock_settings.enable_web_search = True
+
+        # Initialize registry
+        await registry.initialize()
+
+        # Test listing tools
+        tools = await registry.list_available_tools()
+
+        # Verify tools listed
+        assert "analyze_image" in tools
+        assert "search_content" in tools
+        assert "generate_text" in tools
+        assert "web_search" in tools
+
+        # Verify descriptions
+        assert "image" in tools["analyze_image"].lower()
+        assert "search" in tools["search_content"].lower()
+        assert "generate" in tools["generate_text"].lower()
+        assert "web" in tools["web_search"].lower()
+
+    @pytest.mark.asyncio
+    @patch('app.tools.settings')
+    async def test_get_tools_empty_list(self, mock_settings, registry):
+        """Test getting tools with empty list"""
+        # Setup settings
+        mock_settings.enable_web_search = True
+
+        # Initialize registry
+        await registry.initialize()
+
+        # Test getting tools with empty list
+        tools = await registry.get_tools([])
+
+        # Verify empty list returned
+        assert tools == []
+
+    @pytest.mark.asyncio
+    @patch('app.tools.settings')
+    async def test_get_tools_mixed_existent_nonexistent(self, mock_settings, registry):
+        """Test getting mix of existent and non-existent tools"""
+        # Setup settings
+        mock_settings.enable_web_search = True
+
+        # Initialize registry
+        await registry.initialize()
+
+        # Test getting mixed tools
+        tools = await registry.get_tools(["analyze_image", "nonexistent_tool", "search_content"])
+
+        # Verify only existent tools returned
+        assert len(tools) == 2
+        tool_names = [tool.name for tool in tools]
+        assert "analyze_image" in tool_names
+        assert "search_content" in tool_names
+        assert "nonexistent_tool" not in tool_names
