@@ -1,495 +1,651 @@
 """
-Database operations and schema for user management service
+User Management Database Operations
 """
 import asyncio
-import logging
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any, Tuple
 import asyncpg
-import asyncpg.pool
-from sqlalchemy import create_engine, Column, String, DateTime, Boolean, Integer, Text, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.sql import text
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column
+from sqlalchemy import String, Text, DateTime, Boolean, Integer, JSON, Index, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 import uuid
-import json
+import hashlib
 
-from .config import settings
-from .models import UserRole, UserStatus, TenantStatus
+from app.config import settings
+from app.models import UserRole, UserStatus, AuthProvider
 
-logger = logging.getLogger(__name__)
-
-# SQLAlchemy setup
 Base = declarative_base()
+
 
 class User(Base):
     """User database model"""
     __tablename__ = "users"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
-    first_name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
-    role = Column(String(20), nullable=False, default=UserRole.USER)
-    status = Column(String(20), nullable=False, default=UserStatus.ACTIVE)
-    is_verified = Column(Boolean, default=False)
-    preferences = Column(JSONB, default=dict)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    last_login = Column(DateTime, nullable=True)
-    login_attempts = Column(Integer, default=0)
-    locked_until = Column(DateTime, nullable=True)
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="user")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    auth_provider: Mapped[str] = mapped_column(String(20), nullable=False, default="local")
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     
-    # Relationships
-    tenant = relationship("Tenant", back_populates="users")
-    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
-    audit_logs = relationship("AuditLog", back_populates="user")
-    
-    # Indexes
+    # Indexes for performance
     __table_args__ = (
-        Index('idx_users_email_tenant', 'email', 'tenant_id'),
-        Index('idx_users_status_tenant', 'status', 'tenant_id'),
-        Index('idx_users_role_tenant', 'role', 'tenant_id'),
+        Index('idx_user_username', 'username'),
+        Index('idx_user_email', 'email'),
+        Index('idx_user_tenant_id', 'tenant_id'),
+        Index('idx_user_role', 'role'),
+        Index('idx_user_status', 'status'),
+        Index('idx_user_created_at', 'created_at'),
     )
+
 
 class Tenant(Base):
     """Tenant database model"""
     __tablename__ = "tenants"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(200), nullable=False)
-    description = Column(Text, nullable=True)
-    domain = Column(String(255), nullable=True, unique=True, index=True)
-    status = Column(String(20), nullable=False, default=TenantStatus.ACTIVE)
-    settings = Column(JSONB, default=dict)
-    max_users = Column(Integer, nullable=True)
-    features = Column(JSONB, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    domain: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    admin_user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    max_users: Mapped[int] = mapped_column(Integer, default=1000)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     
-    # Relationships
-    users = relationship("User", back_populates="tenant")
-    audit_logs = relationship("AuditLog", back_populates="tenant")
-
-class UserSession(Base):
-    """User session database model"""
-    __tablename__ = "user_sessions"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)
-    session_token = Column(String(255), unique=True, nullable=False, index=True)
-    refresh_token = Column(String(255), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_activity = Column(DateTime, default=datetime.utcnow)
-    expires_at = Column(DateTime, nullable=False)
-    ip_address = Column(String(45), nullable=True)
-    user_agent = Column(Text, nullable=True)
-    is_active = Column(Boolean, default=True)
-    
-    # Relationships
-    user = relationship("User", back_populates="sessions")
-    tenant = relationship("Tenant")
-
-class AuditLog(Base):
-    """Audit log database model"""
-    __tablename__ = "audit_logs"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True, index=True)
-    action = Column(String(100), nullable=False, index=True)
-    resource_type = Column(String(50), nullable=False, index=True)
-    resource_id = Column(String(255), nullable=True, index=True)
-    details = Column(JSONB, default=dict)
-    ip_address = Column(String(45), nullable=True)
-    user_agent = Column(Text, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
-    
-    # Relationships
-    user = relationship("User", back_populates="audit_logs")
-    tenant = relationship("Tenant", back_populates="audit_logs")
-    
-    # Indexes
+    # Indexes for performance
     __table_args__ = (
-        Index('idx_audit_logs_timestamp', 'timestamp'),
-        Index('idx_audit_logs_user_timestamp', 'user_id', 'timestamp'),
-        Index('idx_audit_logs_tenant_timestamp', 'tenant_id', 'timestamp'),
-        Index('idx_audit_logs_action_timestamp', 'action', 'timestamp'),
+        Index('idx_tenant_name', 'name'),
+        Index('idx_tenant_domain', 'domain'),
+        Index('idx_tenant_admin_user_id', 'admin_user_id'),
     )
 
-class PasswordResetToken(Base):
-    """Password reset token database model"""
-    __tablename__ = "password_reset_tokens"
+
+class Session(Base):
+    """User session database model"""
+    __tablename__ = "sessions"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    token = Column(String(255), unique=True, nullable=False, index=True)
-    expires_at = Column(DateTime, nullable=False)
-    used = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(255), ForeignKey('users.id'), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    refresh_token: Mapped[str] = mapped_column(String(255), nullable=False)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    last_activity: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
-    # Relationships
-    user = relationship("User")
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_session_user_id', 'user_id'),
+        Index('idx_session_tenant_id', 'tenant_id'),
+        Index('idx_session_refresh_token', 'refresh_token'),
+        Index('idx_session_expires_at', 'expires_at'),
+        Index('idx_session_is_active', 'is_active'),
+    )
+
+
+class LoginAttempt(Base):
+    """Login attempt tracking model"""
+    __tablename__ = "login_attempts"
+    
+    id: Mapped[str] = mapped_column(String(255), primary_key=True, default=lambda: str(uuid.uuid4()))
+    username: Mapped[str] = mapped_column(String(50), nullable=False)
+    ip_address: Mapped[str] = mapped_column(String(45), nullable=False)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    failure_reason: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_login_attempt_username', 'username'),
+        Index('idx_login_attempt_ip_address', 'ip_address'),
+        Index('idx_login_attempt_created_at', 'created_at'),
+    )
+
 
 class DatabaseManager:
-    """Database manager for user management service"""
+    """Database connection and operation manager"""
     
     def __init__(self):
         self.engine = None
-        self.SessionLocal = None
-        self.pool = None
-        
+        self.session_factory = None
+        self._connection_pool = None
+    
     async def initialize(self):
-        """Initialize database connection and create tables"""
+        """Initialize database connections"""
         try:
-            # Create SQLAlchemy engine
-            self.engine = create_engine(
-                settings.postgres_url,
-                pool_size=10,
-                max_overflow=20,
-                pool_pre_ping=True,
+            # Create async engine
+            self.engine = create_async_engine(
+                settings.database_url,
+                pool_size=settings.database_pool_size,
+                max_overflow=settings.database_max_overflow,
                 echo=settings.debug
             )
             
             # Create session factory
-            self.SessionLocal = sessionmaker(
-                autocommit=False,
-                autoflush=False,
-                bind=self.engine
+            self.session_factory = async_sessionmaker(
+                bind=self.engine,
+                class_=AsyncSession,
+                expire_on_commit=False
             )
             
             # Create tables
-            Base.metadata.create_all(bind=self.engine)
+            async with self.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
             
-            # Create asyncpg connection pool for raw SQL operations
-            self.pool = await asyncpg.create_pool(
-                settings.postgres_url,
+            # Create connection pool for raw queries
+            self._connection_pool = await asyncpg.create_pool(
+                settings.database_url.replace("postgresql+asyncpg://", "postgresql://"),
                 min_size=5,
-                max_size=20,
-                command_timeout=60
+                max_size=settings.database_pool_size
             )
             
-            logger.info("Database initialized successfully")
-            
         except Exception as e:
-            logger.error(f"Failed to initialize database: {e}")
-            raise
+            raise Exception(f"Failed to initialize database: {str(e)}")
     
     async def close(self):
         """Close database connections"""
-        if self.pool:
-            await self.pool.close()
         if self.engine:
-            self.engine.dispose()
-        logger.info("Database connections closed")
+            await self.engine.dispose()
+        if self._connection_pool:
+            await self._connection_pool.close()
     
-    def get_session(self):
+    async def get_session(self) -> AsyncSession:
         """Get database session"""
-        return self.SessionLocal()
+        if not self.session_factory:
+            raise Exception("Database not initialized")
+        return self.session_factory()
     
-    async def execute_query(self, query: str, *args) -> List[Dict[str, Any]]:
-        """Execute raw SQL query"""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(query, *args)
-            return [dict(row) for row in rows]
+    async def get_connection(self):
+        """Get raw database connection"""
+        if not self._connection_pool:
+            raise Exception("Database not initialized")
+        return self._connection_pool.acquire()
     
-    async def execute_one(self, query: str, *args) -> Optional[Dict[str, Any]]:
-        """Execute query and return single row"""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(query, *args)
-            return dict(row) if row else None
+    # User operations
+    async def create_user(self, user_id: str, username: str, email: str, password_hash: str,
+                         full_name: Optional[str] = None, phone: Optional[str] = None,
+                         role: str = "user", tenant_id: str = None,
+                         auth_provider: str = "local", metadata: Optional[Dict[str, Any]] = None) -> bool:
+        """Create new user"""
+        try:
+            if tenant_id is None:
+                tenant_id = settings.default_tenant_id
+                
+            async with self.get_session() as session:
+                user = User(
+                    id=user_id,
+                    username=username,
+                    email=email,
+                    password_hash=password_hash,
+                    full_name=full_name,
+                    phone=phone,
+                    role=role,
+                    tenant_id=tenant_id,
+                    auth_provider=auth_provider,
+                    metadata=metadata
+                )
+                session.add(user)
+                await session.commit()
+                return True
+        except Exception as e:
+            if settings.debug:
+                print(f"Error creating user: {str(e)}")
+            return False
     
-    async def execute_command(self, query: str, *args) -> str:
-        """Execute command and return result"""
-        async with self.pool.acquire() as conn:
-            result = await conn.execute(query, *args)
-            return result
+    async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get user by ID"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(User, user_id)
+                if result:
+                    return {
+                        "id": result.id,
+                        "username": result.username,
+                        "email": result.email,
+                        "password_hash": result.password_hash,
+                        "full_name": result.full_name,
+                        "phone": result.phone,
+                        "role": result.role,
+                        "status": result.status,
+                        "tenant_id": result.tenant_id,
+                        "auth_provider": result.auth_provider,
+                        "email_verified": result.email_verified,
+                        "phone_verified": result.phone_verified,
+                        "last_login": result.last_login,
+                        "failed_login_attempts": result.failed_login_attempts,
+                        "locked_until": result.locked_until,
+                        "created_at": result.created_at,
+                        "updated_at": result.updated_at,
+                        "metadata": result.metadata
+                    }
+                return None
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting user by ID: {str(e)}")
+            return None
+    
+    async def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        """Get user by username"""
+        try:
+            async with self.get_connection() as conn:
+                row = await conn.fetchrow(
+                    "SELECT * FROM users WHERE username = $1",
+                    username
+                )
+                if row:
+                    return dict(row)
+                return None
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting user by username: {str(e)}")
+            return None
+    
+    async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """Get user by email"""
+        try:
+            async with self.get_connection() as conn:
+                row = await conn.fetchrow(
+                    "SELECT * FROM users WHERE email = $1",
+                    email
+                )
+                if row:
+                    return dict(row)
+                return None
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting user by email: {str(e)}")
+            return None
+    
+    async def update_user(self, user_id: str, **kwargs) -> bool:
+        """Update user"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(User, user_id)
+                if result:
+                    for key, value in kwargs.items():
+                        if hasattr(result, key):
+                            setattr(result, key, value)
+                    result.updated_at = datetime.utcnow()
+                    await session.commit()
+                    return True
+                return False
+        except Exception as e:
+            if settings.debug:
+                print(f"Error updating user: {str(e)}")
+            return False
+    
+    async def delete_user(self, user_id: str) -> bool:
+        """Delete user"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(User, user_id)
+                if result:
+                    await session.delete(result)
+                    await session.commit()
+                    return True
+                return False
+        except Exception as e:
+            if settings.debug:
+                print(f"Error deleting user: {str(e)}")
+            return False
+    
+    async def search_users(self, tenant_id: Optional[str] = None, role: Optional[str] = None,
+                          status: Optional[str] = None, search: Optional[str] = None,
+                          limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+        """Search users"""
+        try:
+            async with self.get_connection() as conn:
+                # Build query
+                base_query = "SELECT * FROM users WHERE 1=1"
+                params = []
+                param_count = 0
+                
+                if tenant_id:
+                    param_count += 1
+                    base_query += f" AND tenant_id = ${param_count}"
+                    params.append(tenant_id)
+                
+                if role:
+                    param_count += 1
+                    base_query += f" AND role = ${param_count}"
+                    params.append(role)
+                
+                if status:
+                    param_count += 1
+                    base_query += f" AND status = ${param_count}"
+                    params.append(status)
+                
+                if search:
+                    param_count += 1
+                    search_term = f"%{search}%"
+                    base_query += f" AND (username ILIKE ${param_count} OR email ILIKE ${param_count} OR full_name ILIKE ${param_count})"
+                    params.append(search_term)
+                
+                base_query += f" ORDER BY created_at DESC LIMIT ${param_count + 1} OFFSET ${param_count + 2}"
+                params.extend([limit, offset])
+                
+                rows = await conn.fetch(base_query, *params)
+                return [dict(row) for row in rows]
+                
+        except Exception as e:
+            if settings.debug:
+                print(f"Error searching users: {str(e)}")
+            return []
+    
+    async def get_user_count(self, tenant_id: Optional[str] = None) -> int:
+        """Get total user count"""
+        try:
+            async with self.get_connection() as conn:
+                if tenant_id:
+                    result = await conn.fetchval(
+                        "SELECT COUNT(*) FROM users WHERE tenant_id = $1",
+                        tenant_id
+                    )
+                else:
+                    result = await conn.fetchval("SELECT COUNT(*) FROM users")
+                return result or 0
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting user count: {str(e)}")
+            return 0
+    
+    # Tenant operations
+    async def create_tenant(self, tenant_id: str, name: str, description: Optional[str] = None,
+                           domain: Optional[str] = None, admin_user_id: Optional[str] = None,
+                           max_users: int = 1000, metadata: Optional[Dict[str, Any]] = None) -> bool:
+        """Create new tenant"""
+        try:
+            async with self.get_session() as session:
+                tenant = Tenant(
+                    id=tenant_id,
+                    name=name,
+                    description=description,
+                    domain=domain,
+                    admin_user_id=admin_user_id,
+                    max_users=max_users,
+                    metadata=metadata
+                )
+                session.add(tenant)
+                await session.commit()
+                return True
+        except Exception as e:
+            if settings.debug:
+                print(f"Error creating tenant: {str(e)}")
+            return False
+    
+    async def get_tenant(self, tenant_id: str) -> Optional[Dict[str, Any]]:
+        """Get tenant by ID"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Tenant, tenant_id)
+                if result:
+                    # Get user count
+                    user_count = await self.get_user_count(tenant_id)
+                    
+                    return {
+                        "id": result.id,
+                        "name": result.name,
+                        "description": result.description,
+                        "domain": result.domain,
+                        "admin_user_id": result.admin_user_id,
+                        "user_count": user_count,
+                        "max_users": result.max_users,
+                        "created_at": result.created_at,
+                        "updated_at": result.updated_at,
+                        "metadata": result.metadata
+                    }
+                return None
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting tenant: {str(e)}")
+            return None
+    
+    async def update_tenant(self, tenant_id: str, **kwargs) -> bool:
+        """Update tenant"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Tenant, tenant_id)
+                if result:
+                    for key, value in kwargs.items():
+                        if hasattr(result, key):
+                            setattr(result, key, value)
+                    result.updated_at = datetime.utcnow()
+                    await session.commit()
+                    return True
+                return False
+        except Exception as e:
+            if settings.debug:
+                print(f"Error updating tenant: {str(e)}")
+            return False
+    
+    async def delete_tenant(self, tenant_id: str) -> bool:
+        """Delete tenant"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Tenant, tenant_id)
+                if result:
+                    await session.delete(result)
+                    await session.commit()
+                    return True
+                return False
+        except Exception as e:
+            if settings.debug:
+                print(f"Error deleting tenant: {str(e)}")
+            return False
+    
+    async def get_tenant_count(self) -> int:
+        """Get total tenant count"""
+        try:
+            async with self.get_connection() as conn:
+                result = await conn.fetchval("SELECT COUNT(*) FROM tenants")
+                return result or 0
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting tenant count: {str(e)}")
+            return 0
+    
+    # Session operations
+    async def create_session(self, session_id: str, user_id: str, tenant_id: str,
+                           refresh_token: str, expires_at: datetime,
+                           ip_address: Optional[str] = None,
+                           user_agent: Optional[str] = None) -> bool:
+        """Create new session"""
+        try:
+            async with self.get_session() as session:
+                session_obj = Session(
+                    id=session_id,
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    refresh_token=refresh_token,
+                    expires_at=expires_at,
+                    ip_address=ip_address,
+                    user_agent=user_agent
+                )
+                session.add(session_obj)
+                await session.commit()
+                return True
+        except Exception as e:
+            if settings.debug:
+                print(f"Error creating session: {str(e)}")
+            return False
+    
+    async def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Get session by ID"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Session, session_id)
+                if result:
+                    return {
+                        "id": result.id,
+                        "user_id": result.user_id,
+                        "tenant_id": result.tenant_id,
+                        "refresh_token": result.refresh_token,
+                        "ip_address": result.ip_address,
+                        "user_agent": result.user_agent,
+                        "created_at": result.created_at,
+                        "expires_at": result.expires_at,
+                        "last_activity": result.last_activity,
+                        "is_active": result.is_active
+                    }
+                return None
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting session: {str(e)}")
+            return None
+    
+    async def update_session_activity(self, session_id: str) -> bool:
+        """Update session last activity"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Session, session_id)
+                if result:
+                    result.last_activity = datetime.utcnow()
+                    await session.commit()
+                    return True
+                return False
+        except Exception as e:
+            if settings.debug:
+                print(f"Error updating session activity: {str(e)}")
+            return False
+    
+    async def deactivate_session(self, session_id: str) -> bool:
+        """Deactivate session"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Session, session_id)
+                if result:
+                    result.is_active = False
+                    await session.commit()
+                    return True
+                return False
+        except Exception as e:
+            if settings.debug:
+                print(f"Error deactivating session: {str(e)}")
+            return False
+    
+    async def deactivate_user_sessions(self, user_id: str) -> int:
+        """Deactivate all user sessions"""
+        try:
+            async with self.get_session() as session:
+                result = await session.execute(
+                    "UPDATE sessions SET is_active = false WHERE user_id = $1",
+                    user_id
+                )
+                await session.commit()
+                return result.rowcount
+        except Exception as e:
+            if settings.debug:
+                print(f"Error deactivating user sessions: {str(e)}")
+            return 0
+    
+    async def cleanup_expired_sessions(self) -> int:
+        """Clean up expired sessions"""
+        try:
+            async with self.get_session() as session:
+                result = await session.execute(
+                    "UPDATE sessions SET is_active = false WHERE expires_at < NOW()"
+                )
+                await session.commit()
+                return result.rowcount
+        except Exception as e:
+            if settings.debug:
+                print(f"Error cleaning up expired sessions: {str(e)}")
+            return 0
+    
+    # Login attempt tracking
+    async def log_login_attempt(self, username: str, ip_address: str, success: bool,
+                               failure_reason: Optional[str] = None) -> bool:
+        """Log login attempt"""
+        try:
+            async with self.get_session() as session:
+                attempt = LoginAttempt(
+                    username=username,
+                    ip_address=ip_address,
+                    success=success,
+                    failure_reason=failure_reason
+                )
+                session.add(attempt)
+                await session.commit()
+                return True
+        except Exception as e:
+            if settings.debug:
+                print(f"Error logging login attempt: {str(e)}")
+            return False
+    
+    async def get_login_attempts_count(self, username: str, ip_address: str,
+                                     since: datetime) -> int:
+        """Get login attempts count since timestamp"""
+        try:
+            async with self.get_connection() as conn:
+                result = await conn.fetchval(
+                    "SELECT COUNT(*) FROM login_attempts WHERE username = $1 AND ip_address = $2 AND created_at > $3",
+                    username, ip_address, since
+                )
+                return result or 0
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting login attempts count: {str(e)}")
+            return 0
+    
+    # Statistics
+    async def get_user_stats(self) -> Dict[str, Any]:
+        """Get user statistics"""
+        try:
+            async with self.get_connection() as conn:
+                # Total users
+                total_users = await conn.fetchval("SELECT COUNT(*) FROM users")
+                
+                # Users by role
+                role_dist = await conn.fetch(
+                    "SELECT role, COUNT(*) FROM users GROUP BY role"
+                )
+                users_by_role = {row["role"]: row["count"] for row in role_dist}
+                
+                # Users by status
+                status_dist = await conn.fetch(
+                    "SELECT status, COUNT(*) FROM users GROUP BY status"
+                )
+                users_by_status = {row["status"]: row["count"] for row in status_dist}
+                
+                # Login attempts last hour
+                last_hour = datetime.utcnow() - timedelta(hours=1)
+                login_attempts_last_hour = await conn.fetchval(
+                    "SELECT COUNT(*) FROM login_attempts WHERE created_at > $1",
+                    last_hour
+                )
+                
+                return {
+                    "total_users": total_users or 0,
+                    "users_by_role": users_by_role,
+                    "users_by_status": users_by_status,
+                    "login_attempts_last_hour": login_attempts_last_hour or 0
+                }
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting user stats: {str(e)}")
+            return {
+                "total_users": 0,
+                "users_by_role": {},
+                "users_by_status": {},
+                "login_attempts_last_hour": 0
+            }
+
 
 # Global database manager instance
 db_manager = DatabaseManager()
-
-# Database utility functions
-async def get_user_by_id(user_id: uuid.UUID) -> Optional[Dict[str, Any]]:
-    """Get user by ID"""
-    query = """
-        SELECT u.*, t.name as tenant_name, t.domain as tenant_domain
-        FROM users u
-        LEFT JOIN tenants t ON u.tenant_id = t.id
-        WHERE u.id = $1
-    """
-    return await db_manager.execute_one(query, user_id)
-
-async def get_user_by_email(email: str, tenant_id: Optional[uuid.UUID] = None) -> Optional[Dict[str, Any]]:
-    """Get user by email"""
-    if tenant_id:
-        query = """
-            SELECT u.*, t.name as tenant_name, t.domain as tenant_domain
-            FROM users u
-            LEFT JOIN tenants t ON u.tenant_id = t.id
-            WHERE u.email = $1 AND u.tenant_id = $2
-        """
-        return await db_manager.execute_one(query, email, tenant_id)
-    else:
-        query = """
-            SELECT u.*, t.name as tenant_name, t.domain as tenant_domain
-            FROM users u
-            LEFT JOIN tenants t ON u.tenant_id = t.id
-            WHERE u.email = $1
-        """
-        return await db_manager.execute_one(query, email)
-
-async def get_user_by_username(username: str, tenant_id: Optional[uuid.UUID] = None) -> Optional[Dict[str, Any]]:
-    """Get user by username"""
-    if tenant_id:
-        query = """
-            SELECT u.*, t.name as tenant_name, t.domain as tenant_domain
-            FROM users u
-            LEFT JOIN tenants t ON u.tenant_id = t.id
-            WHERE u.username = $1 AND u.tenant_id = $2
-        """
-        return await db_manager.execute_one(query, username, tenant_id)
-    else:
-        query = """
-            SELECT u.*, t.name as tenant_name, t.domain as tenant_domain
-            FROM users u
-            LEFT JOIN tenants t ON u.tenant_id = t.id
-            WHERE u.username = $1
-        """
-        return await db_manager.execute_one(query, username)
-
-async def get_tenant_by_id(tenant_id: uuid.UUID) -> Optional[Dict[str, Any]]:
-    """Get tenant by ID"""
-    query = """
-        SELECT t.*, COUNT(u.id) as user_count
-        FROM tenants t
-        LEFT JOIN users u ON t.id = u.tenant_id
-        WHERE t.id = $1
-        GROUP BY t.id
-    """
-    return await db_manager.execute_one(query, tenant_id)
-
-async def get_tenant_by_domain(domain: str) -> Optional[Dict[str, Any]]:
-    """Get tenant by domain"""
-    query = """
-        SELECT t.*, COUNT(u.id) as user_count
-        FROM tenants t
-        LEFT JOIN users u ON t.id = u.tenant_id
-        WHERE t.domain = $1
-        GROUP BY t.id
-    """
-    return await db_manager.execute_one(query, domain)
-
-async def search_users(
-    query: Optional[str] = None,
-    role: Optional[str] = None,
-    status: Optional[str] = None,
-    tenant_id: Optional[uuid.UUID] = None,
-    page: int = 1,
-    size: int = 10
-) -> Tuple[List[Dict[str, Any]], int]:
-    """Search users with pagination"""
-    offset = (page - 1) * size
-    
-    # Build WHERE clause
-    where_conditions = []
-    params = []
-    param_count = 0
-    
-    if query:
-        param_count += 1
-        where_conditions.append(f"(u.email ILIKE ${param_count} OR u.username ILIKE ${param_count} OR u.first_name ILIKE ${param_count} OR u.last_name ILIKE ${param_count})")
-        params.append(f"%{query}%")
-    
-    if role:
-        param_count += 1
-        where_conditions.append(f"u.role = ${param_count}")
-        params.append(role)
-    
-    if status:
-        param_count += 1
-        where_conditions.append(f"u.status = ${param_count}")
-        params.append(status)
-    
-    if tenant_id:
-        param_count += 1
-        where_conditions.append(f"u.tenant_id = ${param_count}")
-        params.append(tenant_id)
-    
-    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
-    
-    # Get total count
-    count_query = f"""
-        SELECT COUNT(*)
-        FROM users u
-        WHERE {where_clause}
-    """
-    total = await db_manager.execute_one(count_query, *params)
-    total_count = total['count'] if total else 0
-    
-    # Get users
-    param_count += 1
-    params.append(size)
-    param_count += 1
-    params.append(offset)
-    
-    users_query = f"""
-        SELECT u.*, t.name as tenant_name, t.domain as tenant_domain
-        FROM users u
-        LEFT JOIN tenants t ON u.tenant_id = t.id
-        WHERE {where_clause}
-        ORDER BY u.created_at DESC
-        LIMIT ${param_count - 1} OFFSET ${param_count}
-    """
-    
-    users = await db_manager.execute_query(users_query, *params)
-    return users, total_count
-
-async def search_tenants(
-    query: Optional[str] = None,
-    status: Optional[str] = None,
-    page: int = 1,
-    size: int = 10
-) -> Tuple[List[Dict[str, Any]], int]:
-    """Search tenants with pagination"""
-    offset = (page - 1) * size
-    
-    # Build WHERE clause
-    where_conditions = []
-    params = []
-    param_count = 0
-    
-    if query:
-        param_count += 1
-        where_conditions.append(f"(t.name ILIKE ${param_count} OR t.description ILIKE ${param_count})")
-        params.append(f"%{query}%")
-    
-    if status:
-        param_count += 1
-        where_conditions.append(f"t.status = ${param_count}")
-        params.append(status)
-    
-    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
-    
-    # Get total count
-    count_query = f"""
-        SELECT COUNT(*)
-        FROM tenants t
-        WHERE {where_clause}
-    """
-    total = await db_manager.execute_one(count_query, *params)
-    total_count = total['count'] if total else 0
-    
-    # Get tenants
-    param_count += 1
-    params.append(size)
-    param_count += 1
-    params.append(offset)
-    
-    tenants_query = f"""
-        SELECT t.*, COUNT(u.id) as user_count
-        FROM tenants t
-        LEFT JOIN users u ON t.id = u.tenant_id
-        WHERE {where_clause}
-        GROUP BY t.id
-        ORDER BY t.created_at DESC
-        LIMIT ${param_count - 1} OFFSET ${param_count}
-    """
-    
-    tenants = await db_manager.execute_query(tenants_query, *params)
-    return tenants, total_count
-
-async def create_audit_log(
-    user_id: Optional[uuid.UUID],
-    tenant_id: Optional[uuid.UUID],
-    action: str,
-    resource_type: str,
-    resource_id: Optional[str] = None,
-    details: Optional[Dict[str, Any]] = None,
-    ip_address: Optional[str] = None,
-    user_agent: Optional[str] = None
-):
-    """Create audit log entry"""
-    query = """
-        INSERT INTO audit_logs (user_id, tenant_id, action, resource_type, resource_id, details, ip_address, user_agent)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    """
-    await db_manager.execute_command(
-        query,
-        user_id,
-        tenant_id,
-        action,
-        resource_type,
-        resource_id,
-        json.dumps(details) if details else None,
-        ip_address,
-        user_agent
-    )
-
-async def get_audit_logs(
-    user_id: Optional[uuid.UUID] = None,
-    tenant_id: Optional[uuid.UUID] = None,
-    action: Optional[str] = None,
-    resource_type: Optional[str] = None,
-    page: int = 1,
-    size: int = 10
-) -> Tuple[List[Dict[str, Any]], int]:
-    """Get audit logs with pagination"""
-    offset = (page - 1) * size
-    
-    # Build WHERE clause
-    where_conditions = []
-    params = []
-    param_count = 0
-    
-    if user_id:
-        param_count += 1
-        where_conditions.append(f"user_id = ${param_count}")
-        params.append(user_id)
-    
-    if tenant_id:
-        param_count += 1
-        where_conditions.append(f"tenant_id = ${param_count}")
-        params.append(tenant_id)
-    
-    if action:
-        param_count += 1
-        where_conditions.append(f"action = ${param_count}")
-        params.append(action)
-    
-    if resource_type:
-        param_count += 1
-        where_conditions.append(f"resource_type = ${param_count}")
-        params.append(resource_type)
-    
-    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
-    
-    # Get total count
-    count_query = f"""
-        SELECT COUNT(*)
-        FROM audit_logs
-        WHERE {where_clause}
-    """
-    total = await db_manager.execute_one(count_query, *params)
-    total_count = total['count'] if total else 0
-    
-    # Get audit logs
-    param_count += 1
-    params.append(size)
-    param_count += 1
-    params.append(offset)
-    
-    logs_query = f"""
-        SELECT *
-        FROM audit_logs
-        WHERE {where_clause}
-        ORDER BY timestamp DESC
-        LIMIT ${param_count - 1} OFFSET ${param_count}
-    """
-    
-    logs = await db_manager.execute_query(logs_query, *params)
-    return logs, total_count

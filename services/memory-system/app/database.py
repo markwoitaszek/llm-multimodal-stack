@@ -1,517 +1,606 @@
 """
-Database operations for the memory system service
+Memory System Database Operations
 """
-import logging
-import uuid
+import asyncio
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
 import asyncpg
-from asyncpg import Connection, Pool
-from contextlib import asynccontextmanager
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column
+from sqlalchemy import String, Text, DateTime, Float, Integer, JSON, Index, Boolean
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
-from .config import settings
-from .models import (
-    ConversationCreate, ConversationUpdate, ConversationResponse,
-    MessageCreate, MessageResponse, MessageRole,
-    KnowledgeCreate, KnowledgeUpdate, KnowledgeResponse, KnowledgeCategory,
-    MemorySummary, MemoryStats
-)
+from app.config import settings
 
-logger = logging.getLogger(__name__)
+Base = declarative_base()
+
+
+class Memory(Base):
+    """Memory database model"""
+    __tablename__ = "memories"
+    
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    memory_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    importance: Mapped[str] = mapped_column(String(20), nullable=False)
+    tags: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
+    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    embedding: Mapped[Optional[List[float]]] = mapped_column(JSON, nullable=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    session_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    related_memory_ids: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    accessed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    access_count: Mapped[int] = mapped_column(Integer, default=0)
+    consolidated: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_memory_type', 'memory_type'),
+        Index('idx_importance', 'importance'),
+        Index('idx_user_id', 'user_id'),
+        Index('idx_session_id', 'session_id'),
+        Index('idx_created_at', 'created_at'),
+        Index('idx_updated_at', 'updated_at'),
+        Index('idx_accessed_at', 'accessed_at'),
+        Index('idx_consolidated', 'consolidated'),
+    )
+
+
+class Conversation(Base):
+    """Conversation database model"""
+    __tablename__ = "conversations"
+    
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    messages: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    session_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    context: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    accessed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    access_count: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_conversation_user_id', 'user_id'),
+        Index('idx_conversation_session_id', 'session_id'),
+        Index('idx_conversation_created_at', 'created_at'),
+        Index('idx_conversation_updated_at', 'updated_at'),
+    )
+
+
+class MemoryAccessLog(Base):
+    """Memory access log"""
+    __tablename__ = "memory_access_logs"
+    
+    id: Mapped[str] = mapped_column(String(255), primary_key=True, default=lambda: str(uuid.uuid4()))
+    memory_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    access_type: Mapped[str] = mapped_column(String(50), nullable=False)  # read, update, delete
+    user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    session_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
 
 class DatabaseManager:
-    """Manages PostgreSQL database operations for memory system"""
+    """Database connection and operation manager"""
     
     def __init__(self):
-        self.pool: Optional[Pool] = None
-        self.is_initialized = False
+        self.engine = None
+        self.session_factory = None
+        self._connection_pool = None
     
     async def initialize(self):
-        """Initialize database connection pool"""
+        """Initialize database connections"""
         try:
-            self.pool = await asyncpg.create_pool(
-                settings.postgres_url,
-                min_size=5,
-                max_size=20,
-                command_timeout=60
+            # Create async engine
+            self.engine = create_async_engine(
+                settings.database_url,
+                pool_size=settings.database_pool_size,
+                max_overflow=settings.database_max_overflow,
+                echo=settings.debug
             )
-            await self._create_tables()
-            self.is_initialized = True
-            logger.info("Database connection pool initialized")
+            
+            # Create session factory
+            self.session_factory = async_sessionmaker(
+                bind=self.engine,
+                class_=AsyncSession,
+                expire_on_commit=False
+            )
+            
+            # Create tables
+            async with self.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            
+            # Create connection pool for raw queries
+            self._connection_pool = await asyncpg.create_pool(
+                settings.database_url.replace("postgresql+asyncpg://", "postgresql://"),
+                min_size=5,
+                max_size=settings.database_pool_size
+            )
+            
         except Exception as e:
-            logger.error(f"Failed to initialize database: {e}")
-            raise
+            raise Exception(f"Failed to initialize database: {str(e)}")
     
     async def close(self):
-        """Close database connection pool"""
-        if self.pool:
-            await self.pool.close()
-            logger.info("Database connection pool closed")
+        """Close database connections"""
+        if self.engine:
+            await self.engine.dispose()
+        if self._connection_pool:
+            await self._connection_pool.close()
     
-    async def _create_tables(self):
-        """Create database tables if they don't exist"""
-        async with self.pool.acquire() as conn:
-            # Conversations table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS conversations (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    agent_id VARCHAR(255) NOT NULL,
-                    title VARCHAR(500),
-                    is_active BOOLEAN DEFAULT true,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    metadata JSONB
-                )
-            """)
-            
-            # Create indexes for conversations
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_conversations_agent_id ON conversations(agent_id)
-            """)
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_conversations_active ON conversations(is_active)
-            """)
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(created_at)
-            """)
-            
-            # Messages table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS messages (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-                    role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system', 'tool')),
-                    content TEXT NOT NULL,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    metadata JSONB
-                )
-            """)
-            
-            # Create indexes for messages
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)
-            """)
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at)
-            """)
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_messages_role ON messages(role)
-            """)
-            
-            # Knowledge base table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS knowledge_base (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    agent_id VARCHAR(255) NOT NULL,
-                    category VARCHAR(50) NOT NULL CHECK (category IN ('fact', 'procedure', 'preference', 'context', 'reference')),
-                    title VARCHAR(500) NOT NULL,
-                    content TEXT NOT NULL,
-                    tags TEXT[],
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    metadata JSONB,
-                    source VARCHAR(500)
-                )
-            """)
-            
-            # Create indexes for knowledge base
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_knowledge_agent_id ON knowledge_base(agent_id)
-            """)
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_knowledge_category ON knowledge_base(category)
-            """)
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_knowledge_tags ON knowledge_base USING GIN(tags)
-            """)
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_knowledge_created ON knowledge_base(created_at)
-            """)
-            
-            # Memory summaries table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS memory_summaries (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    agent_id VARCHAR(255) NOT NULL,
-                    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-                    summary_type VARCHAR(100) NOT NULL,
-                    content TEXT NOT NULL,
-                    message_range_start INTEGER NOT NULL,
-                    message_range_end INTEGER NOT NULL,
-                    relevance_score FLOAT DEFAULT 0.0,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                )
-            """)
-            
-            # Create indexes for memory summaries
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_summaries_agent_id ON memory_summaries(agent_id)
-            """)
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_summaries_conversation ON memory_summaries(conversation_id)
-            """)
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_summaries_relevance ON memory_summaries(relevance_score)
-            """)
-            
-            # Create indexes for better performance
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_conversations_agent_active 
-                ON conversations(agent_id, is_active) WHERE is_active = true
-            """)
-            
-            await conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_messages_conversation_created 
-                ON messages(conversation_id, created_at)
-            """)
-            
-            logger.info("Database tables created successfully")
+    async def get_session(self) -> AsyncSession:
+        """Get database session"""
+        if not self.session_factory:
+            raise Exception("Database not initialized")
+        return self.session_factory()
     
-    @asynccontextmanager
     async def get_connection(self):
-        """Get database connection from pool"""
-        if not self.pool:
-            raise RuntimeError("Database not initialized")
-        async with self.pool.acquire() as conn:
-            yield conn
+        """Get raw database connection"""
+        if not self._connection_pool:
+            raise Exception("Database not initialized")
+        return self._connection_pool.acquire()
+    
+    # Memory operations
+    async def create_memory(self, memory_id: str, content: str, memory_type: str,
+                          importance: str, tags: Optional[List[str]] = None,
+                          metadata: Optional[Dict[str, Any]] = None,
+                          embedding: Optional[List[float]] = None,
+                          user_id: Optional[str] = None,
+                          session_id: Optional[str] = None,
+                          related_memory_ids: Optional[List[str]] = None) -> bool:
+        """Create new memory"""
+        try:
+            async with self.get_session() as session:
+                memory = Memory(
+                    id=memory_id,
+                    content=content,
+                    memory_type=memory_type,
+                    importance=importance,
+                    tags=tags,
+                    metadata=metadata,
+                    embedding=embedding,
+                    user_id=user_id,
+                    session_id=session_id,
+                    related_memory_ids=related_memory_ids
+                )
+                session.add(memory)
+                await session.commit()
+                return True
+        except Exception as e:
+            if settings.debug:
+                print(f"Error creating memory: {str(e)}")
+            return False
+    
+    async def get_memory(self, memory_id: str) -> Optional[Dict[str, Any]]:
+        """Get memory by ID"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Memory, memory_id)
+                if result:
+                    # Update access tracking
+                    result.accessed_at = datetime.utcnow()
+                    result.access_count += 1
+                    await session.commit()
+                    
+                    return {
+                        "id": result.id,
+                        "content": result.content,
+                        "memory_type": result.memory_type,
+                        "importance": result.importance,
+                        "tags": result.tags,
+                        "metadata": result.metadata,
+                        "embedding": result.embedding,
+                        "user_id": result.user_id,
+                        "session_id": result.session_id,
+                        "related_memory_ids": result.related_memory_ids,
+                        "created_at": result.created_at,
+                        "updated_at": result.updated_at,
+                        "accessed_at": result.accessed_at,
+                        "access_count": result.access_count,
+                        "consolidated": result.consolidated
+                    }
+                return None
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting memory: {str(e)}")
+            return None
+    
+    async def update_memory(self, memory_id: str, content: Optional[str] = None,
+                          memory_type: Optional[str] = None,
+                          importance: Optional[str] = None,
+                          tags: Optional[List[str]] = None,
+                          metadata: Optional[Dict[str, Any]] = None,
+                          embedding: Optional[List[float]] = None) -> bool:
+        """Update existing memory"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Memory, memory_id)
+                if result:
+                    if content is not None:
+                        result.content = content
+                    if memory_type is not None:
+                        result.memory_type = memory_type
+                    if importance is not None:
+                        result.importance = importance
+                    if tags is not None:
+                        result.tags = tags
+                    if metadata is not None:
+                        result.metadata = metadata
+                    if embedding is not None:
+                        result.embedding = embedding
+                    result.updated_at = datetime.utcnow()
+                    await session.commit()
+                    return True
+                return False
+        except Exception as e:
+            if settings.debug:
+                print(f"Error updating memory: {str(e)}")
+            return False
+    
+    async def delete_memory(self, memory_id: str) -> bool:
+        """Delete memory by ID"""
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Memory, memory_id)
+                if result:
+                    await session.delete(result)
+                    await session.commit()
+                    return True
+                return False
+        except Exception as e:
+            if settings.debug:
+                print(f"Error deleting memory: {str(e)}")
+            return False
+    
+    async def search_memories(self, query: str, memory_types: Optional[List[str]] = None,
+                            importance_levels: Optional[List[str]] = None,
+                            tags: Optional[List[str]] = None,
+                            user_id: Optional[str] = None,
+                            session_id: Optional[str] = None,
+                            limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
+        """Search memories using full-text search"""
+        try:
+            async with self.get_connection() as conn:
+                # Build query
+                base_query = """
+                    SELECT id, content, memory_type, importance, tags, metadata, 
+                           user_id, session_id, related_memory_ids, created_at, updated_at,
+                           accessed_at, access_count, consolidated,
+                           ts_rank(to_tsvector('english', content), plainto_tsquery('english', $1)) as rank
+                    FROM memories
+                    WHERE to_tsvector('english', content) @@ plainto_tsquery('english', $1)
+                """
+                
+                params = [query]
+                param_count = 1
+                
+                if memory_types:
+                    param_count += 1
+                    base_query += f" AND memory_type = ANY(${param_count})"
+                    params.append(memory_types)
+                
+                if importance_levels:
+                    param_count += 1
+                    base_query += f" AND importance = ANY(${param_count})"
+                    params.append(importance_levels)
+                
+                if user_id:
+                    param_count += 1
+                    base_query += f" AND user_id = ${param_count}"
+                    params.append(user_id)
+                
+                if session_id:
+                    param_count += 1
+                    base_query += f" AND session_id = ${param_count}"
+                    params.append(session_id)
+                
+                base_query += f" ORDER BY rank DESC LIMIT ${param_count + 1} OFFSET ${param_count + 2}"
+                params.extend([limit, offset])
+                
+                rows = await conn.fetch(base_query, *params)
+                
+                return [
+                    {
+                        "id": row["id"],
+                        "content": row["content"],
+                        "memory_type": row["memory_type"],
+                        "importance": row["importance"],
+                        "tags": row["tags"],
+                        "metadata": row["metadata"],
+                        "user_id": row["user_id"],
+                        "session_id": row["session_id"],
+                        "related_memory_ids": row["related_memory_ids"],
+                        "created_at": row["created_at"],
+                        "updated_at": row["updated_at"],
+                        "accessed_at": row["accessed_at"],
+                        "access_count": row["access_count"],
+                        "consolidated": row["consolidated"],
+                        "score": float(row["rank"])
+                    }
+                    for row in rows
+                ]
+        except Exception as e:
+            if settings.debug:
+                print(f"Error searching memories: {str(e)}")
+            return []
+    
+    async def get_memory_count(self, memory_type: Optional[str] = None,
+                             importance: Optional[str] = None,
+                             user_id: Optional[str] = None) -> int:
+        """Get total memory count"""
+        try:
+            async with self.get_connection() as conn:
+                where_conditions = []
+                params = []
+                
+                if memory_type:
+                    where_conditions.append("memory_type = $1")
+                    params.append(memory_type)
+                
+                if importance:
+                    param_count = len(params) + 1
+                    where_conditions.append(f"importance = ${param_count}")
+                    params.append(importance)
+                
+                if user_id:
+                    param_count = len(params) + 1
+                    where_conditions.append(f"user_id = ${param_count}")
+                    params.append(user_id)
+                
+                where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+                
+                result = await conn.fetchval(f"SELECT COUNT(*) FROM memories {where_clause}", *params)
+                return result or 0
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting memory count: {str(e)}")
+            return 0
     
     # Conversation operations
-    async def create_conversation(self, conv_data: ConversationCreate) -> str:
-        """Create a new conversation"""
-        async with self.get_connection() as conn:
-            conv_id = await conn.fetchval("""
-                INSERT INTO conversations (agent_id, title, metadata)
-                VALUES ($1, $2, $3)
-                RETURNING id
-            """, conv_data.agent_id, conv_data.title, conv_data.metadata)
-            return str(conv_id)
+    async def create_conversation(self, conversation_id: str, messages: List[Dict[str, Any]],
+                                user_id: Optional[str] = None,
+                                session_id: Optional[str] = None,
+                                context: Optional[Dict[str, Any]] = None,
+                                summary: Optional[str] = None) -> bool:
+        """Create new conversation"""
+        try:
+            async with self.get_session() as session:
+                conversation = Conversation(
+                    id=conversation_id,
+                    messages=messages,
+                    user_id=user_id,
+                    session_id=session_id,
+                    context=context,
+                    summary=summary
+                )
+                session.add(conversation)
+                await session.commit()
+                return True
+        except Exception as e:
+            if settings.debug:
+                print(f"Error creating conversation: {str(e)}")
+            return False
     
-    async def get_conversation(self, conv_id: str) -> Optional[Dict[str, Any]]:
+    async def get_conversation(self, conversation_id: str) -> Optional[Dict[str, Any]]:
         """Get conversation by ID"""
-        async with self.get_connection() as conn:
-            row = await conn.fetchrow("""
-                SELECT c.*, COUNT(m.id) as message_count
-                FROM conversations c
-                LEFT JOIN messages m ON c.id = m.conversation_id
-                WHERE c.id = $1
-                GROUP BY c.id
-            """, uuid.UUID(conv_id))
-            return dict(row) if row else None
+        try:
+            async with self.get_session() as session:
+                result = await session.get(Conversation, conversation_id)
+                if result:
+                    # Update access tracking
+                    result.accessed_at = datetime.utcnow()
+                    result.access_count += 1
+                    await session.commit()
+                    
+                    return {
+                        "id": result.id,
+                        "messages": result.messages,
+                        "user_id": result.user_id,
+                        "session_id": result.session_id,
+                        "context": result.context,
+                        "summary": result.summary,
+                        "created_at": result.created_at,
+                        "updated_at": result.updated_at,
+                        "accessed_at": result.accessed_at,
+                        "access_count": result.access_count
+                    }
+                return None
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting conversation: {str(e)}")
+            return None
     
-    async def update_conversation(self, conv_id: str, update_data: ConversationUpdate) -> bool:
-        """Update conversation"""
-        async with self.get_connection() as conn:
-            # Build dynamic update query
-            updates = []
-            params = []
-            param_count = 1
-            
-            if update_data.title is not None:
-                updates.append(f"title = ${param_count}")
-                params.append(update_data.title)
-                param_count += 1
-            
-            if update_data.metadata is not None:
-                updates.append(f"metadata = ${param_count}")
-                params.append(update_data.metadata)
-                param_count += 1
-            
-            if update_data.is_active is not None:
-                updates.append(f"is_active = ${param_count}")
-                params.append(update_data.is_active)
-                param_count += 1
-            
-            if not updates:
+    async def get_conversations_by_session(self, session_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get conversations by session ID"""
+        try:
+            async with self.get_connection() as conn:
+                rows = await conn.fetch(
+                    "SELECT * FROM conversations WHERE session_id = $1 ORDER BY created_at DESC LIMIT $2",
+                    session_id, limit
+                )
+                
+                return [
+                    {
+                        "id": row["id"],
+                        "messages": row["messages"],
+                        "user_id": row["user_id"],
+                        "session_id": row["session_id"],
+                        "context": row["context"],
+                        "summary": row["summary"],
+                        "created_at": row["created_at"],
+                        "updated_at": row["updated_at"],
+                        "accessed_at": row["accessed_at"],
+                        "access_count": row["access_count"]
+                    }
+                    for row in rows
+                ]
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting conversations by session: {str(e)}")
+            return []
+    
+    async def get_conversation_count(self, user_id: Optional[str] = None) -> int:
+        """Get total conversation count"""
+        try:
+            async with self.get_connection() as conn:
+                if user_id:
+                    result = await conn.fetchval(
+                        "SELECT COUNT(*) FROM conversations WHERE user_id = $1",
+                        user_id
+                    )
+                else:
+                    result = await conn.fetchval("SELECT COUNT(*) FROM conversations")
+                return result or 0
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting conversation count: {str(e)}")
+            return 0
+    
+    # Memory consolidation operations
+    async def get_memories_for_consolidation(self, user_id: Optional[str] = None,
+                                           session_id: Optional[str] = None,
+                                           memory_types: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """Get memories that need consolidation"""
+        try:
+            async with self.get_connection() as conn:
+                base_query = """
+                    SELECT * FROM memories 
+                    WHERE consolidated = false
+                """
+                
+                params = []
+                param_count = 0
+                
+                if user_id:
+                    param_count += 1
+                    base_query += f" AND user_id = ${param_count}"
+                    params.append(user_id)
+                
+                if session_id:
+                    param_count += 1
+                    base_query += f" AND session_id = ${param_count}"
+                    params.append(session_id)
+                
+                if memory_types:
+                    param_count += 1
+                    base_query += f" AND memory_type = ANY(${param_count})"
+                    params.append(memory_types)
+                
+                base_query += " ORDER BY created_at ASC LIMIT $1"
+                params.insert(0, settings.memory_consolidation_threshold)
+                
+                rows = await conn.fetch(base_query, *params)
+                
+                return [
+                    {
+                        "id": row["id"],
+                        "content": row["content"],
+                        "memory_type": row["memory_type"],
+                        "importance": row["importance"],
+                        "tags": row["tags"],
+                        "metadata": row["metadata"],
+                        "user_id": row["user_id"],
+                        "session_id": row["session_id"],
+                        "created_at": row["created_at"]
+                    }
+                    for row in rows
+                ]
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting memories for consolidation: {str(e)}")
+            return []
+    
+    async def mark_memories_consolidated(self, memory_ids: List[str]) -> bool:
+        """Mark memories as consolidated"""
+        try:
+            async with self.get_session() as session:
+                for memory_id in memory_ids:
+                    result = await session.get(Memory, memory_id)
+                    if result:
+                        result.consolidated = True
+                        result.updated_at = datetime.utcnow()
+                await session.commit()
                 return True
-            
-            updates.append(f"updated_at = ${param_count}")
-            params.append(datetime.utcnow())
-            params.append(uuid.UUID(conv_id))
-            
-            result = await conn.execute(f"""
-                UPDATE conversations 
-                SET {', '.join(updates)}
-                WHERE id = ${param_count + 1}
-            """, *params)
-            
-            return result == "UPDATE 1"
+        except Exception as e:
+            if settings.debug:
+                print(f"Error marking memories consolidated: {str(e)}")
+            return False
     
-    async def delete_conversation(self, conv_id: str) -> bool:
-        """Delete conversation and all related data"""
-        async with self.get_connection() as conn:
-            result = await conn.execute("""
-                DELETE FROM conversations WHERE id = $1
-            """, uuid.UUID(conv_id))
-            return result == "DELETE 1"
-    
-    async def list_conversations(self, agent_id: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
-        """List conversations for an agent"""
-        async with self.get_connection() as conn:
-            rows = await conn.fetch("""
-                SELECT c.*, COUNT(m.id) as message_count
-                FROM conversations c
-                LEFT JOIN messages m ON c.id = m.conversation_id
-                WHERE c.agent_id = $1
-                GROUP BY c.id
-                ORDER BY c.updated_at DESC
-                LIMIT $2 OFFSET $3
-            """, agent_id, limit, offset)
-            return [dict(row) for row in rows]
-    
-    # Message operations
-    async def add_message(self, msg_data: MessageCreate) -> str:
-        """Add a message to a conversation"""
-        async with self.get_connection() as conn:
-            msg_id = await conn.fetchval("""
-                INSERT INTO messages (conversation_id, role, content, metadata)
-                VALUES ($1, $2, $3, $4)
-                RETURNING id
-            """, uuid.UUID(msg_data.conversation_id), msg_data.role.value, 
-                msg_data.content, msg_data.metadata)
-            
-            # Update conversation updated_at
-            await conn.execute("""
-                UPDATE conversations 
-                SET updated_at = NOW()
-                WHERE id = $1
-            """, uuid.UUID(msg_data.conversation_id))
-            
-            return str(msg_id)
-    
-    async def get_messages(self, conv_id: str, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
-        """Get messages for a conversation"""
-        async with self.get_connection() as conn:
-            rows = await conn.fetch("""
-                SELECT * FROM messages
-                WHERE conversation_id = $1
-                ORDER BY created_at ASC
-                LIMIT $2 OFFSET $3
-            """, uuid.UUID(conv_id), limit, offset)
-            return [dict(row) for row in rows]
-    
-    async def get_recent_messages(self, conv_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get recent messages for a conversation"""
-        async with self.get_connection() as conn:
-            rows = await conn.fetch("""
-                SELECT * FROM messages
-                WHERE conversation_id = $1
-                ORDER BY created_at DESC
-                LIMIT $2
-            """, uuid.UUID(conv_id), limit)
-            return [dict(row) for row in reversed(rows)]  # Return in chronological order
-    
-    # Knowledge base operations
-    async def create_knowledge(self, knowledge_data: KnowledgeCreate) -> str:
-        """Create a new knowledge base entry"""
-        async with self.get_connection() as conn:
-            knowledge_id = await conn.fetchval("""
-                INSERT INTO knowledge_base (agent_id, category, title, content, tags, metadata, source)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING id
-            """, knowledge_data.agent_id, knowledge_data.category.value, 
-                knowledge_data.title, knowledge_data.content, knowledge_data.tags,
-                knowledge_data.metadata, knowledge_data.source)
-            return str(knowledge_id)
-    
-    async def get_knowledge(self, knowledge_id: str) -> Optional[Dict[str, Any]]:
-        """Get knowledge base entry by ID"""
-        async with self.get_connection() as conn:
-            row = await conn.fetchrow("""
-                SELECT * FROM knowledge_base WHERE id = $1
-            """, uuid.UUID(knowledge_id))
-            return dict(row) if row else None
-    
-    async def update_knowledge(self, knowledge_id: str, update_data: KnowledgeUpdate) -> bool:
-        """Update knowledge base entry"""
-        async with self.get_connection() as conn:
-            updates = []
-            params = []
-            param_count = 1
-            
-            if update_data.title is not None:
-                updates.append(f"title = ${param_count}")
-                params.append(update_data.title)
-                param_count += 1
-            
-            if update_data.content is not None:
-                updates.append(f"content = ${param_count}")
-                params.append(update_data.content)
-                param_count += 1
-            
-            if update_data.category is not None:
-                updates.append(f"category = ${param_count}")
-                params.append(update_data.category.value)
-                param_count += 1
-            
-            if update_data.tags is not None:
-                updates.append(f"tags = ${param_count}")
-                params.append(update_data.tags)
-                param_count += 1
-            
-            if update_data.metadata is not None:
-                updates.append(f"metadata = ${param_count}")
-                params.append(update_data.metadata)
-                param_count += 1
-            
-            if not updates:
-                return True
-            
-            updates.append(f"updated_at = ${param_count}")
-            params.append(datetime.utcnow())
-            params.append(uuid.UUID(knowledge_id))
-            
-            result = await conn.execute(f"""
-                UPDATE knowledge_base 
-                SET {', '.join(updates)}
-                WHERE id = ${param_count + 1}
-            """, *params)
-            
-            return result == "UPDATE 1"
-    
-    async def delete_knowledge(self, knowledge_id: str) -> bool:
-        """Delete knowledge base entry"""
-        async with self.get_connection() as conn:
-            result = await conn.execute("""
-                DELETE FROM knowledge_base WHERE id = $1
-            """, uuid.UUID(knowledge_id))
-            return result == "DELETE 1"
-    
-    async def search_knowledge(self, agent_id: str, query: str, category: Optional[str] = None,
-                              tags: Optional[List[str]] = None, limit: int = 10) -> List[Dict[str, Any]]:
-        """Search knowledge base entries"""
-        async with self.get_connection() as conn:
-            # Build search query with text search
-            search_conditions = ["agent_id = $1", "to_tsvector('english', title || ' ' || content) @@ plainto_tsquery('english', $2)"]
-            params = [agent_id, query]
-            param_count = 3
-            
-            if category:
-                search_conditions.append(f"category = ${param_count}")
-                params.append(category)
-                param_count += 1
-            
-            if tags:
-                search_conditions.append(f"tags && ${param_count}")
-                params.append(tags)
-                param_count += 1
-            
-            rows = await conn.fetch(f"""
-                SELECT *, ts_rank(to_tsvector('english', title || ' ' || content), plainto_tsquery('english', $2)) as rank
-                FROM knowledge_base
-                WHERE {' AND '.join(search_conditions)}
-                ORDER BY rank DESC, updated_at DESC
-                LIMIT ${param_count}
-            """, *params, limit)
-            
-            return [dict(row) for row in rows]
-    
-    async def list_knowledge(self, agent_id: str, category: Optional[str] = None,
-                           limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
-        """List knowledge base entries for an agent"""
-        async with self.get_connection() as conn:
-            if category:
-                rows = await conn.fetch("""
-                    SELECT * FROM knowledge_base
-                    WHERE agent_id = $1 AND category = $2
-                    ORDER BY updated_at DESC
-                    LIMIT $3 OFFSET $4
-                """, agent_id, category, limit, offset)
-            else:
-                rows = await conn.fetch("""
-                    SELECT * FROM knowledge_base
-                    WHERE agent_id = $1
-                    ORDER BY updated_at DESC
-                    LIMIT $2 OFFSET $3
-                """, agent_id, limit, offset)
-            return [dict(row) for row in rows]
-    
-    # Memory summary operations
-    async def create_summary(self, summary_data: MemorySummary) -> str:
-        """Create a memory summary"""
-        async with self.get_connection() as conn:
-            summary_id = await conn.fetchval("""
-                INSERT INTO memory_summaries (agent_id, conversation_id, summary_type, content, 
-                                            message_range_start, message_range_end, relevance_score)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING id
-            """, summary_data.agent_id, uuid.UUID(summary_data.conversation_id),
-                summary_data.summary_type, summary_data.content,
-                summary_data.message_range_start, summary_data.message_range_end,
-                summary_data.relevance_score)
-            return str(summary_id)
-    
-    async def get_summaries(self, agent_id: str, conversation_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get memory summaries"""
-        async with self.get_connection() as conn:
-            if conversation_id:
-                rows = await conn.fetch("""
-                    SELECT * FROM memory_summaries
-                    WHERE agent_id = $1 AND conversation_id = $2
-                    ORDER BY created_at DESC
-                """, agent_id, uuid.UUID(conversation_id))
-            else:
-                rows = await conn.fetch("""
-                    SELECT * FROM memory_summaries
-                    WHERE agent_id = $1
-                    ORDER BY created_at DESC
-                """, agent_id)
-            return [dict(row) for row in rows]
-    
-    # Statistics and cleanup operations
-    async def get_memory_stats(self, agent_id: Optional[str] = None) -> Dict[str, Any]:
-        """Get memory system statistics"""
-        async with self.get_connection() as conn:
-            if agent_id:
-                stats = await conn.fetchrow("""
-                    SELECT 
-                        COUNT(DISTINCT c.id) as total_conversations,
-                        COUNT(DISTINCT CASE WHEN c.is_active THEN c.id END) as active_conversations,
-                        COUNT(DISTINCT m.id) as total_messages,
-                        COUNT(DISTINCT k.id) as total_knowledge_items,
-                        COUNT(DISTINCT s.id) as total_summaries
-                    FROM conversations c
-                    LEFT JOIN messages m ON c.id = m.conversation_id
-                    LEFT JOIN knowledge_base k ON c.agent_id = k.agent_id
-                    LEFT JOIN memory_summaries s ON c.agent_id = s.agent_id
-                    WHERE c.agent_id = $1
-                """, agent_id)
-            else:
-                stats = await conn.fetchrow("""
-                    SELECT 
-                        COUNT(DISTINCT c.id) as total_conversations,
-                        COUNT(DISTINCT CASE WHEN c.is_active THEN c.id END) as active_conversations,
-                        COUNT(DISTINCT m.id) as total_messages,
-                        COUNT(DISTINCT k.id) as total_knowledge_items,
-                        COUNT(DISTINCT s.id) as total_summaries
-                    FROM conversations c
-                    LEFT JOIN messages m ON c.id = m.conversation_id
-                    LEFT JOIN knowledge_base k ON c.agent_id = k.agent_id
-                    LEFT JOIN memory_summaries s ON c.agent_id = s.agent_id
-                """)
-            return dict(stats)
-    
-    async def cleanup_old_memories(self, retention_days: int = None) -> Dict[str, int]:
-        """Clean up old memories based on retention policy"""
-        if retention_days is None:
-            retention_days = settings.memory_retention_days
-        
-        cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
-        
-        async with self.get_connection() as conn:
-            # Archive old conversations
-            archived_conversations = await conn.execute("""
-                UPDATE conversations 
-                SET is_active = false, updated_at = NOW()
-                WHERE created_at < $1 AND is_active = true
-            """, cutoff_date)
-            
-            # Delete very old inactive conversations
-            deleted_conversations = await conn.execute("""
-                DELETE FROM conversations 
-                WHERE created_at < $1 AND is_active = false
-            """, cutoff_date - timedelta(days=30))
-            
+    # Statistics and cleanup
+    async def get_memory_stats(self) -> Dict[str, Any]:
+        """Get memory statistics"""
+        try:
+            async with self.get_connection() as conn:
+                # Get total counts
+                total_memories = await conn.fetchval("SELECT COUNT(*) FROM memories")
+                total_conversations = await conn.fetchval("SELECT COUNT(*) FROM conversations")
+                
+                # Get memory type distribution
+                type_dist = await conn.fetch(
+                    "SELECT memory_type, COUNT(*) FROM memories GROUP BY memory_type"
+                )
+                memory_types_distribution = {row["memory_type"]: row["count"] for row in type_dist}
+                
+                # Get importance distribution
+                importance_dist = await conn.fetch(
+                    "SELECT importance, COUNT(*) FROM memories GROUP BY importance"
+                )
+                importance_distribution = {row["importance"]: row["count"] for row in importance_dist}
+                
+                # Get average memory size
+                avg_size = await conn.fetchval(
+                    "SELECT AVG(LENGTH(content)) FROM memories"
+                )
+                
+                return {
+                    "total_memories": total_memories or 0,
+                    "total_conversations": total_conversations or 0,
+                    "memory_types_distribution": memory_types_distribution,
+                    "importance_distribution": importance_distribution,
+                    "average_memory_size": float(avg_size or 0)
+                }
+        except Exception as e:
+            if settings.debug:
+                print(f"Error getting memory stats: {str(e)}")
             return {
-                "archived_conversations": int(archived_conversations.split()[1]) if archived_conversations.startswith("UPDATE") else 0,
-                "deleted_conversations": int(deleted_conversations.split()[1]) if deleted_conversations.startswith("DELETE") else 0
+                "total_memories": 0,
+                "total_conversations": 0,
+                "memory_types_distribution": {},
+                "importance_distribution": {},
+                "average_memory_size": 0.0
             }
+    
+    async def cleanup_old_memories(self, days: int = None) -> int:
+        """Clean up old memories"""
+        if days is None:
+            days = settings.memory_retention_days
+        
+        try:
+            async with self.get_connection() as conn:
+                cutoff_date = datetime.utcnow() - timedelta(days=days)
+                
+                # Get count of memories to delete
+                count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM memories WHERE created_at < $1",
+                    cutoff_date
+                )
+                
+                # Delete old memories
+                await conn.execute(
+                    "DELETE FROM memories WHERE created_at < $1",
+                    cutoff_date
+                )
+                
+                return count or 0
+        except Exception as e:
+            if settings.debug:
+                print(f"Error cleaning up old memories: {str(e)}")
+            return 0
+
+
+# Global database manager instance
+db_manager = DatabaseManager()
