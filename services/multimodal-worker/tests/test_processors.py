@@ -11,11 +11,7 @@ import tempfile
 import os
 import cv2
 
-# Mock moviepy import before importing processors
-import sys
-from unittest.mock import patch, Mock
-with patch.dict('sys.modules', {'moviepy.editor': Mock()}):
-    from app.processors import ImageProcessor, VideoProcessor, TextProcessor
+from app.processors import ImageProcessor, VideoProcessor, TextProcessor
 
 
 class TestImageProcessor:
@@ -163,7 +159,7 @@ class TestImageProcessor:
         # Create a test image array
         img_array = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
 
-        with patch('app.processors.KMeans') as mock_kmeans:
+        with patch('sklearn.cluster.KMeans') as mock_kmeans:
             mock_kmeans_instance = Mock()
             mock_kmeans_instance.cluster_centers_ = np.array([[100, 150, 200], [50, 75, 100]])
             mock_kmeans.return_value = mock_kmeans_instance
@@ -319,7 +315,7 @@ class TestVideoProcessor:
         video_processor.model_manager.get_model.return_value = mock_whisper_model
 
         with patch('app.processors.VideoFileClip') as mock_video_clip, \
-             patch('app.processors.tempfile.NamedTemporaryFile') as mock_temp_file, \
+             patch('tempfile.NamedTemporaryFile') as mock_temp_file, \
              patch('os.unlink') as mock_unlink:
             
             # Mock video clip with audio
@@ -347,8 +343,8 @@ class TestVideoProcessor:
     @pytest.mark.asyncio
     async def test_extract_keyframes(self, video_processor, temp_video_file):
         """Test keyframe extraction"""
-        with patch('app.processors.cv2.VideoCapture') as mock_capture, \
-             patch('app.processors.cv2.imwrite') as mock_imwrite, \
+        with patch('cv2.VideoCapture') as mock_capture, \
+             patch('cv2.imwrite') as mock_imwrite, \
              patch('app.processors.settings') as mock_settings:
             
             mock_settings.keyframe_interval = 5.0
@@ -409,7 +405,8 @@ class TestVideoProcessor:
                 assert result["timestamp"] == 5.0
 
         finally:
-            os.unlink(keyframe_path)
+            if os.path.exists(keyframe_path):
+                os.unlink(keyframe_path)
 
     @pytest.mark.asyncio
     async def test_generate_text_embedding(self, video_processor):

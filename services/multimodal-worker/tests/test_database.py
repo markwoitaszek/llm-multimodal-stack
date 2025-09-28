@@ -31,21 +31,57 @@ class TestDatabaseManager:
         """Create mock database pool"""
         pool = AsyncMock()
         connection = AsyncMock()
-        pool.acquire.return_value.__aenter__.return_value = connection
-        pool.acquire.return_value.__aexit__.return_value = None
+        
+        # Create a proper async context manager class
+        class MockAsyncContextManager:
+            def __init__(self, connection):
+                self.connection = connection
+            
+            async def __aenter__(self):
+                return self.connection
+            
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return None
+        
+        # Mock pool.acquire to return our context manager (not a coroutine)
+        pool.acquire = Mock(return_value=MockAsyncContextManager(connection))
+        
         return pool, connection
 
     @pytest.mark.asyncio
     async def test_initialize_success(self, db_manager):
         """Test successful database initialization"""
+        # Create proper mock pool and connection
         mock_pool = AsyncMock()
+        mock_connection = AsyncMock()
         
-        # Mock the entire initialize method to avoid async mocking complexity
-        with patch.object(db_manager, 'initialize', return_value=None) as mock_init:
+        # Create a proper async context manager class
+        class MockAsyncContextManager:
+            def __init__(self, connection):
+                self.connection = connection
+            
+            async def __aenter__(self):
+                return self.connection
+            
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                return None
+        
+        # Mock pool.acquire to return our context manager (not a coroutine)
+        mock_pool.acquire = Mock(return_value=MockAsyncContextManager(mock_connection))
+        
+        # Mock asyncpg.create_pool to return our mock pool
+        async def mock_create_pool(*args, **kwargs):
+            return mock_pool
+        
+        with patch('asyncpg.create_pool', side_effect=mock_create_pool):
+            # Test the REAL initialize method
             await db_manager.initialize()
             
-            # Verify initialize was called
-            mock_init.assert_called_once()
+            # Verify pool was created and assigned
+            assert db_manager.pool == mock_pool
+            
+            # Verify connection test was performed
+            mock_connection.execute.assert_called_once_with("SELECT 1")
 
     @pytest.mark.asyncio
     async def test_initialize_failure(self, db_manager):
@@ -426,9 +462,25 @@ class TestDatabaseManager:
         with patch('asyncpg.create_pool') as mock_create_pool:
             mock_pool = AsyncMock()
             mock_connection = AsyncMock()
-            mock_pool.acquire.return_value.__aenter__.return_value = mock_connection
-            mock_pool.acquire.return_value.__aexit__.return_value = None
-            mock_create_pool.return_value = mock_pool
+            
+            # Create a proper async context manager class
+            class MockAsyncContextManager:
+                def __init__(self, connection):
+                    self.connection = connection
+                
+                async def __aenter__(self):
+                    return self.connection
+                
+                async def __aexit__(self, exc_type, exc_val, exc_tb):
+                    return None
+            
+            # Mock pool.acquire to return our context manager (not a coroutine)
+            mock_pool.acquire = Mock(return_value=MockAsyncContextManager(mock_connection))
+            
+            # Mock create_pool to return our mock pool
+            async def mock_create_pool_func(*args, **kwargs):
+                return mock_pool
+            mock_create_pool.side_effect = mock_create_pool_func
 
             # Initialize database
             await db_manager.initialize()

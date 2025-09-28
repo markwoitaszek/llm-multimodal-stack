@@ -24,9 +24,9 @@ class Settings(BaseSettings):
     sentence_transformer_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     
     # Cache settings
-    cache_dir: str = "/app/cache"
-    model_cache_dir: str = "/app/cache/models"
-    temp_dir: str = "/tmp"
+    cache_dir: str = os.getenv("TEST_CACHE_DIR", "/app/cache")
+    model_cache_dir: str = os.getenv("TEST_MODEL_CACHE_DIR", "/app/cache/models")
+    temp_dir: str = os.getenv("TEST_TEMP_DIR", "/tmp")
     
     # Database settings
     postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")

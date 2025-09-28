@@ -12,10 +12,53 @@ import os
 from io import BytesIO
 from PIL import Image
 
-# Mock moviepy import before importing main
-import sys
-from unittest.mock import patch, Mock
-with patch.dict('sys.modules', {'moviepy.editor': Mock()}):
+# Set test environment variables before importing main
+os.environ['TEST_CACHE_DIR'] = tempfile.mkdtemp(prefix="test_cache_")
+os.environ['TEST_MODEL_CACHE_DIR'] = os.path.join(os.environ['TEST_CACHE_DIR'], "models")
+os.environ['TEST_TEMP_DIR'] = tempfile.mkdtemp(prefix="test_temp_")
+
+# Create the model cache directory
+os.makedirs(os.environ['TEST_MODEL_CACHE_DIR'], exist_ok=True)
+
+# Patch the managers and processors before importing main to prevent real initialization
+with patch('main.ModelManager') as mock_model_manager, \
+     patch('main.DatabaseManager') as mock_db_manager, \
+     patch('main.StorageManager') as mock_storage_manager, \
+     patch('main.model_cache_manager') as mock_cache_manager, \
+     patch('main.ImageProcessor') as mock_image_processor, \
+     patch('main.VideoProcessor') as mock_video_processor, \
+     patch('main.TextProcessor') as mock_text_processor:
+    
+    # Set up mock managers
+    mock_model_instance = Mock()
+    mock_model_instance.load_models = AsyncMock(return_value=None)
+    mock_model_instance.cleanup = AsyncMock(return_value=None)
+    mock_model_manager.return_value = mock_model_instance
+    
+    mock_db_instance = AsyncMock()
+    mock_db_instance.initialize = AsyncMock(return_value=None)
+    mock_db_instance.close = AsyncMock(return_value=None)
+    mock_db_manager.return_value = mock_db_instance
+    
+    mock_storage_instance = Mock()
+    mock_storage_instance.initialize = AsyncMock(return_value=None)
+    mock_storage_instance.close = AsyncMock(return_value=None)
+    mock_storage_manager.return_value = mock_storage_instance
+    
+    mock_cache_instance = Mock()
+    mock_cache_instance.initialize = AsyncMock(return_value=None)
+    mock_cache_manager.return_value = mock_cache_instance
+    
+    # Set up mock processors
+    mock_image_processor_instance = AsyncMock()
+    mock_image_processor.return_value = mock_image_processor_instance
+    
+    mock_video_processor_instance = AsyncMock()
+    mock_video_processor.return_value = mock_video_processor_instance
+    
+    mock_text_processor_instance = AsyncMock()
+    mock_text_processor.return_value = mock_text_processor_instance
+    
     from main import app
 
 
@@ -60,7 +103,8 @@ class TestMultimodalWorkerAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
-        assert "timestamp" in data
+        assert data["service"] == "multimodal-worker"
+        assert data["version"] == "1.0.0"
 
     def test_root_endpoint(self, client):
         """Test root endpoint"""
@@ -68,102 +112,91 @@ class TestMultimodalWorkerAPI:
         assert response.status_code == 200
         data = response.json()
         assert "message" in data
-        assert "service" in data
+        assert "version" in data
+        assert "docs" in data
 
     @pytest.mark.asyncio
-    @patch('main.DatabaseManager')
-    @patch('main.StorageManager')
-    @patch('main.ModelManager')
-    async def test_process_image_success(self, mock_model_manager, mock_storage_manager, 
-                                       mock_db_manager, client, temp_image_file):
+    async def test_process_image_success(self, client, temp_image_file):
         """Test successful image processing with real file upload"""
-        # Mock managers
-        mock_db_instance = AsyncMock()
-        mock_db_instance.initialize.return_value = None
-        mock_db_instance.close.return_value = None
-        mock_db_instance.get_document_by_hash.return_value = None
-        mock_db_instance.create_document.return_value = "test_document_id"
-        mock_db_instance.create_image.return_value = "test_image_id"
-        mock_db_manager.return_value = mock_db_instance
+        # Mock the app state managers
+        with patch.object(client.app.state, 'model_manager') as mock_model, \
+             patch.object(client.app.state, 'db_manager') as mock_db, \
+             patch.object(client.app.state, 'storage_manager') as mock_storage:
+            
+            # Mock database operations
+            mock_db.get_document_by_hash.return_value = None
+            mock_db.create_document.return_value = "test_document_id"
+            mock_db.create_image.return_value = "test_image_id"
+            
+            # Mock storage operations
+            mock_storage.calculate_file_hash.return_value = "test_hash"
+            mock_storage.generate_object_path.return_value = "test/path/image.jpg"
+            mock_storage.upload_file.return_value = None
+            
+            # Mock model operations
+            mock_model.get_model.return_value = Mock()
+            mock_model.get_processor.return_value = Mock()
+            
+            # Mock image processing
+            with patch('app.api.ImageProcessor') as mock_image_processor:
+                mock_processor_instance = AsyncMock()
+                mock_processor_instance.process_image.return_value = {
+                    "image_id": "test_image_id",
+                    "embedding": [0.1, 0.2, 0.3] * 170,  # 512 dimensions
+                    "caption": "A test image",
+                    "features": {"mean_brightness": 128.5},
+                    "storage_path": "test/path/image.jpg",
+                    "dimensions": (224, 224)
+                }
+                mock_image_processor.return_value = mock_processor_instance
 
-        mock_storage_instance = Mock()
-        mock_storage_instance.initialize.return_value = None
-        mock_storage_instance.close.return_value = None
-        mock_storage_instance.calculate_file_hash.return_value = "test_hash"
-        mock_storage_instance.generate_object_path.return_value = "test/path/image.jpg"
-        mock_storage_instance.upload_file.return_value = None
-        mock_storage_manager.return_value = mock_storage_instance
+                # Test image processing with file upload
+                with open(temp_image_file, 'rb') as f:
+                    response = client.post(
+                        "/api/v1/process/image",
+                        files={"file": ("test.jpg", f, "image/jpeg")},
+                        data={"document_name": "Test Image", "metadata": '{"source": "test"}'}
+                    )
 
-        mock_model_instance = Mock()
-        mock_model_instance.load_models.return_value = None
-        mock_model_instance.cleanup.return_value = None
-        mock_model_instance.get_model.return_value = Mock()
-        mock_model_instance.get_processor.return_value = Mock()
-        mock_model_manager.return_value = mock_model_instance
-
-        # Mock image processing
-        with patch('main.ImageProcessor') as mock_image_processor:
-            mock_processor_instance = AsyncMock()
-            mock_processor_instance.process_image.return_value = {
-                "image_id": "test_image_id",
-                "embedding": [0.1, 0.2, 0.3] * 170,  # 512 dimensions
-                "caption": "A test image",
-                "features": {"mean_brightness": 128.5},
-                "storage_path": "test/path/image.jpg",
-                "dimensions": (224, 224)
-            }
-            mock_image_processor.return_value = mock_processor_instance
-
-            # Test image processing with file upload
-            with open(temp_image_file, 'rb') as f:
-                response = client.post(
-                    "/process/image",
-                    files={"file": ("test.jpg", f, "image/jpeg")},
-                    data={"document_name": "Test Image", "metadata": '{"source": "test"}'}
-                )
-
-            assert response.status_code == 200
-            data = response.json()
-            assert data["success"] is True
-            assert "document_id" in data["data"]
-            assert "image_id" in data["data"]
-            assert "caption" in data["data"]
-            assert "dimensions" in data["data"]
+                assert response.status_code == 200
+                data = response.json()
+                assert data["success"] is True
+                assert "document_id" in data["data"]
+                assert "image_id" in data["data"]
+                assert "caption" in data["data"]
+                assert "dimensions" in data["data"]
 
     @pytest.mark.asyncio
-    @patch('main.DatabaseManager')
-    @patch('main.StorageManager')
-    @patch('main.ModelManager')
-    async def test_process_image_invalid_file_type(self, mock_model_manager, mock_storage_manager, 
-                                                 mock_db_manager, client):
+    async def test_process_image_invalid_file_type(self, client):
         """Test image processing with invalid file type"""
-        # Mock managers
-        mock_db_instance = AsyncMock()
-        mock_db_instance.initialize.return_value = None
-        mock_db_instance.close.return_value = None
-        mock_db_manager.return_value = mock_db_instance
+        # Mock the app state managers
+        with patch.object(client.app.state, 'model_manager') as mock_model, \
+             patch.object(client.app.state, 'db_manager') as mock_db, \
+             patch.object(client.app.state, 'storage_manager') as mock_storage:
+            
+            # Mock database operations
+            mock_db.get_document_by_hash.return_value = None
+            mock_db.create_document.return_value = "test_document_id"
+            
+            # Mock storage operations
+            mock_storage.calculate_file_hash.return_value = "test_hash"
+            mock_storage.generate_object_path.return_value = "test/path/image.jpg"
+            
+            # Mock model operations
+            mock_model.get_model.return_value = Mock()
+            mock_model.get_processor.return_value = Mock()
 
-        mock_storage_instance = Mock()
-        mock_storage_instance.initialize.return_value = None
-        mock_storage_instance.close.return_value = None
-        mock_storage_manager.return_value = mock_storage_instance
+            # Test with invalid file type
+            response = client.post(
+                "/api/v1/process/image",
+                files={"file": ("test.txt", b"not an image", "text/plain")},
+                data={"document_name": "Test File"}
+            )
 
-        mock_model_instance = Mock()
-        mock_model_instance.load_models.return_value = None
-        mock_model_instance.cleanup.return_value = None
-        mock_model_manager.return_value = mock_model_instance
-
-        # Test with invalid file type
-        response = client.post(
-            "/process/image",
-            files={"file": ("test.txt", b"not an image", "text/plain")},
-            data={"document_name": "Test File"}
-        )
-
-        assert response.status_code == 400
-        data = response.json()
-        assert data["success"] is False
-        assert "error" in data
+            assert response.status_code == 400
+            data = response.json()
+            assert data["success"] is False
+            assert "error" in data
 
     @pytest.mark.asyncio
     @patch('main.DatabaseManager')
@@ -195,7 +228,7 @@ class TestMultimodalWorkerAPI:
             # Test with large file
             with open(temp_image_file, 'rb') as f:
                 response = client.post(
-                    "/process/image",
+                    "/api/v1/process/image",
                     files={"file": ("test.jpg", f, "image/jpeg")},
                     data={"document_name": "Test Image"}
                 )
@@ -260,7 +293,7 @@ class TestMultimodalWorkerAPI:
 
             # Test video processing
             response = client.post(
-                "/process/video",
+                "/api/v1/process/video",
                 files={"file": ("test.mp4", b"fake video data", "video/mp4")},
                 data={"document_name": "Test Video", "metadata": '{"source": "test"}'}
             )
@@ -319,7 +352,7 @@ class TestMultimodalWorkerAPI:
 
             # Test text processing
             response = client.post(
-                "/process/text",
+                "/api/v1/process/text",
                 json={
                     "text": "This is a test document for processing.",
                     "document_name": "Test Document",
@@ -358,7 +391,7 @@ class TestMultimodalWorkerAPI:
 
         # Test with empty text
         response = client.post(
-            "/process/text",
+            "/api/v1/process/text",
             json={
                 "text": "",
                 "document_name": "Empty Document"
@@ -402,7 +435,7 @@ class TestMultimodalWorkerAPI:
         # Test with duplicate document
         with open(temp_image_file, 'rb') as f:
             response = client.post(
-                "/process/image",
+                "/api/v1/process/image",
                 files={"file": ("test.jpg", f, "image/jpeg")},
                 data={"document_name": "Test Image"}
             )
@@ -415,7 +448,7 @@ class TestMultimodalWorkerAPI:
 
     def test_models_status_endpoint(self, client):
         """Test models status endpoint"""
-        response = client.get("/models/status")
+        response = client.get("/api/v1/models/status")
         assert response.status_code == 200
         data = response.json()
         assert "clip" in data
@@ -425,7 +458,7 @@ class TestMultimodalWorkerAPI:
 
     def test_storage_status_endpoint(self, client):
         """Test storage status endpoint"""
-        response = client.get("/storage/status")
+        response = client.get("/api/v1/storage/status")
         assert response.status_code == 200
         data = response.json()
         assert "minio" in data
@@ -435,14 +468,14 @@ class TestMultimodalWorkerAPI:
     @pytest.mark.asyncio
     async def test_cache_stats_endpoint(self, client):
         """Test cache stats endpoint"""
-        with patch('main.cache_manager') as mock_cache_manager:
+        with patch.object(client.app.state, 'cache_manager') as mock_cache_manager:
             mock_cache_manager.get_cache_stats.return_value = {
                 "total_entries": 100,
                 "hit_rate": 0.85,
                 "memory_usage_mb": 50
             }
 
-            response = client.get("/cache/stats")
+            response = client.get("/api/v1/cache/stats")
             assert response.status_code == 200
             data = response.json()
             assert "total_entries" in data
@@ -452,10 +485,10 @@ class TestMultimodalWorkerAPI:
     @pytest.mark.asyncio
     async def test_clear_cache_endpoint(self, client):
         """Test clear cache endpoint"""
-        with patch('main.cache_manager') as mock_cache_manager:
+        with patch.object(client.app.state, 'cache_manager') as mock_cache_manager:
             mock_cache_manager.clear_all_cache.return_value = True
 
-            response = client.delete("/cache/clear")
+            response = client.delete("/api/v1/cache/clear")
             assert response.status_code == 200
             data = response.json()
             assert "message" in data
@@ -464,10 +497,10 @@ class TestMultimodalWorkerAPI:
     @pytest.mark.asyncio
     async def test_invalidate_file_cache_endpoint(self, client):
         """Test invalidate file cache endpoint"""
-        with patch('main.cache_manager') as mock_cache_manager:
+        with patch.object(client.app.state, 'cache_manager') as mock_cache_manager:
             mock_cache_manager.invalidate_file_cache.return_value = 5
 
-            response = client.delete("/cache/file/test_hash")
+            response = client.delete("/api/v1/cache/file/test_hash")
             assert response.status_code == 200
             data = response.json()
             assert "message" in data
@@ -519,7 +552,7 @@ class TestMultimodalWorkerAPI:
             # Test image processing failure
             with open(temp_image_file, 'rb') as f:
                 response = client.post(
-                    "/process/image",
+                    "/api/v1/process/image",
                     files={"file": ("test.jpg", f, "image/jpeg")},
                     data={"document_name": "Test Image"}
                 )
@@ -582,7 +615,7 @@ class TestMultimodalWorkerAPI:
             # Test text processing with long text
             long_text = "This is a very long document that should be split into multiple chunks. " * 20
             response = client.post(
-                "/process/text",
+                "/api/v1/process/text",
                 json={
                     "text": long_text,
                     "document_name": "Long Document",
@@ -621,7 +654,7 @@ class TestMultimodalWorkerAPI:
 
         # Test with invalid file type
         response = client.post(
-            "/process/video",
+            "/api/v1/process/video",
             files={"file": ("test.txt", b"not a video", "text/plain")},
             data={"document_name": "Test File"}
         )
@@ -635,7 +668,7 @@ class TestMultimodalWorkerAPI:
         """Test API error handling for malformed requests"""
         # Test with invalid JSON
         response = client.post(
-            "/process/text",
+            "/api/v1/process/text",
             data="invalid json",
             headers={"Content-Type": "application/json"}
         )
@@ -643,7 +676,7 @@ class TestMultimodalWorkerAPI:
 
         # Test with missing required fields
         response = client.post(
-            "/process/text",
+            "/api/v1/process/text",
             json={"document_name": "Test"}  # Missing 'text' field
         )
         assert response.status_code == 422

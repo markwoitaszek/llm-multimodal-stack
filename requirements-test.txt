@@ -11,6 +11,7 @@ pytest-xdist==3.5.0  # Parallel test execution
 # HTTP Testing
 httpx==0.27.0
 requests==2.32.0
+aiofiles==24.1.0
 
 # Mocking and Fixtures
 unittest-mock==1.0.1
