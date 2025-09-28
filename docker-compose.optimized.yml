@@ -1,0 +1,542 @@
+# Optimized Docker Compose with Build Cache Optimization
+version: '3.8'
+
+services:
+  # Vector Database
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: multimodal-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # PostgreSQL for metadata and memory
+  postgres:
+    image: postgres:16-alpine
+    container_name: multimodal-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # Redis for caching and agent memory
+  redis:
+    image: redis:7-alpine
+    container_name: multimodal-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # MinIO S3-compatible storage
+  minio:
+    image: minio/minio:latest
+    container_name: multimodal-minio
+    ports:
+      - "9000:9000"
+      - "9002:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # vLLM inference server
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: multimodal-vllm
+    ports:
+      - "8000:8000"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
+      - VLLM_HOST=0.0.0.0
+      - VLLM_PORT=8000
+    volumes:
+      - vllm_cache:/root/.cache
+      - ./models:/models
+    command: >
+      --model ${VLLM_MODEL:-microsoft/DialoGPT-medium}
+      --host 0.0.0.0
+      --port 8000
+      --gpu-memory-utilization 0.8
+      --max-model-len 1024
+      --dtype auto
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/models', timeout=10)\""]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 180s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # LiteLLM proxy router
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: multimodal-litellm
+    ports:
+      - "4000:4000"
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
+      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY:-sk-salt-1234}
+    volumes:
+      - ./configs/litellm_simple.yaml:/app/config.yaml
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
+    depends_on:
+      vllm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os, urllib.request; req = urllib.request.Request('http://localhost:4000/health'); req.add_header('Authorization', f'Bearer {os.environ[\"LITELLM_MASTER_KEY\"]}'); urllib.request.urlopen(req, timeout=10)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # Multimodal worker service - OPTIMIZED BUILD
+  multimodal-worker:
+    build:
+      context: ./services/multimodal-worker
+      dockerfile: Dockerfile.optimized
+      cache_from:
+        - multimodal-base:latest
+        - multimodal-worker:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: multimodal-worker
+    ports:
+      - "8001:8001"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    volumes:
+      - multimodal_cache:/app/cache
+      - /tmp:/tmp
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # Retrieval proxy service - OPTIMIZED BUILD
+  retrieval-proxy:
+    build:
+      context: ./services/retrieval-proxy
+      dockerfile: Dockerfile.optimized
+      cache_from:
+        - multimodal-base:latest
+        - retrieval-proxy:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: retrieval-proxy
+    ports:
+      - "8002:8002"
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=1
+    depends_on:
+      multimodal-worker:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # OpenWebUI for testing
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: multimodal-openwebui
+    ports:
+      - "3030:8080"
+    environment:
+      - OPENAI_API_BASE_URL=http://vllm:8000/v1
+      - OPENAI_API_KEY=dummy-key
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-webui-secret}
+    volumes:
+      - openwebui_data:/app/backend/data
+    depends_on:
+      - vllm
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # AI Agents Service - OPTIMIZED BUILD
+  ai-agents:
+    build:
+      context: ./services/ai-agents
+      dockerfile: Dockerfile.optimized
+      cache_from:
+        - multimodal-base:latest
+        - ai-agents:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: multimodal-ai-agents
+    ports:
+      - "8003:8003"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - LLM_BASE_URL=http://vllm:8000/v1
+      - LLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
+      - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
+      - RETRIEVAL_PROXY_URL=http://retrieval-proxy:8002
+      - SEARCH_ENGINE_URL=http://search-engine:8004
+      - MEMORY_SYSTEM_URL=http://memory-system:8005
+      - USER_MANAGEMENT_URL=http://user-management:8006
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      vllm:
+        condition: service_healthy
+      multimodal-worker:
+        condition: service_healthy
+      retrieval-proxy:
+        condition: service_healthy
+      search-engine:
+        condition: service_healthy
+      memory-system:
+        condition: service_healthy
+      user-management:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # Memory System Service - OPTIMIZED BUILD
+  memory-system:
+    build:
+      context: ./services/memory-system
+      dockerfile: Dockerfile.optimized
+      cache_from:
+        - multimodal-base:latest
+        - memory-system:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: multimodal-memory-system
+    ports:
+      - "8005:8005"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=4
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # Search Engine Service - OPTIMIZED BUILD
+  search-engine:
+    build:
+      context: ./services/search-engine
+      dockerfile: Dockerfile.optimized
+      cache_from:
+        - multimodal-base:latest
+        - search-engine:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: multimodal-search-engine
+    ports:
+      - "8004:8004"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=3
+      - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
+      - RETRIEVAL_PROXY_URL=http://retrieval-proxy:8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # AI Agents Web Interface - OPTIMIZED BUILD
+  ai-agents-web:
+    build:
+      context: .
+      dockerfile: ./services/ai-agents/web/Dockerfile.optimized
+      cache_from:
+        - node:18-alpine
+        - nginx:alpine
+        - ai-agents-web:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: multimodal-ai-agents-web
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./docs:/usr/share/nginx/html/docs:ro
+    depends_on:
+      ai-agents:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # User Management Service - OPTIMIZED BUILD
+  user-management:
+    build:
+      context: ./services/user-management
+      dockerfile: Dockerfile.optimized
+      cache_from:
+        - multimodal-base:latest
+        - user-management:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: multimodal-user-management
+    ports:
+      - "8006:8006"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=5
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      - DEBUG=${DEBUG:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # n8n Workflow Management Platform
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: multimodal-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678
+      - GENERIC_TIMEZONE=UTC
+      - N8N_METRICS=true
+      - N8N_LOG_LEVEL=info
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-multimodal-n8n-key}
+      # Fix deprecation warnings
+      - DB_SQLITE_POOL_SIZE=5
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows:/home/node/.n8n/workflows:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:5678/healthz | grep -q 'ok' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+volumes:
+  qdrant_data:
+  postgres_data:
+  redis_data:
+  minio_data:
+  vllm_cache:
+  multimodal_cache:
+  openwebui_data:
+  n8n_data:
+
+networks:
+  multimodal-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/24
+          gateway: 172.25.0.1
