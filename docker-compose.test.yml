@@ -1,0 +1,150 @@
+version: '3.8'
+
+services:
+  # Test Database
+  postgres-test:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: test_multimodal
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_multimodal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Test Redis
+  redis-test:
+    image: redis:7
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Test Qdrant
+  qdrant-test:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6334:6333"
+    volumes:
+      - qdrant_test_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Test MinIO
+  minio-test:
+    image: minio/minio:latest
+    ports:
+      - "9001:9000"
+    environment:
+      MINIO_ROOT_USER: test_access_key
+      MINIO_ROOT_PASSWORD: test_secret_key
+    volumes:
+      - minio_test_data:/data
+    command: server /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Test Multimodal Worker
+  multimodal-worker-test:
+    build:
+      context: ./services/multimodal-worker
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8001"
+    environment:
+      - DATABASE_URL=postgresql://test_user:test_password@postgres-test:5432/test_multimodal
+      - REDIS_URL=redis://redis-test:6379/1
+      - MINIO_URL=http://minio-test:9000
+      - MINIO_ACCESS_KEY=test_access_key
+      - MINIO_SECRET_KEY=test_secret_key
+      - MODEL_CACHE_DIR=/tmp/test_models
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      minio-test:
+        condition: service_healthy
+    volumes:
+      - ./services/multimodal-worker:/app
+      - test_models:/tmp/test_models
+    command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+
+  # Test Retrieval Proxy
+  retrieval-proxy-test:
+    build:
+      context: ./services/retrieval-proxy
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8002"
+    environment:
+      - DATABASE_URL=postgresql://test_user:test_password@postgres-test:5432/test_multimodal
+      - REDIS_URL=redis://redis-test:6379/1
+      - QDRANT_URL=http://qdrant-test:6333
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      qdrant-test:
+        condition: service_healthy
+    volumes:
+      - ./services/retrieval-proxy:/app
+    command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
+
+  # Test AI Agents
+  ai-agents-test:
+    build:
+      context: ./services/ai-agents
+      dockerfile: Dockerfile
+    ports:
+      - "8006:8003"
+    environment:
+      - DATABASE_URL=postgresql://test_user:test_password@postgres-test:5432/test_multimodal
+      - REDIS_URL=redis://redis-test:6379/1
+      - MULTIMODAL_WORKER_URL=http://multimodal-worker-test:8001
+      - RETRIEVAL_PROXY_URL=http://retrieval-proxy-test:8002
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      multimodal-worker-test:
+        condition: service_started
+      retrieval-proxy-test:
+        condition: service_started
+    volumes:
+      - ./services/ai-agents:/app
+    command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]
+
+volumes:
+  postgres_test_data:
+  redis_test_data:
+  qdrant_test_data:
+  minio_test_data:
+  test_models:
