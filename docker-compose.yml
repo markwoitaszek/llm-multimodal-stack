@@ -310,6 +310,38 @@ services:
     networks:
       - multimodal-net
 
+  # Memory System Service
+  memory-system:
+    build:
+      context: ./services/memory-system
+      dockerfile: Dockerfile
+    container_name: multimodal-memory-system
+    ports:
+      - "8005:8005"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=4
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
   # AI Agents Web Interface
   ai-agents-web:
     build:
