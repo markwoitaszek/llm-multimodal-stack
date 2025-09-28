@@ -1,0 +1,48 @@
+# Testing Dependencies for LLM Multimodal Stack
+# Comprehensive test suite requirements
+
+# Core Testing Framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-xdist==3.5.0  # Parallel test execution
+
+# HTTP Testing
+httpx==0.27.0
+requests==2.32.0
+
+# Mocking and Fixtures
+unittest-mock==1.0.1
+factory-boy==3.3.0  # Test data generation
+
+# Performance Testing
+psutil==5.9.6
+memory-profiler==0.61.0
+
+# Security Testing
+bandit==1.7.5
+safety==2.3.5
+
+# Code Quality
+black==23.9.1
+isort==5.12.0
+flake8==6.1.0
+mypy==1.6.1
+
+# Database Testing
+pytest-postgresql==5.0.0
+pytest-redis==3.0.1
+
+# Coverage Reporting
+coverage==7.3.2
+codecov==2.1.13
+
+# Test Utilities
+freezegun==1.2.2  # Time mocking
+responses==0.24.1  # HTTP mocking
+faker==20.1.0  # Fake data generation
+
+# Development Tools
+pre-commit==3.5.0
+tox==4.11.4  # Multi-environment testing
