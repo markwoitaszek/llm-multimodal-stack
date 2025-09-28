@@ -24,6 +24,7 @@ from app.processors import (
     TextProcessor,
 )
 from app.api import router
+from app.cache import model_cache_manager
 
 # Configure logging
 logging.basicConfig(
@@ -62,10 +63,15 @@ async def lifespan(app: FastAPI):
         await storage_manager.initialize()
         logger.info("Storage initialized")
         
+        # Initialize cache manager
+        await model_cache_manager.initialize()
+        logger.info("Cache manager initialized")
+        
         # Store managers in app state
         app.state.model_manager = model_manager
         app.state.db_manager = db_manager
         app.state.storage_manager = storage_manager
+        app.state.cache_manager = model_cache_manager
         
         yield
         
@@ -80,6 +86,8 @@ async def lifespan(app: FastAPI):
             await db_manager.close()
         if storage_manager:
             await storage_manager.close()
+        if model_cache_manager:
+            await model_cache_manager.close()
 
 # Create FastAPI app
 app = FastAPI(

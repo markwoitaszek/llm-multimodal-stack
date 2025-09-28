@@ -336,3 +336,43 @@ async def get_storage_status():
         logger.error(f"Failed to get storage status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Cache management endpoints
+@router.get("/cache/stats")
+async def get_cache_stats(req):
+    """Get cache statistics"""
+    try:
+        cache_manager = req.app.state.cache_manager
+        stats = await cache_manager.get_cache_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get cache stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/cache/clear")
+async def clear_cache(req):
+    """Clear all cache entries"""
+    try:
+        cache_manager = req.app.state.cache_manager
+        success = await cache_manager.clear_all_cache()
+        if success:
+            return {"message": "Cache cleared successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to clear cache")
+    except Exception as e:
+        logger.error(f"Failed to clear cache: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/cache/file/{file_hash}")
+async def invalidate_file_cache(file_hash: str, req):
+    """Invalidate cache entries for a specific file"""
+    try:
+        cache_manager = req.app.state.cache_manager
+        deleted_count = await cache_manager.invalidate_file_cache(file_hash)
+        return {
+            "message": f"Invalidated {deleted_count} cache entries",
+            "file_hash": file_hash
+        }
+    except Exception as e:
+        logger.error(f"Failed to invalidate file cache: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
