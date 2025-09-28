@@ -21,7 +21,7 @@ class CacheManager:
         self.is_initialized = False
     
     async def initialize(self):
-        """Initialize Redis connection"""
+        """Initialize Redis connection with enhanced error handling"""
         try:
             self.redis = redis.Redis(
                 host=settings.redis_host,
@@ -30,15 +30,18 @@ class CacheManager:
                 decode_responses=True,
                 socket_connect_timeout=5,
                 socket_timeout=5,
-                retry_on_timeout=True
+                retry_on_timeout=True,
+                health_check_interval=30,
+                max_connections=20
             )
             
-            # Test connection
+            # Test connection with timeout
             await self.redis.ping()
             self.is_initialized = True
             logger.info("Redis cache connection initialized")
         except Exception as e:
             logger.error(f"Failed to initialize Redis cache: {e}")
+            self.is_initialized = False
             raise
     
     async def close(self):
@@ -46,6 +49,40 @@ class CacheManager:
         if self.redis:
             await self.redis.close()
             logger.info("Redis cache connection closed")
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Perform comprehensive Redis health check"""
+        health_info = {
+            "status": "unhealthy",
+            "connected_clients": 0,
+            "used_memory": 0,
+            "error": None
+        }
+        
+        try:
+            if not self.redis or not self.is_initialized:
+                health_info["error"] = "Redis not initialized"
+                return health_info
+            
+            # Test basic connectivity
+            pong = await self.redis.ping()
+            if not pong:
+                health_info["error"] = "Redis ping failed"
+                return health_info
+            
+            # Get Redis info
+            info = await self.redis.info()
+            health_info.update({
+                "status": "healthy",
+                "connected_clients": info.get("connected_clients", 0),
+                "used_memory": info.get("used_memory", 0)
+            })
+            
+        except Exception as e:
+            health_info["error"] = str(e)
+            logger.warning(f"Redis health check failed: {e}")
+        
+        return health_info
     
     def _get_conversation_key(self, conv_id: str) -> str:
         """Get cache key for conversation"""

@@ -27,19 +27,26 @@ class DatabaseManager:
         self.is_initialized = False
     
     async def initialize(self):
-        """Initialize database connection pool"""
+        """Initialize database connection pool with enhanced error handling"""
         try:
             self.pool = await asyncpg.create_pool(
                 settings.postgres_url,
-                min_size=5,
-                max_size=20,
-                command_timeout=60
+                min_size=2,  # Reduced for better resource management
+                max_size=10,  # Reduced for better resource management
+                command_timeout=30,  # Reduced timeout for health checks
+                server_settings={
+                    'application_name': 'memory-system',
+                    'tcp_keepalives_idle': '600',
+                    'tcp_keepalives_interval': '30',
+                    'tcp_keepalives_count': '3'
+                }
             )
             await self._create_tables()
             self.is_initialized = True
             logger.info("Database connection pool initialized")
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
+            self.is_initialized = False
             raise
     
     async def close(self):
@@ -47,6 +54,42 @@ class DatabaseManager:
         if self.pool:
             await self.pool.close()
             logger.info("Database connection pool closed")
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Perform comprehensive database health check"""
+        health_info = {
+            "status": "unhealthy",
+            "pool_size": 0,
+            "active_connections": 0,
+            "idle_connections": 0,
+            "error": None
+        }
+        
+        try:
+            if not self.pool or not self.is_initialized:
+                health_info["error"] = "Database pool not initialized"
+                return health_info
+            
+            # Test basic connectivity
+            async with self.get_connection() as conn:
+                result = await conn.fetchval("SELECT 1")
+                if result != 1:
+                    health_info["error"] = "Database query returned unexpected result"
+                    return health_info
+            
+            # Get pool statistics
+            health_info.update({
+                "status": "healthy",
+                "pool_size": self.pool.get_size(),
+                "active_connections": self.pool.get_idle_size(),
+                "idle_connections": self.pool.get_idle_size()
+            })
+            
+        except Exception as e:
+            health_info["error"] = str(e)
+            logger.warning(f"Database health check failed: {e}")
+        
+        return health_info
     
     async def _create_tables(self):
         """Create database tables if they don't exist"""
