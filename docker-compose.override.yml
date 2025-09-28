@@ -1,15 +1,26 @@
-# GPU optimization override
+# GPU optimization override - Tensor Parallelism Configuration
 services:
   vllm:
+    image: vllm/vllm-openai:v0.6.3
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: 2
               capabilities: [gpu]
     environment:
-      - CUDA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=0,1
+      - NVIDIA_VISIBLE_DEVICES=0,1
+    command: [
+      "--model", "microsoft/DialoGPT-small",
+      "--host", "0.0.0.0",
+      "--port", "8000",
+      "--gpu-memory-utilization", "0.8",
+      "--max-model-len", "512",
+      "--dtype", "auto",
+      "--tensor-parallel-size", "2"
+    ]
   
   multimodal-worker:
     deploy:
@@ -20,4 +31,5 @@ services:
               count: 1
               capabilities: [gpu]
     environment:
-      - CUDA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=1
+      - NVIDIA_VISIBLE_DEVICES=1
