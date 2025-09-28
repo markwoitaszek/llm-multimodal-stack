@@ -90,12 +90,12 @@ main() {
     build_base_image
     
     # Build all services with optimization
-    build_service "multimodal-worker" "./services/multimodal-worker" "Dockerfile.optimized"
-    build_service "retrieval-proxy" "./services/retrieval-proxy" "Dockerfile.optimized"
-    build_service "search-engine" "./services/search-engine" "Dockerfile.optimized"
-    build_service "memory-system" "./services/memory-system" "Dockerfile.optimized"
-    build_service "user-management" "./services/user-management" "Dockerfile.optimized"
-    build_service "ai-agents" "./services/ai-agents" "Dockerfile.optimized"
+    build_service "multimodal-worker" "./services/multimodal-worker" "./services/multimodal-worker/Dockerfile.optimized"
+    build_service "retrieval-proxy" "./services/retrieval-proxy" "./services/retrieval-proxy/Dockerfile.optimized"
+    build_service "search-engine" "./services/search-engine" "./services/search-engine/Dockerfile.optimized"
+    build_service "memory-system" "./services/memory-system" "./services/memory-system/Dockerfile.optimized"
+    build_service "user-management" "./services/user-management" "./services/user-management/Dockerfile.optimized"
+    build_service "ai-agents" "./services/ai-agents" "./services/ai-agents/Dockerfile.optimized"
     
     # Clean up old images
     cleanup_images
