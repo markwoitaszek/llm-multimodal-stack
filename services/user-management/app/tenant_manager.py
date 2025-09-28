@@ -10,7 +10,7 @@ import json
 from .config import settings
 from .models import (
     TenantCreate, TenantUpdate, TenantResponse, TenantListResponse,
-    TenantStatus, UserCreate, UserRole, UserStatus
+    TenantStatus, UserCreate, UserRole, UserStatus, UserResponse
 )
 from .database import (
     db_manager, get_tenant_by_id, get_tenant_by_domain, search_tenants,

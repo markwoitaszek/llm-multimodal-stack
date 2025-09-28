@@ -720,22 +720,5 @@ async def get_cache_statistics(
             detail="Cache stats failed"
         )
 
-# Error handlers
-@router.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle HTTP exceptions"""
-    return ErrorResponse(
-        error=exc.detail,
-        message=exc.detail,
-        timestamp=datetime.utcnow()
-    )
-
-@router.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle general exceptions"""
-    logger.error(f"Unhandled exception: {exc}")
-    return ErrorResponse(
-        error="Internal server error",
-        message="An unexpected error occurred",
-        timestamp=datetime.utcnow()
-    )
+# Error handlers - Note: APIRouter doesn't support exception handlers
+# These should be handled at the FastAPI app level in main.py
