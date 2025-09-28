@@ -6,7 +6,7 @@ import os
 import tempfile
 from typing import List, Dict, Any, Optional
 import aiofiles
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends, BackgroundTasks, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -338,10 +338,10 @@ async def get_storage_status():
 
 # Cache management endpoints
 @router.get("/cache/stats")
-async def get_cache_stats(req):
+async def get_cache_stats(request: Request):
     """Get cache statistics"""
     try:
-        cache_manager = req.app.state.cache_manager
+        cache_manager = request.app.state.cache_manager
         stats = await cache_manager.get_cache_stats()
         return stats
     except Exception as e:

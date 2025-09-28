@@ -8,7 +8,7 @@ import pickle
 from typing import Any, Optional, Dict, List
 from datetime import datetime, timedelta
 
-import aioredis
+import redis.asyncio as aioredis
 import numpy as np
 from app.config import settings
 

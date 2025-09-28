@@ -7,7 +7,7 @@ import logging
 from typing import Any, Optional, Dict, List
 from datetime import datetime, timedelta
 
-import aioredis
+import redis.asyncio as aioredis
 from app.config import settings
 
 logger = logging.getLogger(__name__)
