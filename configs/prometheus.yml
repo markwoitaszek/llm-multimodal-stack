@@ -25,12 +25,12 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 30s
 
-  # LiteLLM metrics
-  - job_name: 'litellm'
-    static_configs:
-      - targets: ['litellm:4000']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
+  # LiteLLM metrics (disabled - LiteLLM doesn't expose /metrics endpoint)
+  # - job_name: 'litellm'
+  #   static_configs:
+  #     - targets: ['litellm:4000']
+  #   metrics_path: '/metrics'
+  #   scrape_interval: 30s
 
   # PostgreSQL metrics (requires postgres_exporter)
   - job_name: 'postgres'
