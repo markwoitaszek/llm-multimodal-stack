@@ -38,11 +38,13 @@ check_prerequisites() {
     print_header "Checking Prerequisites"
     
     # Check Python version
-    if ! python3 --version | grep -q "Python 3.11"; then
-        print_status $RED "❌ Python 3.11 is required"
+    python_version=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
+    if [[ "$python_version" == "3.11" ]] || [[ "$python_version" == "3.12" ]] || [[ "$python_version" == "3.13" ]] || [[ "$python_version" == "3.14" ]]; then
+        print_status $GREEN "✅ Python $python_version found"
+    else
+        print_status $RED "❌ Python 3.11+ is required, found $python_version"
         exit 1
     fi
-    print_status $GREEN "✅ Python 3.11 found"
     
     # Check pip
     if ! command -v pip3 &> /dev/null; then
