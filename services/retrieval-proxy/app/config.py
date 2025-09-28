@@ -4,6 +4,7 @@ Configuration settings for the retrieval proxy service
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     # Service settings
@@ -57,9 +58,11 @@ class Settings(BaseSettings):
     enable_citations: bool = True
     citation_format: str = "markdown"  # markdown, json, plain
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra='ignore'
+    )
 
 # Create global settings instance
 settings = Settings()

@@ -10,7 +10,7 @@ import torch
 from PIL import Image
 import cv2
 import whisper
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 import librosa
 
 from .config import settings
@@ -430,13 +430,17 @@ class TextProcessor(BaseProcessor):
         chunk_size = settings.chunk_size
         overlap = settings.chunk_overlap
         
-        for i in range(0, len(words), chunk_size - overlap):
+        i = 0
+        while i < len(words):
             chunk_words = words[i:i + chunk_size]
             chunk_text = ' '.join(chunk_words)
             chunks.append(chunk_text)
             
-            # Stop if we've reached the end
-            if i + chunk_size >= len(words):
+            # Move to next chunk with overlap
+            i += chunk_size - overlap
+            
+            # Stop if we've processed all words
+            if i >= len(words):
                 break
         
         return chunks

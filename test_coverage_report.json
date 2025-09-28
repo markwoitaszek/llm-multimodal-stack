@@ -1,0 +1,1198 @@
+{
+  "summary": {
+    "overall_coverage_percentage": 0.0,
+    "total_source_files": 28,
+    "total_test_files": 0,
+    "total_lines": 5787,
+    "covered_lines": 0,
+    "target_coverage": 80.0,
+    "meets_target": false
+  },
+  "services": {
+    "ai-agents": {
+      "source_files": 11,
+      "test_files": 0,
+      "files": {
+        "services/ai-agents/main.py": {
+          "total_lines": 117,
+          "covered_lines": 0,
+          "coverage_percentage": 0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/tests/conftest.py": {
+          "total_lines": 111,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 7,
+            "covered": 0,
+            "list": [
+              "mock_agent",
+              "mock_agent_template",
+              "mock_agent_execution",
+              "mock_agent_memory",
+              "mock_tool_result",
+              "test_agent_creation_request",
+              "test_agent_execution_request"
+            ],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/examples/n8n_integration_examples.py": {
+          "total_lines": 145,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "N8NAIAgentsIntegration"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "__init__"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/examples/basic_usage.py": {
+          "total_lines": 135,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 7,
+            "covered": 0,
+            "list": [
+              "create_agent_from_template",
+              "execute_agent_task",
+              "get_agent_info",
+              "list_agents",
+              "get_agent_history",
+              "get_agent_stats",
+              "main"
+            ],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/examples/template_examples.py": {
+          "total_lines": 138,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 4,
+            "covered": 0,
+            "list": [
+              "create_agent_from_template",
+              "execute_agent_task",
+              "demonstrate_template",
+              "main"
+            ],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/app/agent_manager.py": {
+          "total_lines": 263,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "AgentManager"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "__init__"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/app/templates.py": {
+          "total_lines": 194,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 4,
+            "covered": 0,
+            "list": [
+              "get_all_templates",
+              "get_template",
+              "get_templates_by_category",
+              "search_templates"
+            ],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 2,
+            "covered": 0,
+            "list": [
+              "AgentTemplate",
+              "AgentTemplates"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 5,
+            "covered": 0,
+            "list": [
+              "get_all_templates",
+              "get_template_by_category",
+              "get_template",
+              "get_categories",
+              "search_templates"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/app/config.py": {
+          "total_lines": 70,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 2,
+            "covered": 0,
+            "list": [
+              "Settings",
+              "Config"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "postgres_url"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/app/memory.py": {
+          "total_lines": 215,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "MemoryManager"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "__init__"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/app/tools.py": {
+          "total_lines": 222,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 9,
+            "covered": 0,
+            "list": [
+              "ImageAnalysisTool",
+              "SearchTool",
+              "TextGenerationTool",
+              "WebSearchTool",
+              "ToolRegistry",
+              "ImageAnalysisInput",
+              "SearchInput",
+              "TextGenerationInput",
+              "WebSearchInput"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 5,
+            "covered": 0,
+            "list": [
+              "_run",
+              "_run",
+              "_run",
+              "_run",
+              "__init__"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/ai-agents/app/api.py": {
+          "total_lines": 418,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 4,
+            "covered": 0,
+            "list": [
+              "CreateAgentRequest",
+              "ExecuteTaskRequest",
+              "AgentResponse",
+              "ExecutionResponse"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        }
+      },
+      "total_lines": 2028,
+      "covered_lines": 0,
+      "coverage_percentage": 0.0
+    },
+    "retrieval-proxy": {
+      "source_files": 8,
+      "test_files": 0,
+      "files": {
+        "services/retrieval-proxy/main.py": {
+          "total_lines": 121,
+          "covered_lines": 0,
+          "coverage_percentage": 0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        },
+        "services/retrieval-proxy/tests/conftest.py": {
+          "total_lines": 92,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 5,
+            "covered": 0,
+            "list": [
+              "mock_qdrant_client",
+              "mock_vector_search_result",
+              "mock_context_bundle",
+              "test_search_request",
+              "test_index_request"
+            ],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        },
+        "services/retrieval-proxy/app/cache.py": {
+          "total_lines": 226,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "CacheManager"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 2,
+            "covered": 0,
+            "list": [
+              "__init__",
+              "_generate_cache_key"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/retrieval-proxy/app/config.py": {
+          "total_lines": 66,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 2,
+            "covered": 0,
+            "list": [
+              "Settings",
+              "Config"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "postgres_url"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/retrieval-proxy/app/database.py": {
+          "total_lines": 241,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "DatabaseManager"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "__init__"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/retrieval-proxy/app/vector_store.py": {
+          "total_lines": 287,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "VectorStoreManager"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 9,
+            "covered": 0,
+            "list": [
+              "__init__",
+              "add_vectors",
+              "search_vectors",
+              "get_vector",
+              "delete_vectors",
+              "update_vector_payload",
+              "get_collection_info",
+              "search_hybrid",
+              "get_stats"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/retrieval-proxy/app/retrieval.py": {
+          "total_lines": 414,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "RetrievalEngine"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 9,
+            "covered": 0,
+            "list": [
+              "__init__",
+              "apply_filters",
+              "create_text_context",
+              "create_image_context",
+              "create_video_context",
+              "create_keyframe_context",
+              "create_unified_context",
+              "generate_citations",
+              "extract_all_citations"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/retrieval-proxy/app/api.py": {
+          "total_lines": 377,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 3,
+            "covered": 0,
+            "list": [
+              "SearchRequest",
+              "SearchResponse",
+              "ContextBundleRequest"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        }
+      },
+      "total_lines": 1824,
+      "covered_lines": 0,
+      "coverage_percentage": 0.0
+    },
+    "n8n": {
+      "source_files": 0,
+      "test_files": 0,
+      "files": {},
+      "total_lines": 0,
+      "covered_lines": 0,
+      "coverage_percentage": 0.0
+    },
+    "multimodal-worker": {
+      "source_files": 9,
+      "test_files": 0,
+      "files": {
+        "services/multimodal-worker/main.py": {
+          "total_lines": 138,
+          "covered_lines": 0,
+          "coverage_percentage": 0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        },
+        "services/multimodal-worker/tests/conftest.py": {
+          "total_lines": 139,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 13,
+            "covered": 0,
+            "list": [
+              "mock_clip_model",
+              "mock_blip_model",
+              "mock_whisper_model",
+              "mock_sentence_transformer",
+              "test_image_file",
+              "test_audio_file",
+              "test_video_file",
+              "mock_image_processor",
+              "mock_text_processor",
+              "mock_audio_processor",
+              "mock_video_processor",
+              "test_processing_request",
+              "test_processing_response"
+            ],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        },
+        "services/multimodal-worker/app/cache.py": {
+          "total_lines": 271,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "ModelCacheManager"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 3,
+            "covered": 0,
+            "list": [
+              "__init__",
+              "_generate_model_key",
+              "_generate_embedding_key"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/multimodal-worker/app/models.py": {
+          "total_lines": 109,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "ModelManager"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 3,
+            "covered": 0,
+            "list": [
+              "__init__",
+              "get_model",
+              "get_processor"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/multimodal-worker/app/processors.py": {
+          "total_lines": 454,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 4,
+            "covered": 0,
+            "list": [
+              "BaseProcessor",
+              "ImageProcessor",
+              "VideoProcessor",
+              "TextProcessor"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 4,
+            "covered": 0,
+            "list": [
+              "__init__",
+              "extract_image_features",
+              "get_dominant_colors",
+              "chunk_text"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/multimodal-worker/app/config.py": {
+          "total_lines": 85,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 2,
+            "covered": 0,
+            "list": [
+              "Settings",
+              "Config"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "postgres_url"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/multimodal-worker/app/database.py": {
+          "total_lines": 196,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "DatabaseManager"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "__init__"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/multimodal-worker/app/storage.py": {
+          "total_lines": 165,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 1,
+            "covered": 0,
+            "list": [
+              "StorageManager"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 11,
+            "covered": 0,
+            "list": [
+              "__init__",
+              "upload_file",
+              "upload_data",
+              "download_file",
+              "get_object_url",
+              "delete_object",
+              "object_exists",
+              "list_objects",
+              "calculate_file_hash",
+              "calculate_data_hash",
+              "generate_object_path"
+            ],
+            "covered_list": []
+          }
+        },
+        "services/multimodal-worker/app/api.py": {
+          "total_lines": 378,
+          "covered_lines": 0,
+          "coverage_percentage": 0.0,
+          "functions": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          },
+          "classes": {
+            "total": 3,
+            "covered": 0,
+            "list": [
+              "ProcessingResult",
+              "TextProcessingRequest",
+              "SearchRequest"
+            ],
+            "covered_list": []
+          },
+          "methods": {
+            "total": 0,
+            "covered": 0,
+            "list": [],
+            "covered_list": []
+          }
+        }
+      },
+      "total_lines": 1935,
+      "covered_lines": 0,
+      "coverage_percentage": 0.0
+    }
+  },
+  "coverage_by_category": {
+    "unit_tests": {
+      "test_files": 8,
+      "coverage_estimate": 85.0,
+      "status": "excellent"
+    },
+    "integration_tests": {
+      "test_files": 4,
+      "coverage_estimate": 75.0,
+      "status": "good"
+    },
+    "performance_tests": {
+      "test_files": 4,
+      "coverage_estimate": 70.0,
+      "status": "good"
+    }
+  },
+  "gaps": [
+    {
+      "service": "ai-agents",
+      "current_coverage": 0.0,
+      "target_coverage": 80.0,
+      "gap": 80.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/main.py",
+      "current_coverage": 0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/tests/conftest.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/examples/n8n_integration_examples.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/examples/basic_usage.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/examples/template_examples.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/app/agent_manager.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/app/templates.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/app/config.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/app/memory.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/app/tools.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "ai-agents",
+      "file": "services/ai-agents/app/api.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "retrieval-proxy",
+      "current_coverage": 0.0,
+      "target_coverage": 80.0,
+      "gap": 80.0,
+      "priority": "high"
+    },
+    {
+      "service": "retrieval-proxy",
+      "file": "services/retrieval-proxy/main.py",
+      "current_coverage": 0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "retrieval-proxy",
+      "file": "services/retrieval-proxy/tests/conftest.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "retrieval-proxy",
+      "file": "services/retrieval-proxy/app/cache.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "retrieval-proxy",
+      "file": "services/retrieval-proxy/app/config.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "retrieval-proxy",
+      "file": "services/retrieval-proxy/app/database.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "retrieval-proxy",
+      "file": "services/retrieval-proxy/app/vector_store.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "retrieval-proxy",
+      "file": "services/retrieval-proxy/app/retrieval.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "retrieval-proxy",
+      "file": "services/retrieval-proxy/app/api.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "n8n",
+      "current_coverage": 0.0,
+      "target_coverage": 80.0,
+      "gap": 80.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "current_coverage": 0.0,
+      "target_coverage": 80.0,
+      "gap": 80.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "file": "services/multimodal-worker/main.py",
+      "current_coverage": 0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "file": "services/multimodal-worker/tests/conftest.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "file": "services/multimodal-worker/app/cache.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "file": "services/multimodal-worker/app/models.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "file": "services/multimodal-worker/app/processors.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "file": "services/multimodal-worker/app/config.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "file": "services/multimodal-worker/app/database.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "file": "services/multimodal-worker/app/storage.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    },
+    {
+      "service": "multimodal-worker",
+      "file": "services/multimodal-worker/app/api.py",
+      "current_coverage": 0.0,
+      "target_coverage": 70.0,
+      "gap": 70.0,
+      "priority": "high"
+    }
+  ],
+  "recommendations": [
+    "Overall test coverage is below 80% target. Focus on adding more unit tests.",
+    "Add more tests for ai-agents service to reach 80% coverage target.",
+    "Create test files for ai-agents service - currently no tests found.",
+    "Add more tests for retrieval-proxy service to reach 80% coverage target.",
+    "Create test files for retrieval-proxy service - currently no tests found.",
+    "Add more tests for n8n service to reach 80% coverage target.",
+    "Create test files for n8n service - currently no tests found.",
+    "Add more tests for multimodal-worker service to reach 80% coverage target.",
+    "Create test files for multimodal-worker service - currently no tests found.",
+    "Continue expanding integration tests to cover more service interaction scenarios.",
+    "Add more edge case tests and error handling scenarios.",
+    "Consider adding property-based testing for data validation.",
+    "Implement contract testing between services."
+  ],
+  "detailed_analysis": {
+    "test_distribution": {
+      "ai-agents": {
+        "test_files": 0,
+        "source_files": 11,
+        "test_to_source_ratio": 0.0
+      },
+      "retrieval-proxy": {
+        "test_files": 0,
+        "source_files": 8,
+        "test_to_source_ratio": 0.0
+      },
+      "n8n": {
+        "test_files": 0,
+        "source_files": 0,
+        "test_to_source_ratio": 0
+      },
+      "multimodal-worker": {
+        "test_files": 0,
+        "source_files": 9,
+        "test_to_source_ratio": 0.0
+      }
+    },
+    "coverage_trends": {
+      "highest_coverage_service": "ai-agents",
+      "lowest_coverage_service": "ai-agents",
+      "average_coverage": 0.0,
+      "services_meeting_target": 0
+    },
+    "quality_metrics": {
+      "total_test_files": 8,
+      "total_source_files": 28,
+      "test_density": 0.2857142857142857,
+      "estimated_maintainability": "medium"
+    }
+  }
+}

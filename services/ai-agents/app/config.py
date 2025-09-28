@@ -4,6 +4,7 @@ Configuration settings for the AI agents service
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     # Service settings
@@ -62,9 +63,11 @@ class Settings(BaseSettings):
     require_authentication: bool = False  # Will be enabled with user management
     allowed_origins: list = ["*"]  # Will be restricted in production
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra='ignore'
+    )
 
 # Create global settings instance
 settings = Settings()
