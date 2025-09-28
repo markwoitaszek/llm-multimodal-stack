@@ -113,7 +113,8 @@ fi
 
 # LiteLLM
 ((total_http_checks++))
-if check_service "LiteLLM" "http://localhost:4000/health" 200 "Authorization: Bearer sk-zfiSGe7bXx85c0hlkcjp+4SGtAYqXR/y8jBY9DWusm0="; then
+LITELLM_KEY=${LITELLM_MASTER_KEY:-sk-your-secure-master-key}
+if check_service "LiteLLM" "http://localhost:4000/health" 200 "Authorization: Bearer $LITELLM_KEY"; then
     ((http_healthy++))
 fi
 
