@@ -1,0 +1,139 @@
+name: 🔄 Issue Management
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [ 'develop/*', 'feature/*', 'hotfix/*' ]
+
+jobs:
+  close-linked-issues:
+    name: 🔗 Close Linked Issues
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Extract issue numbers from PR description
+        id: extract-issues
+        run: |
+          # Extract issue numbers from PR description using regex
+          PR_BODY="${{ github.event.pull_request.body }}"
+          
+          # Look for patterns like "Fixes #123", "Closes #456", "Resolves #789"
+          ISSUE_NUMBERS=$(echo "$PR_BODY" | grep -oE '(Fixes|Closes|Resolves)\s+#[0-9]+' | grep -oE '[0-9]+' | tr '\n' ' ')
+          
+          if [ -n "$ISSUE_NUMBERS" ]; then
+            echo "Found issue numbers: $ISSUE_NUMBERS"
+            echo "issue_numbers=$ISSUE_NUMBERS" >> $GITHUB_OUTPUT
+          else
+            echo "No issue numbers found in PR description"
+            echo "issue_numbers=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🔗 Close linked issues
+        if: steps.extract-issues.outputs.issue_numbers != ''
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issueNumbers = '${{ steps.extract-issues.outputs.issue_numbers }}'.trim().split(' ').filter(n => n);
+            const prNumber = ${{ github.event.pull_request.number }};
+            const prUrl = '${{ github.event.pull_request.html_url }}';
+            const prTitle = '${{ github.event.pull_request.title }}';
+            const targetBranch = '${{ github.event.pull_request.base.ref }}';
+            
+            console.log(`Found ${issueNumbers.length} issues to close: ${issueNumbers.join(', ')}`);
+            
+            for (const issueNumber of issueNumbers) {
+              try {
+                // Check if issue is already closed
+                const issue = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueNumber)
+                });
+                
+                if (issue.data.state === 'closed') {
+                  console.log(`Issue #${issueNumber} is already closed`);
+                  continue;
+                }
+                
+                // Close the issue with a comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueNumber),
+                  body: `✅ **Issue Resolved** - This issue has been addressed in [PR #${prNumber}](${prUrl}) which was merged into the \`${targetBranch}\` branch.\n\n**PR Title**: ${prTitle}\n\n**Note**: This issue was automatically closed because GitHub's automatic issue closing only works when PRs are merged into the default branch. This workflow ensures issues are properly closed when merged into development branches.`
+                });
+                
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueNumber),
+                  state: 'closed'
+                });
+                
+                console.log(`✅ Closed issue #${issueNumber}`);
+              } catch (error) {
+                console.error(`❌ Failed to close issue #${issueNumber}:`, error.message);
+              }
+            }
+
+  update-issue-labels:
+    name: 🏷️ Update Issue Labels
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: 🔍 Extract issue numbers from PR description
+        id: extract-issues
+        run: |
+          PR_BODY="${{ github.event.pull_request.body }}"
+          ISSUE_NUMBERS=$(echo "$PR_BODY" | grep -oE '(Fixes|Closes|Resolves)\s+#[0-9]+' | grep -oE '[0-9]+' | tr '\n' ' ')
+          
+          if [ -n "$ISSUE_NUMBERS" ]; then
+            echo "issue_numbers=$ISSUE_NUMBERS" >> $GITHUB_OUTPUT
+          else
+            echo "issue_numbers=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🏷️ Add resolved labels to issues
+        if: steps.extract-issues.outputs.issue_numbers != ''
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issueNumbers = '${{ steps.extract-issues.outputs.issue_numbers }}'.trim().split(' ').filter(n => n);
+            const targetBranch = '${{ github.event.pull_request.base.ref }}';
+            
+            for (const issueNumber of issueNumbers) {
+              try {
+                // Get current issue labels
+                const issue = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueNumber)
+                });
+                
+                const currentLabels = issue.data.labels.map(label => label.name);
+                
+                // Add resolved label if not already present
+                const labelsToAdd = ['resolved'];
+                if (targetBranch.startsWith('develop/')) {
+                  labelsToAdd.push('merged-to-develop');
+                } else if (targetBranch.startsWith('feature/')) {
+                  labelsToAdd.push('merged-to-feature');
+                }
+                
+                const newLabels = [...new Set([...currentLabels, ...labelsToAdd])];
+                
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(issueNumber),
+                  labels: newLabels
+                });
+                
+                console.log(`✅ Updated labels for issue #${issueNumber}`);
+              } catch (error) {
+                console.error(`❌ Failed to update labels for issue #${issueNumber}:`, error.message);
+              }
+            }

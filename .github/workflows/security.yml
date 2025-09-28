@@ -10,6 +10,13 @@ on:
     branches: [ main, 'develop/*' ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+  pull-requests: write
+  issues: write
+
 jobs:
   # Dependency Security Scan
   dependency-scan:
@@ -50,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [multimodal-worker, retrieval-proxy, setup-wizard]
+        service: [multimodal-worker, retrieval-proxy, ai-agents]
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4

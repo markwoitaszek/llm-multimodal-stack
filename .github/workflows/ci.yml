@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [multimodal-worker, retrieval-proxy, setup-wizard]
+        service: [multimodal-worker, retrieval-proxy, ai-agents]
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
