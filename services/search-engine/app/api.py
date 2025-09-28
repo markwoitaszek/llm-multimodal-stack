@@ -431,28 +431,5 @@ async def get_collection_info(
         logger.error(f"Failed to get collection info: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Error handlers
-@router.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle HTTP exceptions"""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=ErrorResponse(
-            error=exc.detail,
-            error_code=f"HTTP_{exc.status_code}",
-            details={"path": str(request.url)}
-        ).dict()
-    )
-
-@router.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle general exceptions"""
-    logger.error(f"Unhandled exception: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content=ErrorResponse(
-            error="Internal server error",
-            error_code="INTERNAL_ERROR",
-            details={"path": str(request.url)}
-        ).dict()
-    )
+# Error handlers - Note: APIRouter doesn't support exception handlers
+# These should be handled at the FastAPI app level in main.py
