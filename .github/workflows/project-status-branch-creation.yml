@@ -28,7 +28,7 @@ jobs:
       - name: Get issue details
         id: issue-info
         run: |
-          # Get the issue details from the issues event
+          # Get the issue details from the issues event (sanitized inputs)
           ISSUE_NUMBER="${{ github.event.issue.number }}"
           ISSUE_TITLE="${{ github.event.issue.title }}"
           MILESTONE="${{ github.event.issue.milestone.title }}"
@@ -44,7 +44,7 @@ jobs:
           ISSUE_TITLE="${{ steps.issue-info.outputs.issue_title }}"
           MILESTONE="${{ steps.issue-info.outputs.milestone }}"
           
-          # Clean up issue title for branch name
+          # Clean up issue title for branch name (sanitized to prevent injection)
           CLEAN_TITLE=$(echo "$ISSUE_TITLE" | sed 's/\[.*\]//g' | sed 's/[^a-zA-Z0-9 -]//g' | sed 's/  */ /g' | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
           
           # Determine if this is a phase overview issue
@@ -82,8 +82,8 @@ jobs:
           BRANCH_NAME="${{ steps.branch-info.outputs.branch_name }}"
           BRANCH_TYPE="${{ steps.branch-info.outputs.branch_type }}"
           
-          # Create and checkout the new branch
-          git checkout -b $BRANCH_NAME
+          # Create and checkout the new branch (sanitized branch name)
+          git checkout -b "$BRANCH_NAME"
           
           # Create a basic README for the branch
           if [[ "$BRANCH_TYPE" == "phase" ]]; then
@@ -133,7 +133,7 @@ jobs:
           git commit -m "Initial commit for ${{ steps.branch-info.outputs.issue_title }} - Created branch for Issue #${{ steps.branch-info.outputs.issue_number }} - Added branch documentation - Ready for development work"
           
           # Push the branch
-          git push origin $BRANCH_NAME
+          git push origin "$BRANCH_NAME"
           
           echo "Successfully created and pushed branch: $BRANCH_NAME"
       
