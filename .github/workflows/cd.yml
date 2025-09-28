@@ -21,7 +21,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'push'
     strategy:
       matrix:
-        service: [multimodal-worker, retrieval-proxy, setup-wizard]
+        service: [multimodal-worker, retrieval-proxy, ai-agents]
     permissions:
       contents: read
       packages: write
@@ -101,7 +101,7 @@ jobs:
           
           - \`ghcr.io/${{ github.repository }}/multimodal-worker:$CURRENT_TAG\`
           - \`ghcr.io/${{ github.repository }}/retrieval-proxy:$CURRENT_TAG\`
-          - \`ghcr.io/${{ github.repository }}/setup-wizard:$CURRENT_TAG\`
+          - \`ghcr.io/${{ github.repository }}/ai-agents:$CURRENT_TAG\`
           
           ## 🚀 Deployment
           
