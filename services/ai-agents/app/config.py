@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     multimodal_worker_url: str = os.getenv("MULTIMODAL_WORKER_URL", "http://multimodal-worker:8001")
     retrieval_proxy_url: str = os.getenv("RETRIEVAL_PROXY_URL", "http://retrieval-proxy:8002")
     
+    # Phase 2 service URLs
+    search_engine_url: str = os.getenv("SEARCH_ENGINE_URL", "http://search-engine:8004")
+    memory_system_url: str = os.getenv("MEMORY_SYSTEM_URL", "http://memory-system:8005")
+    user_management_url: str = os.getenv("USER_MANAGEMENT_URL", "http://user-management:8006")
+    
     # Agent settings
     max_agents_per_user: int = 10
     agent_execution_timeout: int = 300  # 5 minutes
