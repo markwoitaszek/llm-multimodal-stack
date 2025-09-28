@@ -8,7 +8,7 @@ pydantic-settings==2.6.0
 langchain==0.3.7
 langchain-community==0.3.7
 langchain-openai==0.2.8
-langchain-experimental==0.3.7
+langchain-experimental==0.3.5rc1
 
 # Database & Storage
 psycopg2-binary==2.9.9
