@@ -1,0 +1,508 @@
+openapi: 3.0.3
+info:
+  title: LiteLLM Router API
+  description: OpenAI-compatible API router for the Multimodal LLM Stack
+  version: 1.0.0
+  contact:
+    name: Multimodal LLM Stack
+    url: https://github.com/your-org/llm-multimodal-stack
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:4000
+    description: Local development server
+  - url: https://api.your-domain.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /v1/chat/completions:
+    post:
+      summary: Create a chat completion
+      description: Creates a completion for the provided chat conversation
+      operationId: createChatCompletion
+      tags:
+        - Chat Completions
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+            examples:
+              basic_chat:
+                summary: Basic chat completion
+                value:
+                  model: "gpt-3.5-turbo"
+                  messages:
+                    - role: "user"
+                      content: "Hello, how are you?"
+                  max_tokens: 150
+                  temperature: 0.7
+              multimodal_chat:
+                summary: Multimodal chat with image
+                value:
+                  model: "gpt-4-vision-preview"
+                  messages:
+                    - role: "user"
+                      content:
+                        - type: "text"
+                          text: "What's in this image?"
+                        - type: "image_url"
+                          image_url:
+                            url: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ..."
+                  max_tokens: 300
+      responses:
+        '200':
+          description: Successful completion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+              examples:
+                success:
+                  summary: Successful completion
+                  value:
+                    id: "chatcmpl-123"
+                    object: "chat.completion"
+                    created: 1677652288
+                    model: "gpt-3.5-turbo"
+                    choices:
+                      - index: 0
+                        message:
+                          role: "assistant"
+                          content: "Hello! I'm doing well, thank you for asking."
+                        finish_reason: "stop"
+                    usage:
+                      prompt_tokens: 9
+                      completion_tokens: 12
+                      total_tokens: 21
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/models:
+    get:
+      summary: List available models
+      description: Lists the currently available models
+      operationId: listModels
+      tags:
+        - Models
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelsResponse'
+              examples:
+                success:
+                  summary: Available models
+                  value:
+                    object: "list"
+                    data:
+                      - id: "gpt-3.5-turbo"
+                        object: "model"
+                        created: 1677610602
+                        owned_by: "openai"
+                      - id: "gpt-4"
+                        object: "model"
+                        created: 1677610602
+                        owned_by: "openai"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /health:
+    get:
+      summary: Health check
+      description: Check the health status of the LiteLLM router
+      operationId: healthCheck
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Service is healthy
+                  value:
+                    status: "healthy"
+                    service: "litellm-router"
+                    version: "1.0.0"
+                    uptime: "2h 15m 30s"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Use your LiteLLM master key as the bearer token.
+        Example: `Authorization: Bearer sk-your-litellm-master-key`
+
+  schemas:
+    ChatCompletionRequest:
+      type: object
+      required:
+        - model
+        - messages
+      properties:
+        model:
+          type: string
+          description: ID of the model to use
+          example: "gpt-3.5-turbo"
+        messages:
+          type: array
+          description: A list of messages comprising the conversation
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        max_tokens:
+          type: integer
+          description: The maximum number of tokens to generate
+          minimum: 1
+          maximum: 4096
+          example: 150
+        temperature:
+          type: number
+          description: What sampling temperature to use
+          minimum: 0
+          maximum: 2
+          default: 1
+          example: 0.7
+        top_p:
+          type: number
+          description: An alternative to sampling with temperature
+          minimum: 0
+          maximum: 1
+          default: 1
+          example: 1
+        frequency_penalty:
+          type: number
+          description: Number between -2.0 and 2.0
+          minimum: -2
+          maximum: 2
+          default: 0
+          example: 0
+        presence_penalty:
+          type: number
+          description: Number between -2.0 and 2.0
+          minimum: -2
+          maximum: 2
+          default: 0
+          example: 0
+        stop:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+          description: Up to 4 sequences where the API will stop generating
+        stream:
+          type: boolean
+          description: If set, partial message deltas will be sent
+          default: false
+        user:
+          type: string
+          description: A unique identifier representing your end-user
+
+    ChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+          description: The role of the messages author
+        content:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: '#/components/schemas/ContentPart'
+          description: The contents of the message
+
+    ContentPart:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [text, image_url]
+          description: The type of content part
+        text:
+          type: string
+          description: The text content (required if type is text)
+        image_url:
+          $ref: '#/components/schemas/ImageURL'
+          description: The image URL (required if type is image_url)
+
+    ImageURL:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          description: Either a URL of the image or the base64 encoded image data
+          example: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ..."
+
+    ChatCompletionResponse:
+      type: object
+      required:
+        - id
+        - object
+        - created
+        - model
+        - choices
+        - usage
+      properties:
+        id:
+          type: string
+          description: A unique identifier for the chat completion
+          example: "chatcmpl-123"
+        object:
+          type: string
+          description: The object type, which is always "chat.completion"
+          example: "chat.completion"
+        created:
+          type: integer
+          description: The Unix timestamp of when the chat completion was created
+          example: 1677652288
+        model:
+          type: string
+          description: The model used for the chat completion
+          example: "gpt-3.5-turbo"
+        choices:
+          type: array
+          description: A list of chat completion choices
+          items:
+            $ref: '#/components/schemas/ChatChoice'
+        usage:
+          $ref: '#/components/schemas/Usage'
+
+    ChatChoice:
+      type: object
+      required:
+        - index
+        - message
+        - finish_reason
+      properties:
+        index:
+          type: integer
+          description: The index of the choice in the list of choices
+          example: 0
+        message:
+          $ref: '#/components/schemas/ChatMessage'
+        finish_reason:
+          type: string
+          enum: [stop, length, content_filter, null]
+          description: The reason the model stopped generating tokens
+          example: "stop"
+
+    Usage:
+      type: object
+      required:
+        - prompt_tokens
+        - completion_tokens
+        - total_tokens
+      properties:
+        prompt_tokens:
+          type: integer
+          description: Number of tokens in the prompt
+          example: 9
+        completion_tokens:
+          type: integer
+          description: Number of tokens in the generated completion
+          example: 12
+        total_tokens:
+          type: integer
+          description: Total number of tokens used in the request
+          example: 21
+
+    ModelsResponse:
+      type: object
+      required:
+        - object
+        - data
+      properties:
+        object:
+          type: string
+          description: The object type, which is always "list"
+          example: "list"
+        data:
+          type: array
+          description: A list of model objects
+          items:
+            $ref: '#/components/schemas/Model'
+
+    Model:
+      type: object
+      required:
+        - id
+        - object
+        - created
+        - owned_by
+      properties:
+        id:
+          type: string
+          description: The model identifier
+          example: "gpt-3.5-turbo"
+        object:
+          type: string
+          description: The object type, which is always "model"
+          example: "model"
+        created:
+          type: integer
+          description: The Unix timestamp of when the model was created
+          example: 1677610602
+        owned_by:
+          type: string
+          description: The organization that owns the model
+          example: "openai"
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - version
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          description: The health status of the service
+          example: "healthy"
+        service:
+          type: string
+          description: The name of the service
+          example: "litellm-router"
+        version:
+          type: string
+          description: The version of the service
+          example: "1.0.0"
+        uptime:
+          type: string
+          description: The uptime of the service
+          example: "2h 15m 30s"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - message
+            - type
+          properties:
+            message:
+              type: string
+              description: A human-readable error message
+              example: "Invalid request parameters"
+            type:
+              type: string
+              description: The type of error
+              example: "invalid_request_error"
+            code:
+              type: string
+              description: The error code
+              example: "invalid_parameter"
+            param:
+              type: string
+              description: The parameter that caused the error
+              example: "model"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_model:
+              summary: Invalid model
+              value:
+                error:
+                  message: "The model 'invalid-model' does not exist"
+                  type: "invalid_request_error"
+                  code: "model_not_found"
+                  param: "model"
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_key:
+              summary: Invalid API key
+              value:
+                error:
+                  message: "Invalid API key provided"
+                  type: "invalid_request_error"
+                  code: "invalid_api_key"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rate_limit:
+              summary: Rate limit exceeded
+              value:
+                error:
+                  message: "Rate limit exceeded. Try again in 60 seconds."
+                  type: "rate_limit_exceeded"
+                  code: "rate_limit_exceeded"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            server_error:
+              summary: Internal server error
+              value:
+                error:
+                  message: "An internal server error occurred"
+                  type: "server_error"
+                  code: "internal_error"
+
+tags:
+  - name: Chat Completions
+    description: Create chat completions with various models
+  - name: Models
+    description: List and manage available models
+  - name: Health
+    description: Health check endpoints

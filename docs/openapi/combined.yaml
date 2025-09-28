@@ -1,0 +1,1196 @@
+openapi: 3.0.3
+info:
+  title: Multimodal LLM Stack API
+  description: Complete API documentation for all services in the Multimodal LLM Stack
+  version: 1.0.0
+  contact:
+    name: Multimodal LLM Stack
+    url: https://github.com/your-org/llm-multimodal-stack
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:4000
+    description: LiteLLM Router (Port 4000)
+  - url: http://localhost:8001
+    description: Multimodal Worker (Port 8001)
+  - url: http://localhost:8002
+    description: Retrieval Proxy (Port 8002)
+  - url: http://localhost:8003
+    description: AI Agents (Port 8003)
+
+security:
+  - BearerAuth: []
+
+paths:
+  # LiteLLM Router Endpoints
+  /v1/chat/completions:
+    post:
+      summary: Create a chat completion (LiteLLM Router)
+      description: Creates a completion for the provided chat conversation
+      operationId: createChatCompletion
+      tags:
+        - LiteLLM Router
+        - Chat Completions
+      security:
+        - BearerAuth: []
+      servers:
+        - url: http://localhost:4000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Successful completion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/models:
+    get:
+      summary: List available models (LiteLLM Router)
+      description: Lists the currently available models
+      operationId: listModels
+      tags:
+        - LiteLLM Router
+        - Models
+      security:
+        - BearerAuth: []
+      servers:
+        - url: http://localhost:4000
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # Multimodal Worker Endpoints
+  /api/v1/process/image:
+    post:
+      summary: Process an image (Multimodal Worker)
+      description: Upload and process an image for captioning and embedding generation
+      operationId: processImage
+      tags:
+        - Multimodal Worker
+        - Image Processing
+      servers:
+        - url: http://localhost:8001
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file to process
+                document_name:
+                  type: string
+                  description: Optional name for the document
+                metadata:
+                  type: string
+                  description: Optional metadata as JSON string
+      responses:
+        '200':
+          description: Image processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/process/video:
+    post:
+      summary: Process a video (Multimodal Worker)
+      description: Upload and process a video for transcription and keyframe extraction
+      operationId: processVideo
+      tags:
+        - Multimodal Worker
+        - Video Processing
+      servers:
+        - url: http://localhost:8001
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Video file to process
+                document_name:
+                  type: string
+                  description: Optional name for the document
+                metadata:
+                  type: string
+                  description: Optional metadata as JSON string
+      responses:
+        '200':
+          description: Video processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/process/text:
+    post:
+      summary: Process text (Multimodal Worker)
+      description: Process text content for chunking and embedding generation
+      operationId: processText
+      tags:
+        - Multimodal Worker
+        - Text Processing
+      servers:
+        - url: http://localhost:8001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextProcessingRequest'
+      responses:
+        '200':
+          description: Text processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # Retrieval Proxy Endpoints
+  /api/v1/search:
+    post:
+      summary: Perform multimodal search (Retrieval Proxy)
+      description: Search across text, image, and video content with unified results
+      operationId: searchMultimodal
+      tags:
+        - Retrieval Proxy
+        - Search
+      servers:
+        - url: http://localhost:8002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Search completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/search/sessions:
+    get:
+      summary: Get search sessions (Retrieval Proxy)
+      description: Retrieve recent search sessions
+      operationId: getSearchSessions
+      tags:
+        - Retrieval Proxy
+        - Search Sessions
+      servers:
+        - url: http://localhost:8002
+      parameters:
+        - name: limit
+          in: query
+          description: Number of sessions to retrieve
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Search sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSessionsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # AI Agents Endpoints
+  /api/v1/agents:
+    post:
+      summary: Create a new agent (AI Agents)
+      description: Create a new AI agent with specified configuration
+      operationId: createAgent
+      tags:
+        - AI Agents
+        - Agent Management
+      servers:
+        - url: http://localhost:8003
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAgentRequest'
+      responses:
+        '200':
+          description: Agent created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentCreationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      summary: List agents (AI Agents)
+      description: List all agents for a user
+      operationId: listAgents
+      tags:
+        - AI Agents
+        - Agent Management
+      servers:
+        - url: http://localhost:8003
+      parameters:
+        - name: user_id
+          in: query
+          description: User ID to filter agents
+          required: false
+          schema:
+            type: string
+            default: "default"
+      responses:
+        '200':
+          description: Agents retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentsListResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/agents/{agent_id}/execute:
+    post:
+      summary: Execute agent task (AI Agents)
+      description: Execute a task with a specific agent
+      operationId: executeAgentTask
+      tags:
+        - AI Agents
+        - Agent Execution
+      servers:
+        - url: http://localhost:8003
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteTaskRequest'
+      responses:
+        '200':
+          description: Task executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # Health Check Endpoints
+  /health:
+    get:
+      summary: Health check
+      description: Check the health status of any service
+      operationId: healthCheck
+      tags:
+        - Health
+      servers:
+        - url: http://localhost:4000
+          description: LiteLLM Router
+        - url: http://localhost:8001
+          description: Multimodal Worker
+        - url: http://localhost:8002
+          description: Retrieval Proxy
+        - url: http://localhost:8003
+          description: AI Agents
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Use your LiteLLM master key as the bearer token for LiteLLM Router endpoints.
+        Other services currently don't require authentication.
+        Example: `Authorization: Bearer sk-your-litellm-master-key`
+
+  schemas:
+    # LiteLLM Router Schemas
+    ChatCompletionRequest:
+      type: object
+      required:
+        - model
+        - messages
+      properties:
+        model:
+          type: string
+          description: ID of the model to use
+          example: "gpt-3.5-turbo"
+        messages:
+          type: array
+          description: A list of messages comprising the conversation
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        max_tokens:
+          type: integer
+          description: The maximum number of tokens to generate
+          minimum: 1
+          maximum: 4096
+          example: 150
+        temperature:
+          type: number
+          description: What sampling temperature to use
+          minimum: 0
+          maximum: 2
+          default: 1
+          example: 0.7
+
+    ChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+          description: The role of the messages author
+        content:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: '#/components/schemas/ContentPart'
+          description: The contents of the message
+
+    ContentPart:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [text, image_url]
+          description: The type of content part
+        text:
+          type: string
+          description: The text content (required if type is text)
+        image_url:
+          $ref: '#/components/schemas/ImageURL'
+          description: The image URL (required if type is image_url)
+
+    ImageURL:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          description: Either a URL of the image or the base64 encoded image data
+          example: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ..."
+
+    ChatCompletionResponse:
+      type: object
+      required:
+        - id
+        - object
+        - created
+        - model
+        - choices
+        - usage
+      properties:
+        id:
+          type: string
+          description: A unique identifier for the chat completion
+          example: "chatcmpl-123"
+        object:
+          type: string
+          description: The object type, which is always "chat.completion"
+          example: "chat.completion"
+        created:
+          type: integer
+          description: The Unix timestamp of when the chat completion was created
+          example: 1677652288
+        model:
+          type: string
+          description: The model used for the chat completion
+          example: "gpt-3.5-turbo"
+        choices:
+          type: array
+          description: A list of chat completion choices
+          items:
+            $ref: '#/components/schemas/ChatChoice'
+        usage:
+          $ref: '#/components/schemas/Usage'
+
+    ChatChoice:
+      type: object
+      required:
+        - index
+        - message
+        - finish_reason
+      properties:
+        index:
+          type: integer
+          description: The index of the choice in the list of choices
+          example: 0
+        message:
+          $ref: '#/components/schemas/ChatMessage'
+        finish_reason:
+          type: string
+          enum: [stop, length, content_filter, null]
+          description: The reason the model stopped generating tokens
+          example: "stop"
+
+    Usage:
+      type: object
+      required:
+        - prompt_tokens
+        - completion_tokens
+        - total_tokens
+      properties:
+        prompt_tokens:
+          type: integer
+          description: Number of tokens in the prompt
+          example: 9
+        completion_tokens:
+          type: integer
+          description: Number of tokens in the generated completion
+          example: 12
+        total_tokens:
+          type: integer
+          description: Total number of tokens used in the request
+          example: 21
+
+    ModelsResponse:
+      type: object
+      required:
+        - object
+        - data
+      properties:
+        object:
+          type: string
+          description: The object type, which is always "list"
+          example: "list"
+        data:
+          type: array
+          description: A list of model objects
+          items:
+            $ref: '#/components/schemas/Model'
+
+    Model:
+      type: object
+      required:
+        - id
+        - object
+        - created
+        - owned_by
+      properties:
+        id:
+          type: string
+          description: The model identifier
+          example: "gpt-3.5-turbo"
+        object:
+          type: string
+          description: The object type, which is always "model"
+          example: "model"
+        created:
+          type: integer
+          description: The Unix timestamp of when the model was created
+          example: 1677610602
+        owned_by:
+          type: string
+          description: The organization that owns the model
+          example: "openai"
+
+    # Multimodal Worker Schemas
+    TextProcessingRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: The text content to process
+          example: "This is a sample document about artificial intelligence..."
+        document_name:
+          type: string
+          description: Optional name for the document
+          example: "ai_article.txt"
+        metadata:
+          type: object
+          description: Optional metadata for the document
+          additionalProperties: true
+          example:
+            author: "John Doe"
+            category: "AI"
+            tags: ["machine learning", "AI"]
+
+    ProcessingResult:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Whether the processing was successful
+          example: true
+        message:
+          type: string
+          description: Human-readable message about the processing result
+          example: "Image processed successfully"
+        data:
+          type: object
+          description: Processing result data
+          additionalProperties: true
+          example:
+            document_id: "550e8400-e29b-41d4-a716-446655440000"
+            image_id: "550e8400-e29b-41d4-a716-446655440001"
+            caption: "A photo of a cat sitting on a chair"
+            dimensions: [800, 600]
+            storage_path: "images/ab/abcd1234_my_image.jpg"
+        error:
+          type: string
+          description: Error message if processing failed
+          example: "Failed to process image: Invalid file format"
+
+    # Retrieval Proxy Schemas
+    SearchRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: Search query
+          example: "artificial intelligence machine learning"
+        modalities:
+          type: array
+          items:
+            type: string
+            enum: [text, image, video]
+          description: Content types to search
+          example: ["text", "image", "video"]
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Maximum number of results
+          example: 10
+        filters:
+          type: object
+          description: Additional filters
+          properties:
+            file_types:
+              type: array
+              items:
+                type: string
+              description: File types to include
+              example: ["pdf", "txt", "jpg", "mp4"]
+            min_score:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Minimum similarity score
+              example: 0.7
+          additionalProperties: true
+        score_threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Minimum similarity score threshold
+          example: 0.8
+
+    SearchResponse:
+      type: object
+      required:
+        - session_id
+        - query
+        - modalities
+        - results_count
+        - results
+        - context_bundle
+        - metadata
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          description: Unique session identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        query:
+          type: string
+          description: The search query
+          example: "artificial intelligence machine learning"
+        modalities:
+          type: array
+          items:
+            type: string
+            enum: [text, image, video]
+          description: Content types searched
+          example: ["text", "image", "video"]
+        results_count:
+          type: integer
+          description: Number of results returned
+          example: 5
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        context_bundle:
+          $ref: '#/components/schemas/ContextBundle'
+        metadata:
+          type: object
+          description: Search metadata
+          properties:
+            search_timestamp:
+              type: string
+              format: date-time
+              example: "2024-01-01T12:00:00Z"
+            filters_applied:
+              type: object
+              additionalProperties: true
+            score_threshold:
+              type: number
+              example: 0.8
+          additionalProperties: true
+
+    SearchResult:
+      type: object
+      required:
+        - embedding_id
+        - score
+        - modality
+        - content_type
+        - content
+        - document_id
+        - filename
+        - file_type
+        - citations
+        - artifacts
+      properties:
+        embedding_id:
+          type: string
+          format: uuid
+          description: Unique embedding identifier
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Similarity score
+          example: 0.95
+        modality:
+          type: string
+          enum: [text, image, video]
+          description: Content modality
+          example: "text"
+        content_type:
+          type: string
+          description: Type of content
+          example: "text"
+        content:
+          type: string
+          description: Content snippet or description
+          example: "Machine learning is a subset of artificial intelligence..."
+        document_id:
+          type: string
+          format: uuid
+          description: Document identifier
+          example: "550e8400-e29b-41d4-a716-446655440002"
+        filename:
+          type: string
+          description: Original filename
+          example: "ai_basics.pdf"
+        file_type:
+          type: string
+          description: File type/extension
+          example: "pdf"
+        citations:
+          type: object
+          description: Citation information
+          properties:
+            source:
+              type: string
+              example: "ai_basics.pdf"
+            type:
+              type: string
+              example: "text"
+            document_id:
+              type: string
+              format: uuid
+              example: "550e8400-e29b-41d4-a716-446655440002"
+          additionalProperties: true
+        artifacts:
+          type: object
+          description: Artifact access information
+          properties:
+            view_url:
+              type: string
+              example: "/api/v1/artifacts/document/550e8400-e29b-41d4-a716-446655440002"
+          additionalProperties: true
+
+    ContextBundle:
+      type: object
+      required:
+        - query
+        - sections
+        - unified_context
+        - total_results
+        - context_length
+        - citations
+      properties:
+        query:
+          type: string
+          description: The search query
+          example: "artificial intelligence machine learning"
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                example: "text"
+              title:
+                type: string
+                example: "Relevant Text Content"
+              content:
+                type: string
+                example: "[1] Machine learning is a subset..."
+              count:
+                type: integer
+                example: 3
+            additionalProperties: true
+        unified_context:
+          type: string
+          description: Unified context in markdown format
+          example: "# Search Results for: artificial intelligence..."
+        total_results:
+          type: integer
+          description: Total number of results
+          example: 5
+        context_length:
+          type: integer
+          description: Total context length in characters
+          example: 1250
+        citations:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    SearchSessionsResponse:
+      type: object
+      required:
+        - sessions
+        - count
+      properties:
+        sessions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: "550e8400-e29b-41d4-a716-446655440000"
+              session_name:
+                type: string
+                nullable: true
+                example: null
+              query:
+                type: string
+                example: "artificial intelligence"
+              filters:
+                type: object
+                additionalProperties: true
+              results_count:
+                type: integer
+                example: 5
+              context_bundle:
+                type: object
+                additionalProperties: true
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-01-01T12:00:00Z"
+        count:
+          type: integer
+          description: Number of sessions returned
+          example: 1
+
+    # AI Agents Schemas
+    CreateAgentRequest:
+      type: object
+      required:
+        - name
+        - goal
+      properties:
+        name:
+          type: string
+          description: Agent name
+          example: "Research Assistant"
+        goal:
+          type: string
+          description: Agent goal or purpose
+          example: "Help users research topics and find relevant information"
+        tools:
+          type: array
+          items:
+            type: string
+          description: List of tool names to enable
+          example: ["web_search", "document_analysis"]
+        memory_window:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Conversation memory window size
+          example: 10
+        user_id:
+          type: string
+          default: "default"
+          description: User ID
+          example: "user123"
+
+    ExecuteTaskRequest:
+      type: object
+      required:
+        - task
+      properties:
+        task:
+          type: string
+          description: Task for the agent to execute
+          example: "Research the latest developments in artificial intelligence"
+        user_id:
+          type: string
+          default: "default"
+          description: User ID
+          example: "user123"
+
+    AgentCreationResponse:
+      type: object
+      required:
+        - agent_id
+        - message
+        - status
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          description: Unique agent identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        message:
+          type: string
+          description: Success message
+          example: "Agent 'Research Assistant' created successfully"
+        goal:
+          type: string
+          description: Agent goal
+          example: "Help users research topics and find relevant information"
+        tools:
+          type: array
+          items:
+            type: string
+          description: List of enabled tools
+          example: ["web_search", "document_analysis"]
+        status:
+          type: string
+          description: Creation status
+          example: "created"
+
+    AgentsListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/AgentResponse'
+
+    AgentResponse:
+      type: object
+      required:
+        - agent_id
+        - name
+        - goal
+        - tools
+        - created_at
+        - status
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          description: Unique agent identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          description: Agent name
+          example: "Research Assistant"
+        goal:
+          type: string
+          description: Agent goal
+          example: "Help users research topics and find relevant information"
+        tools:
+          type: array
+          items:
+            type: string
+          description: List of enabled tools
+          example: ["web_search", "document_analysis"]
+        created_at:
+          type: string
+          format: date-time
+          description: When the agent was created
+          example: "2024-01-01T12:00:00Z"
+        status:
+          type: string
+          enum: [active, inactive, error]
+          description: Agent status
+          example: "active"
+
+    ExecutionResponse:
+      type: object
+      required:
+        - agent_id
+        - task
+        - result
+        - success
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          description: Agent identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        task:
+          type: string
+          description: The executed task
+          example: "Research the latest developments in artificial intelligence"
+        result:
+          type: string
+          description: Task execution result
+          example: "Based on my research, here are the latest developments in AI..."
+        success:
+          type: boolean
+          description: Whether the execution was successful
+          example: true
+        intermediate_steps:
+          type: array
+          items:
+            type: object
+            properties:
+              step:
+                type: integer
+                example: 1
+              action:
+                type: string
+                example: "web_search"
+              result:
+                type: string
+                example: "Found 15 relevant articles about AI developments"
+            additionalProperties: true
+          description: Intermediate execution steps
+
+    # Common Schemas
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - version
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          description: The health status of the service
+          example: "healthy"
+        service:
+          type: string
+          description: The name of the service
+          example: "multimodal-worker"
+        version:
+          type: string
+          description: The version of the service
+          example: "1.0.0"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+        - error_code
+        - timestamp
+      properties:
+        detail:
+          type: string
+          description: A human-readable error message
+          example: "Invalid request parameters"
+        error_code:
+          type: string
+          description: The error code
+          example: "INVALID_PARAMETERS"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2024-01-01T12:00:00Z"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    FileTooLarge:
+      description: File too large
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    UnprocessableEntity:
+      description: Unprocessable entity - validation errors
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+tags:
+  - name: LiteLLM Router
+    description: OpenAI-compatible API router for chat completions and models
+  - name: Multimodal Worker
+    description: Image, video, and text processing service
+  - name: Retrieval Proxy
+    description: Unified search and context bundling service
+  - name: AI Agents
+    description: LangChain-based autonomous agents
+  - name: Chat Completions
+    description: Create chat completions with various models
+  - name: Models
+    description: List and manage available models
+  - name: Image Processing
+    description: Process images for captioning and embedding generation
+  - name: Video Processing
+    description: Process videos for transcription and keyframe extraction
+  - name: Text Processing
+    description: Process text content for chunking and embedding generation
+  - name: Search
+    description: Perform multimodal search across content
+  - name: Search Sessions
+    description: Manage search sessions
+  - name: Agent Management
+    description: Create, read, update, and delete agents
+  - name: Agent Execution
+    description: Execute tasks with agents
+  - name: Health
+    description: Health check endpoints

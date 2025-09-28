@@ -4,13 +4,13 @@ FROM node:18-alpine as build
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY services/ai-agents/web/package*.json ./
 
 # Install dependencies
 RUN npm install --only=production
 
 # Copy source code
-COPY . .
+COPY services/ai-agents/web/ .
 
 # Build the app
 RUN npm run build
@@ -21,15 +21,18 @@ FROM nginx:alpine
 # Copy built app to nginx
 COPY --from=build /app/build /usr/share/nginx/html
 
+# Copy documentation files
+COPY docs /usr/share/nginx/html/docs
+
 # Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY services/ai-agents/web/nginx.conf /etc/nginx/nginx.conf
 
 # Create non-root user
 RUN addgroup -g 1001 -S appuser && adduser -S appuser -u 1001 -G appuser
 
 # Create necessary directories and set permissions
-RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run && \
-    chown -R appuser:appuser /var/cache/nginx /var/log/nginx /var/run /usr/share/nginx/html
+RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run /tmp/nginx && \
+    chown -R appuser:appuser /var/cache/nginx /var/log/nginx /var/run /tmp/nginx /usr/share/nginx/html
 
 # Switch to non-root user
 USER appuser

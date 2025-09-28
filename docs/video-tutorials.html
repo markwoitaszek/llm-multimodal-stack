@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Tutorials - Multimodal LLM Stack</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .tutorial-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .tutorial-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tutorial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .tutorial-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .tutorial-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #000;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .video-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .play-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .play-button:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        .tutorial-info h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+
+        .tutorial-info p {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .tutorial-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        .tutorial-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .tutorial-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tutorial-link {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .tutorial-link:hover {
+            background: #5a6fd8;
+        }
+
+        .tutorial-link.secondary {
+            background: #6c757d;
+        }
+
+        .tutorial-link.secondary:hover {
+            background: #5a6268;
+        }
+
+        .coming-soon {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+
+        .coming-soon h4 {
+            color: #856404;
+            margin-bottom: 5px;
+        }
+
+        .back-link {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2.5rem;
+            }
+
+            .header p {
+                font-size: 1.1rem;
+            }
+
+            .tutorial-section {
+                padding: 20px;
+            }
+
+            .tutorial-section h2 {
+                font-size: 1.5rem;
+            }
+
+            .tutorial-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .tutorial-card {
+                padding: 15px;
+            }
+
+            .video-container {
+                height: 180px;
+            }
+
+            .tutorial-links {
+                flex-direction: column;
+            }
+
+            .tutorial-link {
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .tutorial-section {
+                padding: 15px;
+            }
+
+            .tutorial-section h2 {
+                font-size: 1.3rem;
+            }
+
+            .tutorial-card {
+                padding: 12px;
+            }
+
+            .video-container {
+                height: 160px;
+            }
+
+            .play-button {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Documentation</a>
+
+        <div class="header">
+            <h1>🎥 Video Tutorials</h1>
+            <p>Learn the Multimodal LLM Stack through step-by-step video guides</p>
+        </div>
+
+        <div class="tutorial-section">
+            <h2>🚀 Getting Started</h2>
+            <p>New to the Multimodal LLM Stack? Start with these foundational tutorials.</p>
+            
+            <div class="tutorial-grid">
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Quick Start Guide</h3>
+                        <p>Get the Multimodal LLM Stack up and running in under 10 minutes. Learn the basics of installation, configuration, and your first API calls.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 8:30</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Beginner</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="README.md" class="tutorial-link secondary">Read Guide</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Docker Setup & Configuration</h3>
+                        <p>Learn how to set up the stack using Docker Compose, configure environment variables, and troubleshoot common setup issues.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 12:15</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Beginner</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="DEPLOYMENT.md" class="tutorial-link secondary">Read Guide</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Understanding the Architecture</h3>
+                        <p>Deep dive into the four services that make up the stack and how they work together to provide multimodal AI capabilities.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 15:45</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Intermediate</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="swagger-ui.html" class="tutorial-link secondary">Explore APIs</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tutorial-section">
+            <h2>🔧 API Usage</h2>
+            <p>Learn how to use the APIs effectively with practical examples and best practices.</p>
+            
+            <div class="tutorial-grid">
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Chat Completions with LiteLLM</h3>
+                        <p>Master the OpenAI-compatible chat completions API. Learn about models, parameters, and advanced features like streaming and function calling.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 18:20</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Intermediate</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="swagger-ui.html#litellm" class="tutorial-link secondary">Try API</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Image & Video Processing</h3>
+                        <p>Learn how to process images and videos with the Multimodal Worker. Generate captions, extract keyframes, and create embeddings.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 22:10</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Intermediate</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="swagger-ui.html#multimodal" class="tutorial-link secondary">Try API</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Multimodal Search & Retrieval</h3>
+                        <p>Master the art of searching across text, images, and videos. Learn about filters, scoring, and context bundling.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 16:30</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Intermediate</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="swagger-ui.html#retrieval" class="tutorial-link secondary">Try API</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tutorial-section">
+            <h2>🤖 AI Agents</h2>
+            <p>Build intelligent agents that can perform complex tasks autonomously.</p>
+            
+            <div class="tutorial-grid">
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Creating Your First AI Agent</h3>
+                        <p>Step-by-step guide to creating an AI agent from scratch. Learn about goals, tools, and memory management.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 20:45</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Beginner</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="swagger-ui.html#agents" class="tutorial-link secondary">Try API</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Agent Templates & Best Practices</h3>
+                        <p>Explore pre-built agent templates and learn best practices for creating effective AI agents.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 14:20</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Intermediate</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="swagger-ui.html#agents" class="tutorial-link secondary">Explore Templates</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Advanced Agent Workflows</h3>
+                        <p>Build complex multi-step workflows with agents that can coordinate tasks and maintain state across operations.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 25:15</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Advanced</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="examples/" class="tutorial-link secondary">View Examples</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tutorial-section">
+            <h2>🛠️ SDKs & Integration</h2>
+            <p>Learn how to integrate the stack into your applications using our SDKs.</p>
+            
+            <div class="tutorial-grid">
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Python SDK Deep Dive</h3>
+                        <p>Complete guide to using the Python SDK. Learn about client configuration, error handling, and advanced features.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 19:30</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Intermediate</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="../sdk/python/README.md" class="tutorial-link secondary">Read Docs</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>JavaScript SDK & Browser Integration</h3>
+                        <p>Learn how to use the JavaScript SDK in both Node.js and browser environments. Build interactive web applications.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 17:45</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Intermediate</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="../sdk/javascript/README.md" class="tutorial-link secondary">Read Docs</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Building a Complete Application</h3>
+                        <p>End-to-end tutorial building a real application that uses all four services. From data ingestion to AI-powered insights.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 35:20</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Advanced</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="examples/" class="tutorial-link secondary">View Code</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tutorial-section">
+            <h2>🚀 Production & Deployment</h2>
+            <p>Take your application to production with these deployment and scaling guides.</p>
+            
+            <div class="tutorial-grid">
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Production Deployment</h3>
+                        <p>Learn how to deploy the stack in production with proper security, monitoring, and scaling considerations.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 28:15</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Advanced</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="DEPLOYMENT.md" class="tutorial-link secondary">Read Guide</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Performance Optimization</h3>
+                        <p>Optimize your deployment for maximum performance. Learn about caching, load balancing, and resource management.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 21:40</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Advanced</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="DEVOPS.md" class="tutorial-link secondary">Read Guide</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tutorial-card">
+                    <div class="video-container">
+                        <div class="video-placeholder">
+                            <div class="play-button">▶</div>
+                        </div>
+                    </div>
+                    <div class="tutorial-info">
+                        <h3>Monitoring & Troubleshooting</h3>
+                        <p>Set up comprehensive monitoring and learn how to troubleshoot common production issues.</p>
+                        <div class="tutorial-meta">
+                            <span>⏱️ 24:30</span>
+                            <span>📅 Jan 2024</span>
+                            <span>👤 Advanced</span>
+                        </div>
+                        <div class="tutorial-links">
+                            <a href="#" class="tutorial-link">Watch Video</a>
+                            <a href="troubleshooting.md" class="tutorial-link secondary">Read Guide</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="coming-soon">
+            <h4>🎬 More Videos Coming Soon!</h4>
+            <p>We're constantly adding new video tutorials. Subscribe to our channel or check back regularly for updates on:</p>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                <li>Advanced multimodal workflows</li>
+                <li>Custom model integration</li>
+                <li>Enterprise deployment patterns</li>
+                <li>Security best practices</li>
+                <li>Community contributions</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Add video player functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const playButtons = document.querySelectorAll('.play-button');
+            
+            playButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // In a real implementation, this would open a video player
+                    // For now, we'll show a placeholder message
+                    const card = this.closest('.tutorial-card');
+                    const title = card.querySelector('h3').textContent;
+                    
+                    alert(`Video player would open for: "${title}"\n\nIn a real implementation, this would:\n- Open a modal with the video player\n- Load the video from a CDN or streaming service\n- Track viewing analytics\n- Provide video controls and chapters`);
+                });
+            });
+
+            // Add keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    // Close any open modals
+                    console.log('Escape key pressed - would close modals');
+                }
+            });
+
+            // Add analytics tracking (placeholder)
+            const tutorialLinks = document.querySelectorAll('.tutorial-link');
+            tutorialLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    const action = this.textContent.trim();
+                    const tutorial = this.closest('.tutorial-card').querySelector('h3').textContent;
+                    
+                    console.log(`Analytics: ${action} clicked for "${tutorial}"`);
+                    // In a real implementation, this would send analytics data
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -313,11 +313,13 @@ services:
   # AI Agents Web Interface
   ai-agents-web:
     build:
-      context: ./services/ai-agents/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/ai-agents/web/Dockerfile
     container_name: multimodal-ai-agents-web
     ports:
       - "3001:3000"
+    volumes:
+      - ./docs:/usr/share/nginx/html/docs:ro
     depends_on:
       ai-agents:
         condition: service_healthy

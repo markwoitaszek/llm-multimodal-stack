@@ -1,0 +1,1196 @@
+openapi: 3.0.3
+info:
+  title: AI Agents API
+  description: LangChain-based autonomous agents with multimodal capabilities
+  version: 1.0.0
+  contact:
+    name: Multimodal LLM Stack
+    url: https://github.com/your-org/llm-multimodal-stack
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8003
+    description: Local development server
+  - url: https://api.your-domain.com
+    description: Production server
+
+paths:
+  /api/v1/agents:
+    post:
+      summary: Create a new agent
+      description: Create a new AI agent with specified configuration
+      operationId: createAgent
+      tags:
+        - Agent Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAgentRequest'
+            examples:
+              basic_agent:
+                summary: Basic agent creation
+                value:
+                  name: "Research Assistant"
+                  goal: "Help users research topics and find relevant information"
+                  tools: ["web_search", "document_analysis"]
+                  memory_window: 10
+                  user_id: "user123"
+              advanced_agent:
+                summary: Advanced agent with custom tools
+                value:
+                  name: "Content Creator"
+                  goal: "Create engaging content for social media and blogs"
+                  tools: ["image_generation", "text_analysis", "trend_analysis"]
+                  memory_window: 20
+                  user_id: "user456"
+      responses:
+        '200':
+          description: Agent created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentCreationResponse'
+              examples:
+                success:
+                  summary: Agent created successfully
+                  value:
+                    agent_id: "550e8400-e29b-41d4-a716-446655440000"
+                    message: "Agent 'Research Assistant' created successfully"
+                    goal: "Help users research topics and find relevant information"
+                    tools: ["web_search", "document_analysis"]
+                    status: "created"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      summary: List agents
+      description: List all agents for a user
+      operationId: listAgents
+      tags:
+        - Agent Management
+      parameters:
+        - name: user_id
+          in: query
+          description: User ID to filter agents
+          required: false
+          schema:
+            type: string
+            default: "default"
+            example: "user123"
+      responses:
+        '200':
+          description: Agents retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentsListResponse'
+              examples:
+                success:
+                  summary: List of agents
+                  value:
+                    - agent_id: "550e8400-e29b-41d4-a716-446655440000"
+                      name: "Research Assistant"
+                      goal: "Help users research topics and find relevant information"
+                      tools: ["web_search", "document_analysis"]
+                      created_at: "2024-01-01T12:00:00Z"
+                      status: "active"
+                    - agent_id: "550e8400-e29b-41d4-a716-446655440001"
+                      name: "Content Creator"
+                      goal: "Create engaging content for social media and blogs"
+                      tools: ["image_generation", "text_analysis"]
+                      created_at: "2024-01-01T11:00:00Z"
+                      status: "active"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/agents/{agent_id}:
+    get:
+      summary: Get agent details
+      description: Get detailed information about a specific agent
+      operationId: getAgent
+      tags:
+        - Agent Management
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Agent details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+              examples:
+                success:
+                  summary: Agent details
+                  value:
+                    agent_id: "550e8400-e29b-41d4-a716-446655440000"
+                    name: "Research Assistant"
+                    goal: "Help users research topics and find relevant information"
+                    tools: ["web_search", "document_analysis"]
+                    created_at: "2024-01-01T12:00:00Z"
+                    status: "active"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete an agent
+      description: Delete a specific agent
+      operationId: deleteAgent
+      tags:
+        - Agent Management
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: user_id
+          in: query
+          description: User ID (for authorization)
+          required: false
+          schema:
+            type: string
+            default: "default"
+            example: "user123"
+      responses:
+        '200':
+          description: Agent deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Agent 550e8400-e29b-41d4-a716-446655440000 deleted successfully"
+                  agent_id:
+                    type: string
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/agents/{agent_id}/execute:
+    post:
+      summary: Execute agent task
+      description: Execute a task with a specific agent
+      operationId: executeAgentTask
+      tags:
+        - Agent Execution
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteTaskRequest'
+            examples:
+              research_task:
+                summary: Research task
+                value:
+                  task: "Research the latest developments in artificial intelligence"
+                  user_id: "user123"
+              content_creation:
+                summary: Content creation task
+                value:
+                  task: "Create a blog post about machine learning trends"
+                  user_id: "user456"
+      responses:
+        '200':
+          description: Task executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+              examples:
+                success:
+                  summary: Task executed successfully
+                  value:
+                    agent_id: "550e8400-e29b-41d4-a716-446655440000"
+                    task: "Research the latest developments in artificial intelligence"
+                    result: "Based on my research, here are the latest developments in AI..."
+                    success: true
+                    intermediate_steps:
+                      - step: 1
+                        action: "web_search"
+                        result: "Found 15 relevant articles about AI developments"
+                      - step: 2
+                        action: "document_analysis"
+                        result: "Analyzed key trends and insights"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/agents/{agent_id}/history:
+    get:
+      summary: Get agent execution history
+      description: Get conversation and execution history for an agent
+      operationId: getAgentHistory
+      tags:
+        - Agent History
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: limit
+          in: query
+          description: Number of history entries to retrieve
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+      responses:
+        '200':
+          description: Agent history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentHistoryResponse'
+              examples:
+                success:
+                  summary: Agent execution history
+                  value:
+                    agent_id: "550e8400-e29b-41d4-a716-446655440000"
+                    history:
+                      - task: "Research AI developments"
+                        result: "Found comprehensive information about recent AI advances"
+                        executed_at: "2024-01-01T12:00:00Z"
+                        success: true
+                        execution_time_ms: 2500
+                      - task: "Analyze market trends"
+                        result: "Identified key trends in AI adoption"
+                        executed_at: "2024-01-01T11:30:00Z"
+                        success: true
+                        execution_time_ms: 1800
+                    count: 2
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/agents/{agent_id}/stats:
+    get:
+      summary: Get agent statistics
+      description: Get performance statistics for an agent
+      operationId: getAgentStats
+      tags:
+        - Agent Statistics
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Agent statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentStatsResponse'
+              examples:
+                success:
+                  summary: Agent performance statistics
+                  value:
+                    agent_id: "550e8400-e29b-41d4-a716-446655440000"
+                    total_executions: 25
+                    successful_executions: 23
+                    success_rate: 92.0
+                    avg_execution_time_ms: 2150.5
+                    last_execution: "2024-01-01T12:00:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/agents/from-template:
+    post:
+      summary: Create agent from template
+      description: Create a new agent using a predefined template
+      operationId: createAgentFromTemplate
+      tags:
+        - Agent Templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFromTemplateRequest'
+            examples:
+              research_template:
+                summary: Create research agent from template
+                value:
+                  template_name: "research_assistant"
+                  agent_name: "My Research Bot"
+                  user_id: "user123"
+              content_template:
+                summary: Create content agent from template
+                value:
+                  template_name: "content_creator"
+                  agent_name: "Blog Writer"
+                  user_id: "user456"
+      responses:
+        '200':
+          description: Agent created from template successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentCreationResponse'
+              examples:
+                success:
+                  summary: Agent created from template
+                  value:
+                    agent_id: "550e8400-e29b-41d4-a716-446655440000"
+                    template_name: "research_assistant"
+                    agent_name: "My Research Bot"
+                    message: "Agent created from template 'Research Assistant'"
+                    goal: "Help users research topics and find relevant information"
+                    tools: ["web_search", "document_analysis"]
+                    status: "created"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/tools:
+    get:
+      summary: List available tools
+      description: List all available tools for agents
+      operationId: listTools
+      tags:
+        - Tools
+      responses:
+        '200':
+          description: Tools retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolsListResponse'
+              examples:
+                success:
+                  summary: Available tools
+                  value:
+                    tools:
+                      - name: "web_search"
+                        description: "Search the web for information"
+                        category: "research"
+                        parameters:
+                          query:
+                            type: "string"
+                            description: "Search query"
+                      - name: "document_analysis"
+                        description: "Analyze documents and extract insights"
+                        category: "analysis"
+                        parameters:
+                          document_id:
+                            type: "string"
+                            description: "Document ID to analyze"
+                    count: 2
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/templates:
+    get:
+      summary: List agent templates
+      description: List all available agent templates
+      operationId: listTemplates
+      tags:
+        - Agent Templates
+      parameters:
+        - name: category
+          in: query
+          description: Filter templates by category
+          required: false
+          schema:
+            type: string
+            example: "research"
+        - name: search
+          in: query
+          description: Search templates by name or description
+          required: false
+          schema:
+            type: string
+            example: "research"
+      responses:
+        '200':
+          description: Templates retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplatesListResponse'
+              examples:
+                success:
+                  summary: Available templates
+                  value:
+                    templates:
+                      - name: "research_assistant"
+                        display_name: "Research Assistant"
+                        description: "Helps with research tasks and information gathering"
+                        goal: "Help users research topics and find relevant information"
+                        tools: ["web_search", "document_analysis"]
+                        memory_window: 10
+                        category: "research"
+                        use_cases: ["academic research", "market analysis", "fact checking"]
+                      - name: "content_creator"
+                        display_name: "Content Creator"
+                        description: "Creates engaging content for various platforms"
+                        goal: "Create engaging content for social media and blogs"
+                        tools: ["text_analysis", "trend_analysis", "image_generation"]
+                        memory_window: 15
+                        category: "content"
+                        use_cases: ["blog writing", "social media", "marketing"]
+                    count: 2
+                    category: null
+                    search: null
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/templates/{template_name}:
+    get:
+      summary: Get template details
+      description: Get detailed information about a specific template
+      operationId: getTemplateDetails
+      tags:
+        - Agent Templates
+      parameters:
+        - name: template_name
+          in: path
+          required: true
+          description: Template name
+          schema:
+            type: string
+            example: "research_assistant"
+      responses:
+        '200':
+          description: Template details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateDetailsResponse'
+              examples:
+                success:
+                  summary: Template details
+                  value:
+                    name: "research_assistant"
+                    display_name: "Research Assistant"
+                    description: "Helps with research tasks and information gathering"
+                    goal: "Help users research topics and find relevant information"
+                    tools: ["web_search", "document_analysis"]
+                    memory_window: 10
+                    category: "research"
+                    use_cases: ["academic research", "market analysis", "fact checking"]
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/templates/categories:
+    get:
+      summary: List template categories
+      description: List all available template categories
+      operationId: listTemplateCategories
+      tags:
+        - Agent Templates
+      responses:
+        '200':
+          description: Template categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateCategoriesResponse'
+              examples:
+                success:
+                  summary: Template categories
+                  value:
+                    categories: ["research", "content", "analysis", "automation"]
+                    count: 4
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/status:
+    get:
+      summary: Get service status
+      description: Check the health status of the AI agents service
+      operationId: getServiceStatus
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceStatusResponse'
+              examples:
+                healthy:
+                  summary: Service is healthy
+                  value:
+                    service: "ai-agents"
+                    status: "healthy"
+                    version: "1.0.0"
+                    features:
+                      langchain: "enabled"
+                      multimodal_tools: "enabled"
+                      persistent_memory: "enabled"
+                      autonomous_execution: "enabled"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /health:
+    get:
+      summary: Health check
+      description: Check the health status of the AI agents service
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Service is healthy
+                  value:
+                    status: "healthy"
+                    service: "ai-agents"
+                    version: "1.0.0"
+
+components:
+  schemas:
+    CreateAgentRequest:
+      type: object
+      required:
+        - name
+        - goal
+      properties:
+        name:
+          type: string
+          description: Agent name
+          example: "Research Assistant"
+        goal:
+          type: string
+          description: Agent goal or purpose
+          example: "Help users research topics and find relevant information"
+        tools:
+          type: array
+          items:
+            type: string
+          description: List of tool names to enable
+          example: ["web_search", "document_analysis"]
+        memory_window:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Conversation memory window size
+          example: 10
+        user_id:
+          type: string
+          default: "default"
+          description: User ID
+          example: "user123"
+
+    ExecuteTaskRequest:
+      type: object
+      required:
+        - task
+      properties:
+        task:
+          type: string
+          description: Task for the agent to execute
+          example: "Research the latest developments in artificial intelligence"
+        user_id:
+          type: string
+          default: "default"
+          description: User ID
+          example: "user123"
+
+    CreateFromTemplateRequest:
+      type: object
+      required:
+        - template_name
+      properties:
+        template_name:
+          type: string
+          description: Name of the template to use
+          example: "research_assistant"
+        agent_name:
+          type: string
+          description: Custom name for the agent (optional)
+          example: "My Research Bot"
+        user_id:
+          type: string
+          default: "default"
+          description: User ID
+          example: "user123"
+
+    AgentResponse:
+      type: object
+      required:
+        - agent_id
+        - name
+        - goal
+        - tools
+        - created_at
+        - status
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          description: Unique agent identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          description: Agent name
+          example: "Research Assistant"
+        goal:
+          type: string
+          description: Agent goal
+          example: "Help users research topics and find relevant information"
+        tools:
+          type: array
+          items:
+            type: string
+          description: List of enabled tools
+          example: ["web_search", "document_analysis"]
+        created_at:
+          type: string
+          format: date-time
+          description: When the agent was created
+          example: "2024-01-01T12:00:00Z"
+        status:
+          type: string
+          enum: [active, inactive, error]
+          description: Agent status
+          example: "active"
+
+    AgentCreationResponse:
+      type: object
+      required:
+        - agent_id
+        - message
+        - status
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          description: Unique agent identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        message:
+          type: string
+          description: Success message
+          example: "Agent 'Research Assistant' created successfully"
+        goal:
+          type: string
+          description: Agent goal
+          example: "Help users research topics and find relevant information"
+        tools:
+          type: array
+          items:
+            type: string
+          description: List of enabled tools
+          example: ["web_search", "document_analysis"]
+        status:
+          type: string
+          description: Creation status
+          example: "created"
+        template_name:
+          type: string
+          description: Template name (if created from template)
+          example: "research_assistant"
+        agent_name:
+          type: string
+          description: Agent name (if created from template)
+          example: "My Research Bot"
+
+    ExecutionResponse:
+      type: object
+      required:
+        - agent_id
+        - task
+        - result
+        - success
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          description: Agent identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        task:
+          type: string
+          description: The executed task
+          example: "Research the latest developments in artificial intelligence"
+        result:
+          type: string
+          description: Task execution result
+          example: "Based on my research, here are the latest developments in AI..."
+        success:
+          type: boolean
+          description: Whether the execution was successful
+          example: true
+        intermediate_steps:
+          type: array
+          items:
+            type: object
+            properties:
+              step:
+                type: integer
+                example: 1
+              action:
+                type: string
+                example: "web_search"
+              result:
+                type: string
+                example: "Found 15 relevant articles about AI developments"
+            additionalProperties: true
+          description: Intermediate execution steps
+          example:
+            - step: 1
+              action: "web_search"
+              result: "Found 15 relevant articles about AI developments"
+
+    AgentsListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/AgentResponse'
+
+    AgentHistoryResponse:
+      type: object
+      required:
+        - agent_id
+        - history
+        - count
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          description: Agent identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              task:
+                type: string
+                example: "Research AI developments"
+              result:
+                type: string
+                example: "Found comprehensive information about recent AI advances"
+              executed_at:
+                type: string
+                format: date-time
+                example: "2024-01-01T12:00:00Z"
+              success:
+                type: boolean
+                example: true
+              execution_time_ms:
+                type: integer
+                example: 2500
+            additionalProperties: true
+          description: Execution history entries
+        count:
+          type: integer
+          description: Number of history entries
+          example: 2
+
+    AgentStatsResponse:
+      type: object
+      required:
+        - agent_id
+        - total_executions
+        - successful_executions
+        - success_rate
+        - avg_execution_time_ms
+        - last_execution
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+          description: Agent identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        total_executions:
+          type: integer
+          description: Total number of executions
+          example: 25
+        successful_executions:
+          type: integer
+          description: Number of successful executions
+          example: 23
+        success_rate:
+          type: number
+          format: float
+          description: Success rate percentage
+          example: 92.0
+        avg_execution_time_ms:
+          type: number
+          format: float
+          description: Average execution time in milliseconds
+          example: 2150.5
+        last_execution:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of last execution
+          example: "2024-01-01T12:00:00Z"
+
+    ToolsListResponse:
+      type: object
+      required:
+        - tools
+        - count
+      properties:
+        tools:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "web_search"
+              description:
+                type: string
+                example: "Search the web for information"
+              category:
+                type: string
+                example: "research"
+              parameters:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      example: "string"
+                    description:
+                      type: string
+                      example: "Search query"
+                  additionalProperties: true
+                example:
+                  query:
+                    type: "string"
+                    description: "Search query"
+            additionalProperties: true
+          description: List of available tools
+        count:
+          type: integer
+          description: Number of tools
+          example: 2
+
+    TemplatesListResponse:
+      type: object
+      required:
+        - templates
+        - count
+      properties:
+        templates:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "research_assistant"
+              display_name:
+                type: string
+                example: "Research Assistant"
+              description:
+                type: string
+                example: "Helps with research tasks and information gathering"
+              goal:
+                type: string
+                example: "Help users research topics and find relevant information"
+              tools:
+                type: array
+                items:
+                  type: string
+                example: ["web_search", "document_analysis"]
+              memory_window:
+                type: integer
+                example: 10
+              category:
+                type: string
+                example: "research"
+              use_cases:
+                type: array
+                items:
+                  type: string
+                example: ["academic research", "market analysis", "fact checking"]
+            additionalProperties: true
+          description: List of available templates
+        count:
+          type: integer
+          description: Number of templates
+          example: 2
+        category:
+          type: string
+          nullable: true
+          description: Filtered category
+          example: null
+        search:
+          type: string
+          nullable: true
+          description: Search term
+          example: null
+
+    TemplateDetailsResponse:
+      type: object
+      required:
+        - name
+        - display_name
+        - description
+        - goal
+        - tools
+        - memory_window
+        - category
+        - use_cases
+      properties:
+        name:
+          type: string
+          example: "research_assistant"
+        display_name:
+          type: string
+          example: "Research Assistant"
+        description:
+          type: string
+          example: "Helps with research tasks and information gathering"
+        goal:
+          type: string
+          example: "Help users research topics and find relevant information"
+        tools:
+          type: array
+          items:
+            type: string
+          example: ["web_search", "document_analysis"]
+        memory_window:
+          type: integer
+          example: 10
+        category:
+          type: string
+          example: "research"
+        use_cases:
+          type: array
+          items:
+            type: string
+          example: ["academic research", "market analysis", "fact checking"]
+
+    TemplateCategoriesResponse:
+      type: object
+      required:
+        - categories
+        - count
+      properties:
+        categories:
+          type: array
+          items:
+            type: string
+          description: List of template categories
+          example: ["research", "content", "analysis", "automation"]
+        count:
+          type: integer
+          description: Number of categories
+          example: 4
+
+    ServiceStatusResponse:
+      type: object
+      required:
+        - service
+        - status
+        - version
+        - features
+      properties:
+        service:
+          type: string
+          example: "ai-agents"
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          example: "healthy"
+        version:
+          type: string
+          example: "1.0.0"
+        features:
+          type: object
+          properties:
+            langchain:
+              type: string
+              example: "enabled"
+            multimodal_tools:
+              type: string
+              example: "enabled"
+            persistent_memory:
+              type: string
+              example: "enabled"
+            autonomous_execution:
+              type: string
+              example: "enabled"
+          additionalProperties: true
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - version
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          description: The health status of the service
+          example: "healthy"
+        service:
+          type: string
+          description: The name of the service
+          example: "ai-agents"
+        version:
+          type: string
+          description: The version of the service
+          example: "1.0.0"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+        - error_code
+        - timestamp
+      properties:
+        detail:
+          type: string
+          description: A human-readable error message
+          example: "Agent not found"
+        error_code:
+          type: string
+          description: The error code
+          example: "AGENT_NOT_FOUND"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2024-01-01T12:00:00Z"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            missing_required:
+              summary: Missing required fields
+              value:
+                detail: "Name and goal are required"
+                error_code: "MISSING_REQUIRED_FIELDS"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    UnprocessableEntity:
+      description: Unprocessable entity - validation errors
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validation_error:
+              summary: Validation error
+              value:
+                detail: "Memory window must be between 1 and 100"
+                error_code: "VALIDATION_ERROR"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            agent_not_found:
+              summary: Agent not found
+              value:
+                detail: "Agent with ID '550e8400-e29b-41d4-a716-446655440000' not found"
+                error_code: "AGENT_NOT_FOUND"
+                timestamp: "2024-01-01T12:00:00Z"
+            template_not_found:
+              summary: Template not found
+              value:
+                detail: "Template 'invalid_template' not found"
+                error_code: "TEMPLATE_NOT_FOUND"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            server_error:
+              summary: Internal server error
+              value:
+                detail: "An internal server error occurred"
+                error_code: "INTERNAL_SERVER_ERROR"
+                timestamp: "2024-01-01T12:00:00Z"
+
+tags:
+  - name: Agent Management
+    description: Create, read, update, and delete agents
+  - name: Agent Execution
+    description: Execute tasks with agents
+  - name: Agent History
+    description: View agent execution history
+  - name: Agent Statistics
+    description: View agent performance statistics
+  - name: Agent Templates
+    description: Manage agent templates
+  - name: Tools
+    description: List and manage available tools
+  - name: Health
+    description: Health check endpoints
