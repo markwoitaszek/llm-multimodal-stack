@@ -1,0 +1,607 @@
+openapi: 3.0.3
+info:
+  title: Multimodal Worker API
+  description: Image, video, and text processing service with embeddings and captioning
+  version: 1.0.0
+  contact:
+    name: Multimodal LLM Stack
+    url: https://github.com/your-org/llm-multimodal-stack
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8001
+    description: Local development server
+  - url: https://api.your-domain.com
+    description: Production server
+
+paths:
+  /api/v1/process/image:
+    post:
+      summary: Process an image
+      description: Upload and process an image for captioning and embedding generation
+      operationId: processImage
+      tags:
+        - Image Processing
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file to process
+                document_name:
+                  type: string
+                  description: Optional name for the document
+                  example: "my_image.jpg"
+                metadata:
+                  type: string
+                  description: Optional metadata as JSON string
+                  example: '{"category": "photo", "tags": ["nature", "landscape"]}'
+            examples:
+              basic_image:
+                summary: Basic image upload
+                value:
+                  file: "[binary image data]"
+                  document_name: "vacation_photo.jpg"
+              image_with_metadata:
+                summary: Image with metadata
+                value:
+                  file: "[binary image data]"
+                  document_name: "product_image.jpg"
+                  metadata: '{"category": "product", "brand": "example", "tags": ["electronics"]}'
+      responses:
+        '200':
+          description: Image processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResult'
+              examples:
+                success:
+                  summary: Successful image processing
+                  value:
+                    success: true
+                    message: "Image processed successfully"
+                    data:
+                      document_id: "550e8400-e29b-41d4-a716-446655440000"
+                      image_id: "550e8400-e29b-41d4-a716-446655440001"
+                      caption: "A photo of a cat sitting on a chair"
+                      dimensions: [800, 600]
+                      storage_path: "images/ab/abcd1234_my_image.jpg"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/process/video:
+    post:
+      summary: Process a video
+      description: Upload and process a video for transcription and keyframe extraction
+      operationId: processVideo
+      tags:
+        - Video Processing
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Video file to process
+                document_name:
+                  type: string
+                  description: Optional name for the document
+                  example: "my_video.mp4"
+                metadata:
+                  type: string
+                  description: Optional metadata as JSON string
+                  example: '{"category": "demo", "duration": 30}'
+            examples:
+              basic_video:
+                summary: Basic video upload
+                value:
+                  file: "[binary video data]"
+                  document_name: "presentation.mp4"
+              video_with_metadata:
+                summary: Video with metadata
+                value:
+                  file: "[binary video data]"
+                  document_name: "tutorial.mp4"
+                  metadata: '{"category": "tutorial", "language": "en", "duration": 120}'
+      responses:
+        '200':
+          description: Video processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResult'
+              examples:
+                success:
+                  summary: Successful video processing
+                  value:
+                    success: true
+                    message: "Video processed successfully"
+                    data:
+                      document_id: "550e8400-e29b-41d4-a716-446655440000"
+                      video_id: "550e8400-e29b-41d4-a716-446655440002"
+                      transcription: "Hello, this is a test video about artificial intelligence..."
+                      keyframes_count: 5
+                      duration: 30.5
+                      storage_path: "videos/cd/cdef5678_my_video.mp4"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/process/text:
+    post:
+      summary: Process text
+      description: Process text content for chunking and embedding generation
+      operationId: processText
+      tags:
+        - Text Processing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextProcessingRequest'
+            examples:
+              basic_text:
+                summary: Basic text processing
+                value:
+                  text: "This is a sample document about artificial intelligence and machine learning..."
+                  document_name: "ai_article.txt"
+              text_with_metadata:
+                summary: Text with metadata
+                value:
+                  text: "Machine learning is a subset of artificial intelligence..."
+                  document_name: "ml_basics.txt"
+                  metadata:
+                    author: "John Doe"
+                    category: "AI"
+                    tags: ["machine learning", "AI", "tutorial"]
+      responses:
+        '200':
+          description: Text processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResult'
+              examples:
+                success:
+                  summary: Successful text processing
+                  value:
+                    success: true
+                    message: "Text processed successfully"
+                    data:
+                      document_id: "550e8400-e29b-41d4-a716-446655440000"
+                      chunks_count: 3
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/models/status:
+    get:
+      summary: Get model status
+      description: Check the status of loaded AI models
+      operationId: getModelsStatus
+      tags:
+        - System Status
+      responses:
+        '200':
+          description: Model status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelStatusResponse'
+              examples:
+                all_loaded:
+                  summary: All models loaded
+                  value:
+                    clip: "loaded"
+                    blip: "loaded"
+                    whisper: "loaded"
+                    sentence_transformer: "loaded"
+                some_loading:
+                  summary: Some models still loading
+                  value:
+                    clip: "loaded"
+                    blip: "loading"
+                    whisper: "loaded"
+                    sentence_transformer: "error"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/storage/status:
+    get:
+      summary: Get storage status
+      description: Check the status of storage systems
+      operationId: getStorageStatus
+      tags:
+        - System Status
+      responses:
+        '200':
+          description: Storage status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageStatusResponse'
+              examples:
+                all_connected:
+                  summary: All storage systems connected
+                  value:
+                    minio: "connected"
+                    postgres: "connected"
+                    qdrant: "connected"
+                some_issues:
+                  summary: Some storage issues
+                  value:
+                    minio: "connected"
+                    postgres: "connected"
+                    qdrant: "disconnected"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/cache/stats:
+    get:
+      summary: Get cache statistics
+      description: Retrieve cache performance statistics
+      operationId: getCacheStats
+      tags:
+        - Cache Management
+      responses:
+        '200':
+          description: Cache statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheStatsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/cache/clear:
+    delete:
+      summary: Clear cache
+      description: Clear all cache entries
+      operationId: clearCache
+      tags:
+        - Cache Management
+      responses:
+        '200':
+          description: Cache cleared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Cache cleared successfully"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/cache/file/{file_hash}:
+    delete:
+      summary: Invalidate file cache
+      description: Invalidate cache entries for a specific file
+      operationId: invalidateFileCache
+      tags:
+        - Cache Management
+      parameters:
+        - name: file_hash
+          in: path
+          required: true
+          description: Hash of the file to invalidate cache for
+          schema:
+            type: string
+            example: "abcd1234efgh5678"
+      responses:
+        '200':
+          description: Cache entries invalidated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalidated 3 cache entries"
+                  file_hash:
+                    type: string
+                    example: "abcd1234efgh5678"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /health:
+    get:
+      summary: Health check
+      description: Check the health status of the multimodal worker service
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  summary: Service is healthy
+                  value:
+                    status: "healthy"
+                    service: "multimodal-worker"
+                    version: "1.0.0"
+
+components:
+  schemas:
+    TextProcessingRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: The text content to process
+          example: "This is a sample document about artificial intelligence..."
+        document_name:
+          type: string
+          description: Optional name for the document
+          example: "ai_article.txt"
+        metadata:
+          type: object
+          description: Optional metadata for the document
+          additionalProperties: true
+          example:
+            author: "John Doe"
+            category: "AI"
+            tags: ["machine learning", "AI"]
+
+    ProcessingResult:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Whether the processing was successful
+          example: true
+        message:
+          type: string
+          description: Human-readable message about the processing result
+          example: "Image processed successfully"
+        data:
+          type: object
+          description: Processing result data
+          additionalProperties: true
+          example:
+            document_id: "550e8400-e29b-41d4-a716-446655440000"
+            image_id: "550e8400-e29b-41d4-a716-446655440001"
+            caption: "A photo of a cat sitting on a chair"
+            dimensions: [800, 600]
+            storage_path: "images/ab/abcd1234_my_image.jpg"
+        error:
+          type: string
+          description: Error message if processing failed
+          example: "Failed to process image: Invalid file format"
+
+    ModelStatusResponse:
+      type: object
+      properties:
+        clip:
+          type: string
+          enum: [loaded, loading, error, not_loaded]
+          description: Status of the CLIP model
+          example: "loaded"
+        blip:
+          type: string
+          enum: [loaded, loading, error, not_loaded]
+          description: Status of the BLIP model
+          example: "loaded"
+        whisper:
+          type: string
+          enum: [loaded, loading, error, not_loaded]
+          description: Status of the Whisper model
+          example: "loaded"
+        sentence_transformer:
+          type: string
+          enum: [loaded, loading, error, not_loaded]
+          description: Status of the sentence transformer model
+          example: "loaded"
+
+    StorageStatusResponse:
+      type: object
+      properties:
+        minio:
+          type: string
+          enum: [connected, disconnected, error]
+          description: Status of MinIO storage
+          example: "connected"
+        postgres:
+          type: string
+          enum: [connected, disconnected, error]
+          description: Status of PostgreSQL database
+          example: "connected"
+        qdrant:
+          type: string
+          enum: [connected, disconnected, error]
+          description: Status of Qdrant vector database
+          example: "connected"
+
+    CacheStatsResponse:
+      type: object
+      properties:
+        total_entries:
+          type: integer
+          description: Total number of cache entries
+          example: 150
+        hit_rate:
+          type: number
+          format: float
+          description: Cache hit rate (0.0 to 1.0)
+          example: 0.85
+        memory_usage:
+          type: string
+          description: Memory usage of the cache
+          example: "45.2 MB"
+        last_cleared:
+          type: string
+          format: date-time
+          description: When the cache was last cleared
+          example: "2024-01-01T12:00:00Z"
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - version
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          description: The health status of the service
+          example: "healthy"
+        service:
+          type: string
+          description: The name of the service
+          example: "multimodal-worker"
+        version:
+          type: string
+          description: The version of the service
+          example: "1.0.0"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+        - error_code
+        - timestamp
+      properties:
+        detail:
+          type: string
+          description: A human-readable error message
+          example: "File must be an image"
+        error_code:
+          type: string
+          description: The error code
+          example: "INVALID_FILE_TYPE"
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: "2024-01-01T12:00:00Z"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid_file_type:
+              summary: Invalid file type
+              value:
+                detail: "File must be an image"
+                error_code: "INVALID_FILE_TYPE"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    FileTooLarge:
+      description: File too large
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            file_too_large:
+              summary: File exceeds size limit
+              value:
+                detail: "File size exceeds maximum allowed size of 100MB"
+                error_code: "FILE_TOO_LARGE"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    UnprocessableEntity:
+      description: Unprocessable entity - validation errors
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validation_error:
+              summary: Validation error
+              value:
+                detail: "Text content is required"
+                error_code: "VALIDATION_ERROR"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            file_not_found:
+              summary: File not found
+              value:
+                detail: "File with hash 'abcd1234' not found in cache"
+                error_code: "FILE_NOT_FOUND"
+                timestamp: "2024-01-01T12:00:00Z"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            server_error:
+              summary: Internal server error
+              value:
+                detail: "An internal server error occurred"
+                error_code: "INTERNAL_SERVER_ERROR"
+                timestamp: "2024-01-01T12:00:00Z"
+
+tags:
+  - name: Image Processing
+    description: Process images for captioning and embedding generation
+  - name: Video Processing
+    description: Process videos for transcription and keyframe extraction
+  - name: Text Processing
+    description: Process text content for chunking and embedding generation
+  - name: System Status
+    description: Check system and model status
+  - name: Cache Management
+    description: Manage cache operations
+  - name: Health
+    description: Health check endpoints

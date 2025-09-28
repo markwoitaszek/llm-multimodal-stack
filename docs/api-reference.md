@@ -2,14 +2,28 @@
 
 Complete API documentation for the Multimodal LLM Stack services.
 
-## Service Endpoints
+## 🚀 Quick Start
 
-| Service | Base URL | Port | Documentation |
-|---------|----------|------|---------------|
-| LiteLLM Router | `http://localhost:4000` | 4000 | OpenAI-compatible |
-| Multimodal Worker | `http://localhost:8001` | 8001 | `/docs` |
-| Retrieval Proxy | `http://localhost:8002` | 8002 | `/docs` |
-| OpenWebUI | `http://localhost:3000` | 3000 | Web interface |
+### Interactive Documentation
+- **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- **OpenAPI Specs**: [http://localhost:8080/openapi/](http://localhost:8080/openapi/)
+
+### Service Overview
+
+| Service | Base URL | Port | Purpose | Authentication |
+|---------|----------|------|---------|----------------|
+| **LiteLLM Router** | `http://localhost:4000` | 4000 | OpenAI-compatible API router | Bearer Token |
+| **Multimodal Worker** | `http://localhost:8001` | 8001 | Image/video/text processing | None |
+| **Retrieval Proxy** | `http://localhost:8002` | 8002 | Unified search & context bundling | None |
+| **AI Agents** | `http://localhost:8003` | 8003 | LangChain autonomous agents | None |
+| **OpenWebUI** | `http://localhost:3000` | 3000 | Web interface | None |
+
+### Common Use Cases
+
+1. **Chat with AI**: Use LiteLLM Router for OpenAI-compatible chat completions
+2. **Process Media**: Upload images/videos to Multimodal Worker for AI analysis
+3. **Search Content**: Use Retrieval Proxy to search across all processed content
+4. **Create Agents**: Build autonomous AI agents with the AI Agents service
 
 ## LiteLLM Router API
 
@@ -429,24 +443,126 @@ GET /api/v1/status
 
 ## Error Responses
 
-All services return consistent error responses:
+All services return consistent error responses with detailed information:
+
+### Error Response Format
 
 ```json
 {
-  "detail": "Error message here",
-  "error_code": "VALIDATION_ERROR",
-  "timestamp": "2024-01-01T12:00:00Z"
+  "detail": "Human-readable error message",
+  "error_code": "MACHINE_READABLE_ERROR_CODE",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "service": "service-name",
+  "request_id": "optional-request-id"
 }
 ```
 
-Common HTTP status codes:
-- `400` - Bad Request (validation errors)
-- `401` - Unauthorized (invalid API key)
-- `404` - Not Found (resource doesn't exist)
-- `413` - Payload Too Large (file too big)
-- `422` - Unprocessable Entity (invalid data)
-- `500` - Internal Server Error
-- `503` - Service Unavailable (service down)
+### HTTP Status Codes
+
+| Code | Status | Description | Common Causes |
+|------|--------|-------------|---------------|
+| `200` | OK | Request successful | - |
+| `400` | Bad Request | Invalid request parameters | Missing required fields, invalid format |
+| `401` | Unauthorized | Authentication required/failed | Missing/invalid API key |
+| `403` | Forbidden | Access denied | Insufficient permissions |
+| `404` | Not Found | Resource doesn't exist | Invalid ID, deleted resource |
+| `413` | Payload Too Large | File/request too large | File exceeds size limit |
+| `422` | Unprocessable Entity | Validation errors | Invalid data format, business logic errors |
+| `429` | Too Many Requests | Rate limit exceeded | Too many requests per minute |
+| `500` | Internal Server Error | Server error | Database issues, model loading failures |
+| `503` | Service Unavailable | Service temporarily down | Maintenance, overload |
+
+### Service-Specific Error Codes
+
+#### LiteLLM Router
+- `INVALID_API_KEY` - Invalid or missing API key
+- `MODEL_NOT_FOUND` - Requested model doesn't exist
+- `RATE_LIMIT_EXCEEDED` - Too many requests (60/minute default)
+- `INVALID_REQUEST_FORMAT` - Malformed request body
+
+#### Multimodal Worker
+- `INVALID_FILE_TYPE` - Unsupported file format
+- `FILE_TOO_LARGE` - File exceeds size limit (100MB default)
+- `MODEL_NOT_LOADED` - Required AI model not available
+- `PROCESSING_FAILED` - Error during file processing
+- `STORAGE_ERROR` - File storage operation failed
+
+#### Retrieval Proxy
+- `INVALID_QUERY` - Empty or malformed search query
+- `INVALID_MODALITY` - Unsupported content modality
+- `SEARCH_FAILED` - Error during search operation
+- `SESSION_NOT_FOUND` - Invalid session ID
+- `VECTOR_STORE_ERROR` - Vector database operation failed
+
+#### AI Agents
+- `AGENT_NOT_FOUND` - Invalid agent ID
+- `TEMPLATE_NOT_FOUND` - Invalid template name
+- `EXECUTION_FAILED` - Agent task execution error
+- `TOOL_NOT_AVAILABLE` - Required tool not accessible
+- `MEMORY_ERROR` - Agent memory operation failed
+
+### Error Response Examples
+
+#### 400 Bad Request
+```json
+{
+  "detail": "File must be an image (jpg, png, gif)",
+  "error_code": "INVALID_FILE_TYPE",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "service": "multimodal-worker"
+}
+```
+
+#### 401 Unauthorized
+```json
+{
+  "detail": "Invalid API key provided",
+  "error_code": "INVALID_API_KEY",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "service": "litellm-router"
+}
+```
+
+#### 404 Not Found
+```json
+{
+  "detail": "Agent with ID '550e8400-e29b-41d4-a716-446655440000' not found",
+  "error_code": "AGENT_NOT_FOUND",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "service": "ai-agents"
+}
+```
+
+#### 422 Unprocessable Entity
+```json
+{
+  "detail": "Memory window must be between 1 and 100",
+  "error_code": "VALIDATION_ERROR",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "service": "ai-agents"
+}
+```
+
+#### 429 Rate Limit Exceeded
+```json
+{
+  "detail": "Rate limit exceeded. Try again in 60 seconds.",
+  "error_code": "RATE_LIMIT_EXCEEDED",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "service": "litellm-router"
+}
+```
+
+#### 500 Internal Server Error
+```json
+{
+  "detail": "An internal server error occurred",
+  "error_code": "INTERNAL_SERVER_ERROR",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "service": "multimodal-worker",
+  "request_id": "req_123456789"
+}
+```
 
 ## Rate Limits
 
@@ -471,58 +587,361 @@ Currently no authentication required for internal services. In production, imple
 - OAuth 2.0
 - mTLS for service-to-service communication
 
+## 📚 Comprehensive Examples
+
+### Complete Workflow Example
+
+Here's a complete example of processing an image, searching for it, and creating an AI agent to analyze it:
+
+#### Step 1: Process an Image
+```bash
+# Upload and process an image
+curl -X POST http://localhost:8001/api/v1/process/image \
+  -F "file=@/path/to/ai_diagram.jpg" \
+  -F "document_name=ai_architecture_diagram.jpg" \
+  -F 'metadata={"category": "diagram", "tags": ["AI", "architecture"]}'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Image processed successfully",
+  "data": {
+    "document_id": "550e8400-e29b-41d4-a716-446655440000",
+    "image_id": "550e8400-e29b-41d4-a716-446655440001",
+    "caption": "A diagram showing the architecture of a neural network with input, hidden, and output layers",
+    "dimensions": [1200, 800],
+    "storage_path": "images/ab/abcd1234_ai_architecture_diagram.jpg"
+  }
+}
+```
+
+#### Step 2: Search for the Image
+```bash
+# Search for AI-related content
+curl -X POST http://localhost:8002/api/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "neural network architecture diagram",
+    "modalities": ["image", "text"],
+    "limit": 5,
+    "score_threshold": 0.8
+  }'
+```
+
+#### Step 3: Create an AI Agent
+```bash
+# Create an agent to analyze the image
+curl -X POST http://localhost:8003/api/v1/agents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Image Analysis Expert",
+    "goal": "Analyze images and provide detailed descriptions and insights",
+    "tools": ["image_analysis", "document_analysis"],
+    "memory_window": 15
+  }'
+```
+
+#### Step 4: Execute Agent Task
+```bash
+# Have the agent analyze the image
+curl -X POST http://localhost:8003/api/v1/agents/550e8400-e29b-41d4-a716-446655440002/execute \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task": "Analyze the AI architecture diagram and explain the neural network structure"
+  }'
+```
+
+### Service-Specific Examples
+
+#### LiteLLM Router Examples
+
+**Basic Chat Completion:**
+```bash
+curl -X POST http://localhost:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-your-litellm-key" \
+  -d '{
+    "model": "gpt-3.5-turbo",
+    "messages": [
+      {"role": "system", "content": "You are a helpful AI assistant."},
+      {"role": "user", "content": "Explain machine learning in simple terms."}
+    ],
+    "max_tokens": 200,
+    "temperature": 0.7
+  }'
+```
+
+**Multimodal Chat (with image):**
+```bash
+curl -X POST http://localhost:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-your-litellm-key" \
+  -d '{
+    "model": "gpt-4-vision-preview",
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "What do you see in this image?"
+          },
+          {
+            "type": "image_url",
+            "image_url": {
+              "url": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ..."
+            }
+          }
+        ]
+      }
+    ],
+    "max_tokens": 300
+  }'
+```
+
+#### Multimodal Worker Examples
+
+**Process Video with Metadata:**
+```bash
+curl -X POST http://localhost:8001/api/v1/process/video \
+  -F "file=@/path/to/presentation.mp4" \
+  -F "document_name=ai_presentation.mp4" \
+  -F 'metadata={"category": "presentation", "language": "en", "duration": 120}'
+```
+
+**Process Text Document:**
+```bash
+curl -X POST http://localhost:8001/api/v1/process/text \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Machine learning is a subset of artificial intelligence that focuses on algorithms that can learn from data...",
+    "document_name": "ml_introduction.txt",
+    "metadata": {
+      "author": "Dr. Jane Smith",
+      "category": "tutorial",
+      "tags": ["machine learning", "AI", "introduction"]
+    }
+  }'
+```
+
+#### Retrieval Proxy Examples
+
+**Advanced Search with Filters:**
+```bash
+curl -X POST http://localhost:8002/api/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "deep learning neural networks",
+    "modalities": ["text", "image"],
+    "limit": 10,
+    "filters": {
+      "file_types": ["pdf", "jpg", "png"],
+      "date_range": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "min_score": 0.7
+    },
+    "score_threshold": 0.8
+  }'
+```
+
+**Get Search Session Context:**
+```bash
+curl -X GET "http://localhost:8002/api/v1/context/550e8400-e29b-41d4-a716-446655440000?format=markdown"
+```
+
+#### AI Agents Examples
+
+**Create Agent from Template:**
+```bash
+curl -X POST http://localhost:8003/api/v1/agents/from-template \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template_name": "research_assistant",
+    "agent_name": "My Research Bot",
+    "user_id": "user123"
+  }'
+```
+
+**List Available Templates:**
+```bash
+curl -X GET "http://localhost:8003/api/v1/templates?category=research"
+```
+
+**Get Agent Statistics:**
+```bash
+curl -X GET http://localhost:8003/api/v1/agents/550e8400-e29b-41d4-a716-446655440000/stats
+```
+
 ## SDKs and Client Libraries
 
-### Python
+### Python SDK
 
 ```python
 import openai
+import requests
+import json
 
-# Configure for LiteLLM
+# Configure LiteLLM Router
 openai.api_base = "http://localhost:4000/v1"
 openai.api_key = "sk-your-litellm-key"
 
-# Use OpenAI client normally
+# Chat completion
 response = openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
     messages=[{"role": "user", "content": "Hello!"}]
 )
+
+# Multimodal Worker - Process image
+def process_image(image_path, document_name=None):
+    url = "http://localhost:8001/api/v1/process/image"
+    with open(image_path, 'rb') as f:
+        files = {'file': f}
+        data = {'document_name': document_name} if document_name else {}
+        response = requests.post(url, files=files, data=data)
+    return response.json()
+
+# Retrieval Proxy - Search
+def search_content(query, modalities=None, limit=10):
+    url = "http://localhost:8002/api/v1/search"
+    data = {
+        "query": query,
+        "modalities": modalities or ["text", "image", "video"],
+        "limit": limit
+    }
+    response = requests.post(url, json=data)
+    return response.json()
+
+# AI Agents - Create agent
+def create_agent(name, goal, tools=None):
+    url = "http://localhost:8003/api/v1/agents"
+    data = {
+        "name": name,
+        "goal": goal,
+        "tools": tools or []
+    }
+    response = requests.post(url, json=data)
+    return response.json()
+
+# Example usage
+image_result = process_image("diagram.jpg", "AI_diagram.jpg")
+search_results = search_content("neural network architecture")
+agent = create_agent("AI Expert", "Help with AI questions", ["web_search"])
 ```
 
-### JavaScript/Node.js
+### JavaScript/Node.js SDK
 
 ```javascript
 import OpenAI from 'openai';
+import axios from 'axios';
 
+// Configure LiteLLM Router
 const openai = new OpenAI({
   baseURL: 'http://localhost:4000/v1',
   apiKey: 'sk-your-litellm-key',
 });
 
+// Chat completion
 const response = await openai.chat.completions.create({
   model: 'gpt-3.5-turbo',
   messages: [{ role: 'user', content: 'Hello!' }],
 });
+
+// Multimodal Worker - Process image
+async function processImage(imagePath, documentName = null) {
+  const formData = new FormData();
+  formData.append('file', imagePath);
+  if (documentName) formData.append('document_name', documentName);
+  
+  const response = await axios.post(
+    'http://localhost:8001/api/v1/process/image',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  );
+  return response.data;
+}
+
+// Retrieval Proxy - Search
+async function searchContent(query, modalities = null, limit = 10) {
+  const response = await axios.post('http://localhost:8002/api/v1/search', {
+    query,
+    modalities: modalities || ['text', 'image', 'video'],
+    limit
+  });
+  return response.data;
+}
+
+// AI Agents - Create agent
+async function createAgent(name, goal, tools = []) {
+  const response = await axios.post('http://localhost:8003/api/v1/agents', {
+    name,
+    goal,
+    tools
+  });
+  return response.data;
+}
+
+// Example usage
+const imageResult = await processImage('diagram.jpg', 'AI_diagram.jpg');
+const searchResults = await searchContent('neural network architecture');
+const agent = await createAgent('AI Expert', 'Help with AI questions', ['web_search']);
 ```
 
 ### cURL Examples
 
-**Search with cURL:**
+**Complete Workflow with cURL:**
 ```bash
-curl -X POST http://localhost:8002/api/v1/search \
+#!/bin/bash
+
+# 1. Process an image
+echo "Processing image..."
+IMAGE_RESPONSE=$(curl -s -X POST http://localhost:8001/api/v1/process/image \
+  -F "file=@/path/to/image.jpg" \
+  -F "document_name=test_image.jpg")
+
+echo "Image processing result: $IMAGE_RESPONSE"
+
+# 2. Search for content
+echo "Searching for content..."
+SEARCH_RESPONSE=$(curl -s -X POST http://localhost:8002/api/v1/search \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "machine learning tutorial",
+    "query": "artificial intelligence",
     "modalities": ["text", "image"],
     "limit": 5
-  }'
-```
+  }')
 
-**Upload image with cURL:**
-```bash
-curl -X POST http://localhost:8001/api/v1/process/image \
-  -F "file=@/path/to/image.jpg" \
-  -F "document_name=my_image.jpg"
+echo "Search results: $SEARCH_RESPONSE"
+
+# 3. Create an AI agent
+echo "Creating AI agent..."
+AGENT_RESPONSE=$(curl -s -X POST http://localhost:8003/api/v1/agents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Agent",
+    "goal": "Help with testing and development",
+    "tools": ["web_search"]
+  }')
+
+echo "Agent creation result: $AGENT_RESPONSE"
+
+# 4. Chat with LiteLLM
+echo "Chatting with LiteLLM..."
+CHAT_RESPONSE=$(curl -s -X POST http://localhost:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-your-litellm-key" \
+  -d '{
+    "model": "gpt-3.5-turbo",
+    "messages": [
+      {"role": "user", "content": "Hello, how are you?"}
+    ],
+    "max_tokens": 100
+  }')
+
+echo "Chat response: $CHAT_RESPONSE"
 ```
 
 ## WebSocket Support
