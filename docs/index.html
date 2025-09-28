@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multimodal LLM Stack Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .quick-action {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .quick-action:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .card li {
+            margin-bottom: 10px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .card li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .card a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .card a:hover {
+            text-decoration: underline;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .service-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .service-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .service-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .service-port {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .service-card p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .service-card a {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .service-card a:hover {
+            background: #5a6fd8;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+            opacity: 0.8;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2.5rem;
+            }
+
+            .header p {
+                font-size: 1.1rem;
+            }
+
+            .quick-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .quick-action {
+                width: 100%;
+                max-width: 300px;
+                text-align: center;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .card h2 {
+                font-size: 1.3rem;
+            }
+
+            .services-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .service-card {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .card {
+                padding: 15px;
+            }
+
+            .card h2 {
+                font-size: 1.2rem;
+            }
+
+            .service-card {
+                padding: 12px;
+            }
+
+            .service-card h3 {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .card {
+                background: #2d3748;
+                color: #e2e8f0;
+            }
+
+            .card h2 {
+                color: #e2e8f0;
+            }
+
+            .card p {
+                color: #a0aec0;
+            }
+
+            .service-card {
+                background: #2d3748;
+                color: #e2e8f0;
+            }
+
+            .service-card h3 {
+                color: #e2e8f0;
+            }
+
+            .service-card p {
+                color: #a0aec0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Multimodal LLM Stack</h1>
+            <p>Complete documentation for the Multimodal LLM Stack services</p>
+            
+            <div class="quick-actions">
+                <a href="swagger-ui.html" class="quick-action">🎨 Interactive API Docs</a>
+                <a href="playground.html" class="quick-action">🎮 API Playground</a>
+                <a href="search.html" class="quick-action">🔍 Search Documentation</a>
+                <a href="video-tutorials.html" class="quick-action">🎥 Video Tutorials</a>
+                <a href="FAQ.md" class="quick-action">❓ FAQ</a>
+                <a href="serve-docs.py" class="quick-action">🖥️ Start Server</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <h2>📚 Getting Started</h2>
+                <p>New to the Multimodal LLM Stack? Start here to get up and running quickly.</p>
+                <ul>
+                    <li><a href="README.md">Quick Start Guide</a></li>
+                    <li><a href="video-tutorials.html">Video Tutorials</a></li>
+                    <li><a href="api-reference.md">API Reference</a></li>
+                    <li><a href="FAQ.md">Frequently Asked Questions</a></li>
+                    <li><a href="troubleshooting.md">Troubleshooting Guide</a></li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>🔧 API Documentation</h2>
+                <p>Complete API documentation with interactive examples and testing interface.</p>
+                <ul>
+                    <li><a href="swagger-ui.html">Interactive Swagger UI</a></li>
+                    <li><a href="playground.html">API Playground & Live Demos</a></li>
+                    <li><a href="openapi/combined.yaml">Combined OpenAPI Spec</a></li>
+                    <li><a href="api-reference.md">Enhanced API Reference</a></li>
+                    <li><a href="search.html">Search Documentation</a></li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>🛠️ SDKs & Libraries</h2>
+                <p>Client libraries and SDKs for easy integration with your applications.</p>
+                <ul>
+                    <li><a href="../sdk/python/README.md">Python SDK</a></li>
+                    <li><a href="../sdk/javascript/README.md">JavaScript SDK</a></li>
+                    <li><a href="api-reference.md#sdks-and-client-libraries">Client Examples</a></li>
+                    <li><a href="openapi/">OpenAPI Specifications</a></li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Service Overview</h2>
+                <p>Learn about each service in the Multimodal LLM Stack and their capabilities.</p>
+                <ul>
+                    <li><a href="swagger-ui.html#litellm">LiteLLM Router</a></li>
+                    <li><a href="swagger-ui.html#multimodal">Multimodal Worker</a></li>
+                    <li><a href="swagger-ui.html#retrieval">Retrieval Proxy</a></li>
+                    <li><a href="swagger-ui.html#agents">AI Agents</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🏗️ Services Architecture</h2>
+            <p>Four powerful services working together to provide comprehensive multimodal AI capabilities.</p>
+            
+            <div class="services-grid">
+                <div class="service-card">
+                    <h3>🌐 LiteLLM Router <span class="service-port">Port 4000</span></h3>
+                    <p>OpenAI-compatible API router for chat completions and model management.</p>
+                    <a href="swagger-ui.html#litellm">View API</a>
+                </div>
+
+                <div class="service-card">
+                    <h3>🖼️ Multimodal Worker <span class="service-port">Port 8001</span></h3>
+                    <p>Process images, videos, and text with AI models for embeddings and analysis.</p>
+                    <a href="swagger-ui.html#multimodal">View API</a>
+                </div>
+
+                <div class="service-card">
+                    <h3>🔍 Retrieval Proxy <span class="service-port">Port 8002</span></h3>
+                    <p>Unified search across multimodal content with context bundling.</p>
+                    <a href="swagger-ui.html#retrieval">View API</a>
+                </div>
+
+                <div class="service-card">
+                    <h3>🤖 AI Agents <span class="service-port">Port 8003</span></h3>
+                    <p>LangChain-based autonomous agents with multimodal capabilities.</p>
+                    <a href="swagger-ui.html#agents">View API</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>
+                <a href="https://github.com/your-org/llm-multimodal-stack">GitHub</a> • 
+                <a href="FAQ.md">Support</a> • 
+                <a href="CHANGELOG.md">Changelog</a> • 
+                <a href="LICENSE">License</a>
+            </p>
+            <p>Built with ❤️ by the Multimodal LLM Stack Team</p>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click tracking for analytics (if needed)
+            const links = document.querySelectorAll('a');
+            links.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Track link clicks here if analytics are needed
+                    console.log('Link clicked:', this.href);
+                });
+            });
+
+            // Add smooth scrolling for anchor links
+            const anchorLinks = document.querySelectorAll('a[href^="#"]');
+            anchorLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+
+            // Add keyboard navigation support
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '/' && !e.target.matches('input, textarea')) {
+                    e.preventDefault();
+                    // Focus search if available
+                    const searchInput = document.querySelector('#searchInput');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "name": "multimodal-llm-client",
+  "version": "1.0.0",
+  "description": "JavaScript SDK for the Multimodal LLM Stack",
+  "main": "multimodal-llm-client.js",
+  "scripts": {
+    "test": "node test.js",
+    "example": "node example.js"
+  },
+  "keywords": [
+    "multimodal",
+    "llm",
+    "ai",
+    "machine-learning",
+    "sdk",
+    "client"
+  ],
+  "author": "Multimodal LLM Stack Team",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/llm-multimodal-stack.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/llm-multimodal-stack/issues"
+  },
+  "homepage": "https://github.com/your-org/llm-multimodal-stack#readme"
+}
