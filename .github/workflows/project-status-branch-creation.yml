@@ -45,7 +45,8 @@ jobs:
           MILESTONE="${{ steps.issue-info.outputs.milestone }}"
           
           # Clean up issue title for branch name (sanitized to prevent injection)
-          CLEAN_TITLE=$(echo "$ISSUE_TITLE" | sed 's/\[.*\]//g' | sed 's/[^a-zA-Z0-9 -]//g' | sed 's/  */ /g' | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+          # Use printf to safely handle special characters
+          CLEAN_TITLE=$(printf '%s' "$ISSUE_TITLE" | sed 's/\[.*\]//g' | sed 's/[^a-zA-Z0-9 -]//g' | sed 's/  */ /g' | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
           
           # Determine if this is a phase overview issue
           if [[ "$ISSUE_TITLE" == *"Overview"* ]]; then
@@ -83,6 +84,11 @@ jobs:
           BRANCH_TYPE="${{ steps.branch-info.outputs.branch_type }}"
           
           # Create and checkout the new branch (sanitized branch name)
+          # Validate branch name to prevent injection
+          if [[ ! "$BRANCH_NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9/_-]*[a-zA-Z0-9]$ ]] && [[ ! "$BRANCH_NAME" =~ ^[a-zA-Z0-9]$ ]]; then
+            echo "Error: Invalid branch name format"
+            exit 1
+          fi
           git checkout -b "$BRANCH_NAME"
           
           # Create a basic README for the branch

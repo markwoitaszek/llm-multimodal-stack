@@ -189,12 +189,6 @@ jobs:
                   issue_number: issueNumber
                 });
                 
-                // Find the project item for this issue
-                const { data: projectItems } = await github.rest.projects.listCards({
-                  project_id: projectNumber,
-                  column_id: 'none' // This will get all items
-                });
-                
                 // For project v2, we need to use GraphQL
                 const projectItemQuery = `
                   query($owner: String!, $repo: String!, $issueNumber: Int!, $projectNumber: Int!) {
@@ -220,8 +214,8 @@ jobs:
                   projectNumber: projectNumber
                 });
                 
-                const projectItems = projectItemResult.repository?.issue?.projectItems?.nodes || [];
-                const targetProjectItem = projectItems.find(item => item.project.number === projectNumber);
+                const projectItemNodes = projectItemResult.repository?.issue?.projectItems?.nodes || [];
+                const targetProjectItem = projectItemNodes.find(item => item.project.number === projectNumber);
                 
                 if (targetProjectItem) {
                   // Update the project item status

@@ -18,10 +18,17 @@ jobs:
         id: extract-issues
         run: |
           # Extract issue numbers from PR description using regex
+          # Safely handle PR body content
           PR_BODY="${{ github.event.pull_request.body }}"
           
+          # Validate and sanitize PR body before processing
+          if [[ -z "$PR_BODY" ]]; then
+            PR_BODY=""
+          fi
+          
           # Look for patterns like "Fixes #123", "Closes #456", "Resolves #789"
-          ISSUE_NUMBERS=$(echo "$PR_BODY" | grep -oE '(Fixes|Closes|Resolves)\s+#[0-9]+' | grep -oE '[0-9]+' | tr '\n' ' ')
+          # Use printf to safely handle special characters
+          ISSUE_NUMBERS=$(printf '%s' "$PR_BODY" | grep -oE '(Fixes|Closes|Resolves)\s+#[0-9]+' | grep -oE '[0-9]+' | tr '\n' ' ')
           
           if [ -n "$ISSUE_NUMBERS" ]; then
             echo "Found issue numbers: $ISSUE_NUMBERS"
@@ -87,8 +94,16 @@ jobs:
       - name: 🔍 Extract issue numbers from PR description
         id: extract-issues
         run: |
+          # Safely handle PR body content
           PR_BODY="${{ github.event.pull_request.body }}"
-          ISSUE_NUMBERS=$(echo "$PR_BODY" | grep -oE '(Fixes|Closes|Resolves)\s+#[0-9]+' | grep -oE '[0-9]+' | tr '\n' ' ')
+          
+          # Validate and sanitize PR body before processing
+          if [[ -z "$PR_BODY" ]]; then
+            PR_BODY=""
+          fi
+          
+          # Use printf to safely handle special characters
+          ISSUE_NUMBERS=$(printf '%s' "$PR_BODY" | grep -oE '(Fixes|Closes|Resolves)\s+#[0-9]+' | grep -oE '[0-9]+' | tr '\n' ' ')
           
           if [ -n "$ISSUE_NUMBERS" ]; then
             echo "issue_numbers=$ISSUE_NUMBERS" >> $GITHUB_OUTPUT
