@@ -14,7 +14,7 @@ services:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
+      test: ["CMD-SHELL", "pidof qdrant || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -140,7 +140,7 @@ services:
       vllm:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "-H", "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-1234}", "http://localhost:4000/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:4000/', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -232,7 +232,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -342,7 +342,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8005/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -379,7 +379,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8004/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -436,11 +436,35 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8006/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  # Nginx Reverse Proxy with SSL/TLS
+  nginx:
+    image: nginx:alpine
+    container_name: multimodal-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./configs/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./configs/ssl:/etc/nginx/certs:ro
+    depends_on:
+      - openwebui
+      - litellm
+      - multimodal-worker
+      - retrieval-proxy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
     networks:
       - multimodal-net
@@ -457,12 +481,12 @@ services:
       - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
       - N8N_HOST=localhost
       - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://localhost:5678
       - GENERIC_TIMEZONE=UTC
       - N8N_METRICS=true
       - N8N_LOG_LEVEL=info
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-multimodal-n8n-key}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-Chimp-Relax-Viable}
       # Fix deprecation warnings
       - DB_SQLITE_POOL_SIZE=5
       - N8N_RUNNERS_ENABLED=true
@@ -475,7 +499,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5678/healthz"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5678/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
