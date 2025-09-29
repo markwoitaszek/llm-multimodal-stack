@@ -4,13 +4,28 @@ This guide covers detailed configuration options for the Multimodal LLM Stack.
 
 ## Environment Variables
 
+**⚠️ Important**: Phase-6A uses a production-grade secrets management system. Environment variables are automatically generated and managed securely.
+
+### Setup Secrets Management
+
+```bash
+# Generate secure secrets and environment files
+python3 setup_secrets.py
+```
+
+This creates:
+- `.env.development` - Development environment variables
+- `secrets/.env.development.json` - Encrypted secrets storage
+- `docker-compose.development.override.yml` - Docker overrides
+- `k8s-secrets-development.yaml` - Kubernetes secrets template
+
 ### Database Configuration
 
 ```env
-# PostgreSQL Settings
+# PostgreSQL Settings (auto-generated)
 POSTGRES_DB=multimodal                    # Database name
 POSTGRES_USER=postgres                    # Database user
-POSTGRES_PASSWORD=your_secure_password    # Database password (auto-generated)
+POSTGRES_PASSWORD=<secure_password>       # Database password (auto-generated)
 ```
 
 ### Storage Configuration

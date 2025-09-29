@@ -22,10 +22,11 @@ This document outlines the comprehensive deployment and testing strategy for the
 **Objective**: Establish core development environment with basic services
 
 **Steps**:
-1. Start with base environment: `./start-environment.sh dev`
-2. Verify core services are running
-3. Test basic functionality
-4. Add monitoring: `./start-environment.sh monitoring`
+1. **Setup Secrets Management**: `python3 setup_secrets.py`
+2. Start with base environment: `./start-environment.sh dev`
+3. Verify core services are running
+4. Test basic functionality
+5. Add monitoring: `./start-environment.sh monitoring`
 
 **Services**:
 - PostgreSQL, Redis, Qdrant, MinIO

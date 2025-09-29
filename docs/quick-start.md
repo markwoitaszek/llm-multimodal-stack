@@ -23,11 +23,28 @@ curl -fsSL https://raw.githubusercontent.com/markwoitaszek/llm-multimodal-stack/
 
 **Required:**
 - Docker & Docker Compose
+- Python 3.13+
 - 8GB+ free disk space
 - Internet connection
 
 **Optional (for GPU acceleration):**
 - NVIDIA GPU with 8GB+ VRAM
+
+### Step 2: Setup Secrets Management 🔐
+
+**Phase-6A includes production-grade secrets management:**
+
+```bash
+# Generate secure secrets and environment files
+python3 setup_secrets.py
+```
+
+This automatically creates:
+- ✅ **21 secure secrets** (passwords, API keys, etc.)
+- ✅ **Encrypted storage** with proper permissions
+- ✅ **Environment-specific** configurations
+- ✅ **Docker Compose** integration
+- ✅ **Kubernetes secrets** templates
 - NVIDIA Docker runtime
 
 **Quick Check:**
