@@ -1,0 +1,42 @@
+auto_scaling:
+  enabled: true
+  max_replicas: 10
+  min_replicas: 1
+  scale_down_cooldown: 10m
+  scale_up_cooldown: 5m
+  services:
+    litellm:
+      max_replicas: 4
+      min_replicas: 1
+      scale_down_threshold: 30
+      scale_up_threshold: 80
+      target_cpu: 70
+      target_memory: 80
+    multimodal-worker:
+      max_replicas: 8
+      min_replicas: 2
+      scale_down_threshold: 30
+      scale_up_threshold: 80
+      target_cpu: 70
+      target_memory: 80
+    retrieval-proxy:
+      max_replicas: 6
+      min_replicas: 2
+      scale_down_threshold: 30
+      scale_up_threshold: 80
+      target_cpu: 70
+      target_memory: 80
+  target_cpu_utilization: 70
+  target_memory_utilization: 80
+monitoring:
+  alert_thresholds:
+    cpu_usage: 80
+    disk_usage: 90
+    memory_usage: 85
+    network_usage: 80
+  metrics_collection_interval: 30s
+resource_limits:
+  cpu_limit_per_service: '8.0'
+  memory_limit_per_service: 16G
+  network_bandwidth_limit: 1Gbps
+  storage_limit_per_service: 100G

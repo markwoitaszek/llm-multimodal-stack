@@ -1,0 +1,34 @@
+server.name: kibana
+server.host: 0.0.0.0
+server.port: 5601
+server.maxPayload: 1048576
+
+elasticsearch.hosts: ['http://elasticsearch:9200']
+
+# Security settings
+xpack.security.enabled: false
+xpack.encryptedSavedObjects.encryptionKey: "multimodal-encryption-key-32-chars"
+
+# Logging
+logging.appenders:
+  file:
+    type: file
+    fileName: /usr/share/kibana/logs/kibana.log
+    layout:
+      type: json
+logging.root:
+  appenders:
+    - default
+    - file
+logging.loggers:
+  - name: plugins
+    level: info
+
+# Performance settings
+optimize.bundleFilter: "!tests"
+optimize.useBundleCache: true
+optimize.bundleDir: /usr/share/kibana/optimize/bundles
+
+# Monitoring
+monitoring.ui.container.elasticsearch.enabled: true
+monitoring.ui.container.logstash.enabled: true

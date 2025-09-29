@@ -1,0 +1,86 @@
+# Test Data Management Configuration
+# Generated on: 2025-09-29T10:27:54.022746
+
+test_data:
+  # Test datasets
+  datasets:
+    small_text:
+      size: "1KB"
+      samples: 100
+      description: "Small text samples for unit tests"
+    
+    medium_text:
+      size: "10KB"
+      samples: 50
+      description: "Medium text samples for integration tests"
+    
+    large_text:
+      size: "100KB"
+      samples: 10
+      description: "Large text samples for performance tests"
+    
+    images:
+      small: [100, 100]
+      medium: [512, 512]
+      large: [1024, 1024]
+      description: "Image samples for multimodal tests"
+  
+  # Test data sources
+  sources:
+    local:
+      path: "./test_data/"
+      type: "file"
+    
+    remote:
+      url: "https://testdata.example.com/"
+      type: "http"
+      auth_required: true
+  
+  # Data management
+  management:
+    cleanup_after_tests: true
+    backup_test_data: true
+    version_control: true
+    retention_days: 30
+
+# Test environment data
+test_environments:
+  development:
+    database_url: "postgresql://test:test@localhost:5432/test_db"
+    redis_url: "redis://localhost:6379/0"
+    api_base_url: "http://localhost:8000"
+  
+  staging:
+    database_url: "postgresql://staging:staging@staging-db:5432/staging_db"
+    redis_url: "redis://staging-redis:6379/0"
+    api_base_url: "http://staging-api:8000"
+  
+  production:
+    database_url: "postgresql://prod:prod@prod-db:5432/prod_db"
+    redis_url: "redis://prod-redis:6379/0"
+    api_base_url: "http://prod-api:8000"
+
+# Test fixtures
+fixtures:
+  users:
+    admin:
+      username: "admin"
+      password: "admin123"
+      role: "admin"
+    
+    user:
+      username: "testuser"
+      password: "test123"
+      role: "user"
+  
+  models:
+    default:
+      name: "test-model"
+      version: "1.0.0"
+      type: "text"
+  
+  agents:
+    test_agent:
+      name: "Test Agent"
+      goal: "Execute test tasks"
+      tools: ["test_tool"]

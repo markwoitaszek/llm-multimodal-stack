@@ -1,0 +1,46 @@
+application_caching:
+  cache_layers:
+    l1:
+      max_size: 100MB
+      ttl: 300
+      type: memory
+    l2:
+      max_size: 1GB
+      ttl: 3600
+      type: redis
+  enabled: true
+cache_policies:
+  agent_memory:
+    eviction_policy: lru
+    max_size: 200MB
+    ttl: 2592000
+  embeddings:
+    eviction_policy: lru
+    max_size: 500MB
+    ttl: 86400
+  model_metadata:
+    eviction_policy: lru
+    max_size: 50MB
+    ttl: 86400
+  search_results:
+    eviction_policy: lru
+    max_size: 100MB
+    ttl: 3600
+http_caching:
+  cache_control:
+    api_responses: max-age=300
+    model_responses: max-age=60
+    search_results: max-age=600
+    static_content: max-age=31536000
+  enabled: true
+redis_caching:
+  db: 0
+  enabled: true
+  health_check_interval: 30
+  host: redis
+  max_connections: 20
+  password: ${REDIS_PASSWORD}
+  port: 6379
+  retry_on_timeout: true
+  socket_connect_timeout: 5
+  socket_timeout: 5
