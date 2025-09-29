@@ -1,0 +1,497 @@
+{
+  "name": "Research Assistant Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "daily-research-trigger",
+      "name": "Daily Research Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ai-agents:8003/api/v1/agents/from-template",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "template_name",
+              "value": "research_assistant"
+            },
+            {
+              "name": "agent_name",
+              "value": "Daily Research Agent {{ $now.format('YYYY-MM-DD') }}"
+            },
+            {
+              "name": "user_id",
+              "value": "n8n-system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-research-agent",
+      "name": "Create Research Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ai-agents:8003/api/v1/agents/{{ $json.agent_id }}/execute",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "task",
+              "value": "Research the latest trends and developments in artificial intelligence, machine learning, and related technologies. Focus on: 1) New research papers and breakthroughs, 2) Industry news and announcements, 3) Technology trends and predictions, 4) Market analysis and investment news. Compile findings into a comprehensive daily research report."
+            },
+            {
+              "name": "user_id",
+              "value": "n8n-system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "execute-research-task",
+      "name": "Execute Research Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ai-agents:8003/api/v1/agents/from-template",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "template_name",
+              "value": "creative_writer"
+            },
+            {
+              "name": "agent_name",
+              "value": "Report Formatter {{ $now.format('YYYY-MM-DD') }}"
+            },
+            {
+              "name": "user_id",
+              "value": "n8n-system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-formatter-agent",
+      "name": "Create Formatter Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ai-agents:8003/api/v1/agents/{{ $json.agent_id }}/execute",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "task",
+              "value": "Format the following research findings into a professional, well-structured daily report with clear sections, bullet points, and executive summary. Research data: {{ $('Execute Research Task').item.json.result }}"
+            },
+            {
+              "name": "user_id",
+              "value": "n8n-system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-research-report",
+      "name": "Format Research Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://document-service:8080/api/documents",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $vars.DOCUMENT_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "Daily AI Research Report - {{ $now.format('YYYY-MM-DD') }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('Format Research Report').item.json.result }}"
+            },
+            {
+              "name": "type",
+              "value": "research_report"
+            },
+            {
+              "name": "category",
+              "value": "ai_research"
+            },
+            {
+              "name": "tags",
+              "value": "ai, machine-learning, research, daily-report"
+            },
+            {
+              "name": "metadata",
+              "value": "{\"generated_by\": \"ai-agent\", \"date\": \"{{ $now.format('YYYY-MM-DD') }}\", \"agent_id\": \"{{ $('Create Research Agent').item.json.agent_id }}\"}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "save-research-report",
+      "name": "Save Research Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://email-service:8080/api/send",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $vars.EMAIL_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "research-team@company.com"
+            },
+            {
+              "name": "cc",
+              "value": "management@company.com"
+            },
+            {
+              "name": "subject",
+              "value": "Daily AI Research Report - {{ $now.format('YYYY-MM-DD') }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $('Format Research Report').item.json.result }}"
+            },
+            {
+              "name": "template",
+              "value": "research-report"
+            },
+            {
+              "name": "attachments",
+              "value": "[{\"filename\": \"daily-ai-report-{{ $now.format('YYYY-MM-DD') }}.pdf\", \"content\": \"{{ $('Save Research Report').item.json.document_id }}\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "email-research-report",
+      "name": "Email Research Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://slack-service:8080/api/notify",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "#research-updates"
+            },
+            {
+              "name": "message",
+              "value": "📊 Daily AI Research Report is ready! Check your email for the full report. Key highlights: {{ $('Format Research Report').item.json.result.substring(0, 200) }}..."
+            },
+            {
+              "name": "priority",
+              "value": "normal"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "slack-research-notification",
+      "name": "Slack Research Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://analytics-service:8080/api/events",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "daily_research_report"
+            },
+            {
+              "name": "report_date",
+              "value": "={{ $now.format('YYYY-MM-DD') }}"
+            },
+            {
+              "name": "research_agent_id",
+              "value": "={{ $('Create Research Agent').item.json.agent_id }}"
+            },
+            {
+              "name": "formatter_agent_id",
+              "value": "={{ $('Create Formatter Agent').item.json.agent_id }}"
+            },
+            {
+              "name": "document_id",
+              "value": "={{ $('Save Research Report').item.json.document_id }}"
+            },
+            {
+              "name": "execution_time_ms",
+              "value": "={{ $('Execute Research Task').item.json.execution_time_ms + $('Format Research Report').item.json.execution_time_ms }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-research-analytics",
+      "name": "Log Research Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 300]
+    }
+  ],
+  "connections": {
+    "Daily Research Trigger": {
+      "main": [
+        [
+          {
+            "node": "Create Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Execute Research Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Research Task": {
+      "main": [
+        [
+          {
+            "node": "Create Formatter Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Formatter Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Research Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Research Report": {
+      "main": [
+        [
+          {
+            "node": "Save Research Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Research Report": {
+      "main": [
+        [
+          {
+            "node": "Email Research Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack Research Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Research Report": {
+      "main": [
+        [
+          {
+            "node": "Log Research Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Research Notification": {
+      "main": [
+        [
+          {
+            "node": "Log Research Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "research",
+      "name": "Research"
+    },
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "ai-agents",
+      "name": "AI Agents"
+    },
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "automation",
+      "name": "Automation"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

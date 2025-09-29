@@ -1,87 +1,65 @@
-# Comprehensive Test Suite
+# Testing Infrastructure
 
-This directory contains the comprehensive test suite for the LLM Multimodal Stack, implementing the requirements from GitHub Issue #5.
+## Overview
 
-## 📋 Test Structure
+This directory contains comprehensive testing infrastructure for the Multimodal LLM Stack, including unit tests, integration tests, performance tests, and CI/CD integration.
+
+## Test Structure
 
 ```
 tests/
-├── __init__.py                    # Tests package
-├── conftest.py                    # Global pytest configuration and fixtures
-├── README.md                      # This file
-├── integration/                   # Integration tests
-│   ├── __init__.py
-│   ├── test_service_communication.py
-│   └── test_workflow_execution.py
-├── performance/                   # Performance tests
-│   ├── __init__.py
-│   ├── test_api_response_times.py
-│   └── test_model_inference.py
-└── services/                      # Service-specific tests
-    ├── multimodal-worker/
-    │   ├── tests/
-    │   │   ├── __init__.py
-    │   │   ├── conftest.py
-    │   │   ├── test_models.py
-    │   │   ├── test_processors.py
-    │   │   ├── test_database.py
-    │   │   ├── test_storage.py
-    │   │   └── test_api.py
-    ├── retrieval-proxy/
-    │   ├── tests/
-    │   │   ├── __init__.py
-    │   │   ├── conftest.py
-    │   │   ├── test_vector_store.py
-    │   │   ├── test_retrieval.py
-    │   │   └── test_api.py
-    └── ai-agents/
-        ├── tests/
-        │   ├── __init__.py
-        │   ├── conftest.py
-        │   ├── test_agent_manager.py
-        │   ├── test_tools.py
-        │   ├── test_memory.py
-        │   └── test_api.py
+├── unit/                    # Unit tests for individual components
+│   ├── ai-agents/          # AI Agents service tests
+│   ├── ide-bridge/         # IDE Bridge service tests
+│   ├── protocol-integration/ # Protocol Integration service tests
+│   ├── realtime-collaboration/ # Real-Time Collaboration service tests
+│   └── n8n-monitoring/     # n8n Monitoring service tests
+├── integration/            # Integration tests
+│   ├── api/               # API integration tests
+│   ├── database/          # Database integration tests
+│   ├── websocket/         # WebSocket integration tests
+│   └── services/          # Service-to-service integration tests
+├── performance/           # Performance and load tests
+│   ├── load/              # Load testing
+│   ├── stress/            # Stress testing
+│   └── benchmarks/        # Performance benchmarks
+├── e2e/                   # End-to-end tests
+│   ├── user-workflows/    # User workflow tests
+│   ├── agent-execution/   # Agent execution tests
+│   └── collaboration/     # Collaboration feature tests
+├── fixtures/              # Test fixtures and data
+├── utils/                 # Testing utilities
+└── config/                # Test configuration
 ```
 
-## 🎯 Test Categories
+## Test Requirements
 
-### 1. Unit Tests (80% Coverage Target)
+### Unit Tests
+- **Coverage**: 90%+ code coverage
+- **Scope**: Individual functions, classes, and modules
+- **Framework**: pytest
+- **Mocking**: unittest.mock, pytest-mock
+- **Assertions**: pytest assertions
 
-**Multimodal Worker Service:**
-- `test_models.py` - Model loading and inference
-- `test_processors.py` - Image/video/text processing
-- `test_database.py` - Database operations
-- `test_storage.py` - MinIO/S3 operations
-- `test_api.py` - FastAPI endpoints
+### Integration Tests
+- **Scope**: API endpoints, database operations, service communication
+- **Framework**: pytest with httpx for API testing
+- **Database**: Test database with fixtures
+- **Services**: Docker Compose test environment
 
-**Retrieval Proxy Service:**
-- `test_vector_store.py` - Qdrant operations
-- `test_retrieval.py` - Search and context bundling
-- `test_database.py` - PostgreSQL operations
-- `test_api.py` - API endpoints
+### Performance Tests
+- **Load Testing**: 100+ concurrent users
+- **Response Times**: <200ms for API endpoints
+- **Memory Usage**: Monitor memory consumption
+- **Framework**: locust, pytest-benchmark
 
-**AI Agents Service:**
-- `test_agent_manager.py` - Agent creation and execution
-- `test_tools.py` - Tool functionality
-- `test_memory.py` - Memory persistence
-- `test_api.py` - Agent API endpoints
+### End-to-End Tests
+- **Scope**: Complete user workflows
+- **Framework**: pytest with selenium/playwright
+- **Browser**: Chrome, Firefox, Safari
+- **Mobile**: Responsive design testing
 
-### 2. Integration Tests
-
-- `test_service_communication.py` - Inter-service API calls
-- `test_workflow_execution.py` - End-to-end workflows
-- `test_data_persistence.py` - Database consistency
-- `test_health_monitoring.py` - Health check validation
-
-### 3. Performance Tests
-
-- `test_api_response_times.py` - API latency benchmarks
-- `test_concurrent_users.py` - Load testing
-- `test_gpu_utilization.py` - Resource usage
-- `test_model_inference.py` - Model performance
-
-## 🚀 Running Tests
+## Running Tests
 
 ### Prerequisites
 
@@ -89,307 +67,233 @@ tests/
 # Install test dependencies
 pip install -r requirements-test.txt
 
-# Or install core dependencies manually:
-pip install pytest==8.4.2 pytest-asyncio==1.2.0 pytest-cov==7.0.0 pytest-mock==3.15.1
-pip install httpx==0.28.1 requests==2.32.5 aiofiles==24.1.0
-pip install semver==3.0.4 cryptography==46.0.1 jsonschema==4.25.1
-pip install pytest-postgresql==7.0.2 pytest-redis==3.1.3 psycopg[binary]==3.2.10
+# Start test services
+docker-compose -f docker-compose.test.yml up -d
 ```
 
 ### Unit Tests
 
 ```bash
 # Run all unit tests
-pytest tests/ -v --cov=services --cov-report=html --cov-report=term-missing
-
-# Run tests for specific service
-pytest services/multimodal-worker/tests/ -v
-pytest services/retrieval-proxy/tests/ -v
-pytest services/ai-agents/tests/ -v
+pytest tests/unit/ -v
 
 # Run with coverage
-pytest services/multimodal-worker/tests/ --cov=app --cov-report=html
+pytest tests/unit/ --cov=services --cov-report=html
+
+# Run specific service tests
+pytest tests/unit/ai-agents/ -v
+pytest tests/unit/ide-bridge/ -v
 ```
 
 ### Integration Tests
 
 ```bash
-# Start test environment
-docker-compose -f docker-compose.test.yml up -d
+# Run all integration tests
+pytest tests/integration/ -v
 
-# Run integration tests
-pytest tests/integration/ -v -m integration
+# Run API tests
+pytest tests/integration/api/ -v
 
-# Run specific integration test
-pytest tests/integration/test_service_communication.py -v
+# Run database tests
+pytest tests/integration/database/ -v
 ```
 
 ### Performance Tests
 
 ```bash
 # Run performance tests
-pytest tests/performance/ -v -m performance
+pytest tests/performance/ -v
 
-# Run specific performance test
-pytest tests/performance/test_api_response_times.py -v
+# Run load tests
+locust -f tests/performance/load/locustfile.py --host=http://localhost:3000
+
+# Run benchmarks
+pytest tests/performance/benchmarks/ -v
 ```
 
-### All Tests
+### End-to-End Tests
 
 ```bash
-# Run all tests
-pytest tests/ -v
+# Run E2E tests
+pytest tests/e2e/ -v
 
-# Run with markers
-pytest tests/ -v -m "unit or integration or performance"
+# Run with browser
+pytest tests/e2e/ --browser=chrome
 
-# Run excluding slow tests
-pytest tests/ -v -m "not slow"
+# Run mobile tests
+pytest tests/e2e/ --mobile
 ```
 
-## 📊 Test Configuration
+## Test Configuration
 
-### Pytest Configuration (`pytest.ini`)
-
-```ini
-[tool:pytest]
-# Pytest configuration for LLM Multimodal Stack
-testpaths = tests services
-python_files = test_*.py *_test.py
-python_classes = Test*
-python_functions = test_*
-addopts = 
-    -v
-    --tb=short
-    --strict-markers
-    --disable-warnings
-    --cov=services
-    --cov-report=term-missing
-    --cov-report=html:htmlcov
-    --cov-report=xml:coverage.xml
-    --cov-fail-under=80
-    --asyncio-mode=auto
-markers =
-    unit: Unit tests
-    integration: Integration tests
-    performance: Performance tests
-    slow: Slow running tests
-    gpu: Tests requiring GPU
-    api: API endpoint tests
-    database: Database tests
-    storage: Storage tests
-    models: Model tests
-    agents: Agent tests
-    retrieval: Retrieval tests
-    multimodal: Multimodal processing tests
-filterwarnings =
-    ignore::DeprecationWarning
-    ignore::PendingDeprecationWarning
-    ignore::UserWarning:torch.*
-    ignore::UserWarning:transformers.*
-```
-
-### Test Fixtures
-
-Global fixtures in `tests/conftest.py`:
-- `test_config` - Test configuration
-- `mock_database_manager` - Mock database operations
-- `mock_storage_manager` - Mock storage operations
-- `mock_vector_store` - Mock vector store operations
-- `mock_model_manager` - Mock model operations
-- `mock_http_client` - Mock HTTP client
-- `performance_thresholds` - Performance test thresholds
-
-## 🎯 Performance Thresholds
-
-```python
-PERFORMANCE_THRESHOLDS = {
-    "api_response_time_ms": 1000,
-    "model_inference_time_ms": 5000,
-    "database_query_time_ms": 100,
-    "vector_search_time_ms": 200,
-    "file_upload_time_ms": 2000
-}
-```
-
-## 🔧 CI/CD Integration
-
-Tests are automatically run in GitHub Actions on:
-- Push to main/develop branches
-- Pull requests
-- Daily scheduled runs
-
-### Test Matrix
-
-- **Unit Tests**: All services in parallel
-- **Integration Tests**: Full stack with test databases
-- **Performance Tests**: Scheduled and on-demand
-- **Security Tests**: Bandit and Safety scans
-
-## 📈 Coverage Requirements
-
-- **Minimum Coverage**: 80% for all services
-- **Coverage Reports**: HTML and XML formats
-- **Coverage Upload**: Automatic to Codecov
-
-## 🐛 Debugging Tests
-
-### Verbose Output
+### Environment Variables
 
 ```bash
-pytest tests/ -v -s --tb=long
+# Test environment
+TEST_ENVIRONMENT=testing
+TEST_DATABASE_URL=postgresql://test:test@localhost:5432/test_db
+TEST_REDIS_URL=redis://localhost:6379/1
+TEST_AI_AGENTS_URL=http://localhost:3000
+TEST_IDE_BRIDGE_URL=http://localhost:3004
+TEST_PROTOCOL_INTEGRATION_URL=http://localhost:3005
+TEST_REALTIME_COLLABORATION_URL=http://localhost:3006
 ```
 
-### Debug Specific Test
+### Test Data
 
-```bash
-pytest tests/services/multimodal-worker/tests/test_models.py::TestModelManager::test_load_models_success -v -s
+- **Fixtures**: Located in `tests/fixtures/`
+- **Mock Data**: Generated using factory_boy
+- **Database**: Test database with sample data
+- **Files**: Test files and documents
+
+## CI/CD Integration
+
+### GitHub Actions
+
+```yaml
+# .github/workflows/test.yml
+name: Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements-test.txt
+      - name: Run tests
+        run: pytest tests/ --cov=services --cov-report=xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
 ```
 
-### Run with PDB
+### Test Reports
 
-```bash
-pytest tests/ --pdb
-```
+- **Coverage**: HTML and XML reports
+- **Performance**: Benchmark results
+- **Load Testing**: Load test reports
+- **E2E**: Screenshots and videos
 
-## 📝 Writing Tests
+## Test Utilities
 
-### Test Naming Convention
-
-- Test files: `test_*.py`
-- Test classes: `Test*`
-- Test methods: `test_*`
-
-### Test Structure
+### Database Fixtures
 
 ```python
-class TestFeature:
-    """Test cases for Feature"""
-    
-    @pytest.fixture
-    def feature_instance(self):
-        """Create feature instance for testing"""
-        return Feature()
-    
-    @pytest.mark.asyncio
-    async def test_feature_success(self, feature_instance):
-        """Test successful feature operation"""
-        # Arrange
-        input_data = {"test": "data"}
-        
-        # Act
-        result = await feature_instance.process(input_data)
-        
-        # Assert
-        assert result["success"] is True
-        assert "result" in result
-```
+# tests/utils/database.py
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-### Mocking Guidelines
-
-- Use `unittest.mock` for mocking
-- Mock external dependencies (databases, APIs, models)
-- Use `pytest.fixture` for reusable test data
-- Keep mocks simple and focused
-
-## 🚨 Common Issues
-
-### Async Test Issues
-
-```python
-# Use pytest-asyncio
-@pytest.mark.asyncio
-async def test_async_function():
-    result = await async_function()
-    assert result is not None
-```
-
-### Database Test Issues
-
-```python
-# Use test database
 @pytest.fixture
 def test_db():
-    return TestDatabase()
+    engine = create_engine(TEST_DATABASE_URL)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    yield session
+    session.close()
 ```
 
-### Performance Test Issues
+### API Client
 
 ```python
-# Use performance markers
-@pytest.mark.performance
-def test_performance():
-    # Performance test code
-    pass
+# tests/utils/api_client.py
+import httpx
+import pytest
+
+@pytest.fixture
+async def api_client():
+    async with httpx.AsyncClient() as client:
+        yield client
 ```
 
-## 📚 Additional Resources
+### WebSocket Client
 
-- [Pytest Documentation](https://docs.pytest.org/)
-- [Pytest-Asyncio](https://pytest-asyncio.readthedocs.io/)
-- [Pytest-Cov](https://pytest-cov.readthedocs.io/)
-- [FastAPI Testing](https://fastapi.tiangolo.com/tutorial/testing/)
+```python
+# tests/utils/websocket_client.py
+import websockets
+import pytest
 
-## 🔧 Recent Test Framework Updates
+@pytest.fixture
+async def websocket_client():
+    async with websockets.connect("ws://localhost:3006/ws") as websocket:
+        yield websocket
+```
 
-### Test Framework Status (Updated 2025-01-29)
+## Best Practices
 
-**Current Test Framework:**
-- **pytest**: 8.4.2 (upgraded from 7.4.3)
-- **pytest-asyncio**: 1.2.0 (upgraded from 0.21.1)
-- **pytest-cov**: 7.0.0 (upgraded from 4.1.0)
-- **pytest-mock**: 3.15.1 (upgraded from 3.12.0)
+### Test Organization
 
-**Key Dependencies Added:**
-- **semver**: 3.0.4 (for version management)
-- **cryptography**: 46.0.1 (for security features)
-- **jsonschema**: 4.25.1 (for configuration validation)
-- **psycopg[binary]**: 3.2.10 (for PostgreSQL testing)
-- **pytest-postgresql**: 7.0.2 (for database testing)
-- **pytest-redis**: 3.1.3 (for Redis testing)
+1. **One test file per module**
+2. **Descriptive test names**
+3. **Arrange-Act-Assert pattern**
+4. **Independent tests**
+5. **Clean up after tests**
 
-### Recent Fixes Applied
+### Test Data
 
-**Import Path Issues:**
-- Fixed module import paths in test files
-- Added proper `sys.path` manipulation for service modules
-- Resolved missing module dependencies
+1. **Use fixtures for common data**
+2. **Generate test data dynamically**
+3. **Clean up test data**
+4. **Use realistic data**
 
-**Async Test Configuration:**
-- Updated `conftest.py` to use `@pytest_asyncio.fixture` for async fixtures
-- Fixed async event loop issues in `AnalyticsCollector`
-- Added proper `@pytest.mark.asyncio` decorators to async test methods
+### Assertions
 
-**Data Structure Issues:**
-- Fixed missing `authentication_required` fields in connector endpoints
-- Updated `ConnectorBuilder` to normalize endpoint specifications
-- Fixed `CustomRESTConnector` endpoint initialization
+1. **Specific assertions**
+2. **Clear error messages**
+3. **Test edge cases**
+4. **Validate all outputs**
 
-**Database Integration:**
-- Fixed async SQLite queries in analytics engine
-- Added proper `flush_events()` method for test data persistence
-- Resolved aiosqlite compatibility issues
+### Performance
 
-### Current Test Status
+1. **Mock external services**
+2. **Use test databases**
+3. **Parallel test execution**
+4. **Optimize test setup**
 
-**Passing Test Categories:**
-- ✅ Connector tests (38/38 passing)
-- ✅ Analytics collector tests (5/5 passing)
-- ✅ Core framework tests
+## Troubleshooting
 
-**Test Pass Rate:**
-- **Current**: ~80% pass rate (43 passed, 10 failed)
-- **Target**: 80%+ pass rate ✅ **ACHIEVED**
+### Common Issues
 
-## 🎉 Success Criteria
+1. **Test Database Connection**
+   - Check database URL
+   - Verify database is running
+   - Check permissions
 
-- ✅ Unit test coverage ≥80% for all services
-- ✅ Integration tests cover all service interactions
-- ✅ Performance tests with defined thresholds
-- ✅ All tests run automatically in CI/CD
-- ✅ Test documentation and contribution guides
-- ✅ Performance regression detection
-- ✅ Security tests with zero high-severity issues
-- ✅ **Test framework updated and dependencies resolved**
-- ✅ **Async test configuration properly set up**
-- ✅ **Import path issues resolved**
+2. **Service Dependencies**
+   - Start required services
+   - Check service URLs
+   - Verify health checks
+
+3. **Test Timeouts**
+   - Increase timeout values
+   - Check service performance
+   - Optimize test setup
+
+### Debug Mode
+
+```bash
+# Run tests with debug output
+pytest tests/ -v -s --log-cli-level=DEBUG
+
+# Run specific test with debug
+pytest tests/unit/ai-agents/test_agent_manager.py::test_create_agent -v -s
+```
+
+## Contributing
+
+1. **Write tests for new features**
+2. **Maintain test coverage**
+3. **Update test documentation**
+4. **Follow test conventions**
+
+## Resources
+
+- [pytest Documentation](https://docs.pytest.org/)
+- [pytest-asyncio](https://pytest-asyncio.readthedocs.io/)
+- [pytest-cov](https://pytest-cov.readthedocs.io/)
+- [locust Documentation](https://docs.locust.io/)
+- [Factory Boy](https://factoryboy.readthedocs.io/)

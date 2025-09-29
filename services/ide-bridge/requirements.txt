@@ -1,0 +1,56 @@
+# IDE Bridge Service Requirements
+
+# FastAPI and web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+websockets==12.0
+
+# HTTP client for agent integration
+aiohttp==3.9.1
+httpx==0.25.2
+
+# Configuration and validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database and caching
+asyncpg==0.29.0
+redis==5.0.1
+sqlalchemy[asyncio]==2.0.23
+
+# Code analysis and parsing
+tree-sitter==0.20.4
+tree-sitter-python==0.20.4
+tree-sitter-javascript==0.20.4
+tree-sitter-typescript==0.20.4
+tree-sitter-go==0.20.4
+tree-sitter-rust==0.20.4
+tree-sitter-java==0.20.4
+tree-sitter-cpp==0.20.4
+
+# Language server protocol
+pygls==1.1.0
+
+# JSON handling
+orjson==3.9.10
+
+# Logging and monitoring
+structlog==23.2.0
+
+# Development and testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
+mypy==1.7.1
+
+# Security
+cryptography==41.0.8
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Performance
+uvloop==0.19.0
+gunicorn==21.2.0

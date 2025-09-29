@@ -1,247 +1,371 @@
 """
-Global pytest configuration and fixtures for LLM Multimodal Stack
+Global test configuration and fixtures
 """
+
 import asyncio
 import os
-import tempfile
 import pytest
-import pytest_asyncio
-from unittest.mock import Mock, AsyncMock, MagicMock
+import tempfile
 from typing import AsyncGenerator, Generator
-import httpx
-import numpy as np
-from PIL import Image
-import json
+from unittest.mock import AsyncMock, MagicMock
 
-# Test configuration
-TEST_CONFIG = {
-    "database_url": "postgresql://test:test@localhost:5432/test_multimodal",
-    "redis_url": "redis://localhost:6379/1",
-    "qdrant_url": "http://localhost:6333",
-    "minio_url": "http://localhost:9000",
-    "minio_access_key": "test_access_key",
-    "minio_secret_key": "test_secret_key",
-    "minio_bucket": "test-bucket",
-    "model_cache_dir": "/tmp/test_models",
-    "test_data_dir": "/tmp/test_data"
-}
+# Set test environment
+os.environ["ENVIRONMENT"] = "testing"
+os.environ["LOG_LEVEL"] = "DEBUG"
 
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Create an instance of the default event loop for the test session."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
 
 @pytest.fixture
-def test_config():
-    """Test configuration"""
-    return TEST_CONFIG.copy()
+async def test_db() -> AsyncGenerator[MagicMock, None]:
+    """Test database fixture"""
+    db = MagicMock()
+    db.execute = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    db.close = AsyncMock()
+    yield db
 
 @pytest.fixture
-def temp_dir():
-    """Temporary directory for test files"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield tmpdir
+async def test_redis() -> AsyncGenerator[MagicMock, None]:
+    """Test Redis fixture"""
+    redis = MagicMock()
+    redis.get = AsyncMock()
+    redis.set = AsyncMock()
+    redis.delete = AsyncMock()
+    redis.exists = AsyncMock()
+    redis.expire = AsyncMock()
+    yield redis
 
 @pytest.fixture
-def mock_image():
-    """Create a mock PIL Image for testing"""
-    return Image.new('RGB', (224, 224), color='red')
+def temp_dir() -> Generator[str, None, None]:
+    """Temporary directory fixture"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield temp_dir
 
 @pytest.fixture
-def mock_embedding():
-    """Create a mock embedding vector"""
-    return np.random.rand(512).astype(np.float32)
+def mock_ai_agents_service() -> MagicMock:
+    """Mock AI Agents service"""
+    service = MagicMock()
+    service.create_agent = AsyncMock()
+    service.get_agent = AsyncMock()
+    service.update_agent = AsyncMock()
+    service.delete_agent = AsyncMock()
+    service.execute_agent = AsyncMock()
+    return service
 
 @pytest.fixture
-def mock_text():
-    """Sample text for testing"""
-    return "This is a test document for multimodal processing."
+def mock_ide_bridge_service() -> MagicMock:
+    """Mock IDE Bridge service"""
+    service = MagicMock()
+    service.analyze_code = AsyncMock()
+    service.get_completions = AsyncMock()
+    service.get_hover = AsyncMock()
+    service.get_definition = AsyncMock()
+    return service
 
 @pytest.fixture
-def mock_audio_data():
-    """Mock audio data for testing"""
-    return np.random.rand(16000).astype(np.float32)  # 1 second of audio at 16kHz
+def mock_protocol_integration_service() -> MagicMock:
+    """Mock Protocol Integration service"""
+    service = MagicMock()
+    service.translate_protocol = AsyncMock()
+    service.get_protocol_status = AsyncMock()
+    service.start_server = AsyncMock()
+    service.stop_server = AsyncMock()
+    return service
 
 @pytest.fixture
-def mock_video_data():
-    """Mock video data for testing"""
-    return np.random.randint(0, 255, (30, 224, 224, 3), dtype=np.uint8)  # 30 frames
+def mock_realtime_collaboration_service() -> MagicMock:
+    """Mock Real-Time Collaboration service"""
+    service = MagicMock()
+    service.broadcast_message = AsyncMock()
+    service.get_connections = AsyncMock()
+    service.get_workspaces = AsyncMock()
+    return service
 
 @pytest.fixture
-def mock_database_manager():
-    """Mock database manager"""
-    mock_db = AsyncMock()
-    mock_db.initialize = AsyncMock()
-    mock_db.close = AsyncMock()
-    mock_db.execute_query = AsyncMock(return_value=[])
-    mock_db.insert_record = AsyncMock(return_value=1)
-    mock_db.update_record = AsyncMock(return_value=True)
-    mock_db.delete_record = AsyncMock(return_value=True)
-    return mock_db
+def mock_n8n_service() -> MagicMock:
+    """Mock n8n service"""
+    service = MagicMock()
+    service.create_workflow = AsyncMock()
+    service.execute_workflow = AsyncMock()
+    service.get_workflow_status = AsyncMock()
+    return service
 
 @pytest.fixture
-def mock_storage_manager():
-    """Mock storage manager"""
-    mock_storage = AsyncMock()
-    mock_storage.initialize = AsyncMock()
-    mock_storage.upload_file = AsyncMock(return_value="test_file_url")
-    mock_storage.download_file = AsyncMock(return_value=b"test_file_content")
-    mock_storage.delete_file = AsyncMock(return_value=True)
-    mock_storage.list_files = AsyncMock(return_value=["file1.jpg", "file2.mp4"])
-    return mock_storage
-
-@pytest.fixture
-def mock_vector_store():
-    """Mock vector store manager"""
-    mock_vector = AsyncMock()
-    mock_vector.initialize = AsyncMock()
-    mock_vector.upsert_vectors = AsyncMock(return_value=True)
-    mock_vector.search_vectors = AsyncMock(return_value=[])
-    mock_vector.delete_vectors = AsyncMock(return_value=True)
-    return mock_vector
-
-@pytest.fixture
-def mock_model_manager():
-    """Mock model manager"""
-    mock_models = AsyncMock()
-    mock_models.load_models = AsyncMock()
-    mock_models.get_model = Mock(return_value=Mock())
-    mock_models.get_processor = Mock(return_value=Mock())
-    mock_models.cleanup = AsyncMock()
-    return mock_models
-
-@pytest.fixture
-def mock_http_client():
-    """Mock HTTP client for API testing"""
-    mock_client = AsyncMock(spec=httpx.AsyncClient)
-    mock_client.get = AsyncMock()
-    mock_client.post = AsyncMock()
-    mock_client.put = AsyncMock()
-    mock_client.delete = AsyncMock()
-    return mock_client
-
-@pytest.fixture
-def test_api_response():
-    """Mock API response"""
+def sample_agent_data() -> dict:
+    """Sample agent data for testing"""
     return {
-        "status": "success",
-        "data": {"test": "data"},
-        "message": "Test response"
+        "name": "Test Agent",
+        "description": "A test agent for unit testing",
+        "goal": "Test agent functionality",
+        "tools": ["search_content", "generate_text"],
+        "model": "gpt-4",
+        "temperature": 0.7,
+        "max_tokens": 1000
     }
 
 @pytest.fixture
-def mock_agent_manager():
-    """Mock agent manager"""
-    mock_agent = AsyncMock()
-    mock_agent.create_agent = AsyncMock(return_value="test_agent_id")
-    mock_agent.get_agent = AsyncMock(return_value={"id": "test_agent_id", "name": "Test Agent"})
-    mock_agent.execute_agent = AsyncMock(return_value={"success": True, "result": "Test result"})
-    mock_agent.delete_agent = AsyncMock(return_value=True)
-    mock_agent.list_agents = AsyncMock(return_value=[])
-    return mock_agent
-
-@pytest.fixture
-def mock_retrieval_engine():
-    """Mock retrieval engine"""
-    mock_retrieval = AsyncMock()
-    mock_retrieval.search_content = AsyncMock(return_value=[])
-    mock_retrieval.create_context_bundle = AsyncMock(return_value={"context": "test context"})
-    mock_retrieval.index_content = AsyncMock(return_value=True)
-    return mock_retrieval
-
-@pytest.fixture
-def test_processing_request():
-    """Test processing request data"""
+def sample_workspace_data() -> dict:
+    """Sample workspace data for testing"""
     return {
-        "content_type": "text",
-        "content": "Test content for processing",
-        "metadata": {"source": "test", "timestamp": "2024-01-01T00:00:00Z"}
+        "name": "Test Workspace",
+        "description": "A test workspace for unit testing",
+        "created_by": "test_user",
+        "users": ["test_user"],
+        "agents": ["test_agent"]
     }
 
 @pytest.fixture
-def test_processing_result():
-    """Test processing result data"""
+def sample_protocol_data() -> dict:
+    """Sample protocol data for testing"""
     return {
-        "content_id": "test_content_id",
-        "embeddings": np.random.rand(512).tolist(),
-        "metadata": {"processed_at": "2024-01-01T00:00:00Z"},
-        "success": True
-    }
-
-# Performance testing fixtures
-@pytest.fixture
-def performance_thresholds():
-    """Performance thresholds for testing"""
-    return {
-        "api_response_time_ms": 1000,
-        "model_inference_time_ms": 5000,
-        "database_query_time_ms": 100,
-        "vector_search_time_ms": 200,
-        "file_upload_time_ms": 2000
-    }
-
-# Integration testing fixtures
-@pytest.fixture
-async def test_services():
-    """Mock services for integration testing"""
-    services = {
-        "multimodal_worker": {
-            "url": "http://localhost:8001",
-            "health_endpoint": "/health",
-            "process_endpoint": "/process"
+        "id": "test-protocol",
+        "name": "Test Protocol",
+        "version": "1.0.0",
+        "category": "test",
+        "description": "A test protocol",
+        "schema": {
+            "methods": ["test_method"],
+            "notifications": ["test_notification"]
         },
-        "retrieval_proxy": {
-            "url": "http://localhost:8002", 
-            "health_endpoint": "/health",
-            "search_endpoint": "/search"
-        },
-        "ai_agents": {
-            "url": "http://localhost:8003",
-            "health_endpoint": "/health",
-            "agents_endpoint": "/api/v1/agents"
+        "capabilities": ["test_capability"]
+    }
+
+@pytest.fixture
+def sample_websocket_message() -> dict:
+    """Sample WebSocket message for testing"""
+    return {
+        "type": "test_message",
+        "data": {
+            "message": "Test message",
+            "timestamp": "2024-01-01T12:00:00Z"
         }
     }
-    return services
-
-# Test data generators
-@pytest.fixture
-def generate_test_images():
-    """Generate test images"""
-    def _generate(count=5):
-        images = []
-        for i in range(count):
-            img = Image.new('RGB', (224, 224), color=(i*50, i*30, i*20))
-            images.append(img)
-        return images
-    return _generate
 
 @pytest.fixture
-def generate_test_texts():
-    """Generate test texts"""
-    def _generate(count=5):
-        texts = []
-        for i in range(count):
-            texts.append(f"Test document {i} with some content for processing.")
-        return texts
-    return _generate
+def sample_execution_data() -> dict:
+    """Sample execution data for testing"""
+    return {
+        "agent_id": "test_agent",
+        "task": "Test task",
+        "user_id": "test_user",
+        "status": "running",
+        "progress": 50,
+        "current_step": "Processing",
+        "started_at": "2024-01-01T12:00:00Z"
+    }
 
 @pytest.fixture
-def generate_test_embeddings():
-    """Generate test embeddings"""
-    def _generate(count=5, dim=512):
-        embeddings = []
-        for i in range(count):
-            embedding = np.random.rand(dim).astype(np.float32)
-            embeddings.append(embedding)
-        return embeddings
-    return _generate
+def mock_websocket() -> MagicMock:
+    """Mock WebSocket connection"""
+    websocket = MagicMock()
+    websocket.send_text = AsyncMock()
+    websocket.receive_text = AsyncMock()
+    websocket.close = AsyncMock()
+    websocket.accept = AsyncMock()
+    return websocket
 
-# Cleanup fixtures
-@pytest_asyncio.fixture(autouse=True)
-async def cleanup_test_data():
-    """Cleanup test data after each test"""
+@pytest.fixture
+def mock_http_client() -> MagicMock:
+    """Mock HTTP client"""
+    client = MagicMock()
+    client.get = AsyncMock()
+    client.post = AsyncMock()
+    client.put = AsyncMock()
+    client.delete = AsyncMock()
+    return client
+
+@pytest.fixture
+def mock_jwt_token() -> str:
+    """Mock JWT token"""
+    return "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwiaWF0IjoxNjQwOTk1MjAwLCJleHAiOjE2NDEwODE2MDB9.test_signature"
+
+@pytest.fixture
+def mock_user_session() -> dict:
+    """Mock user session data"""
+    return {
+        "user_id": "test_user",
+        "username": "test_user",
+        "email": "test@example.com",
+        "roles": ["user"],
+        "permissions": ["read", "write"],
+        "created_at": "2024-01-01T12:00:00Z",
+        "last_activity": "2024-01-01T12:00:00Z"
+    }
+
+@pytest.fixture
+def mock_rate_limit_config() -> dict:
+    """Mock rate limit configuration"""
+    return {
+        "websocket": {"requests": 100, "window": 60, "burst": 20},
+        "api": {"requests": 1000, "window": 3600, "burst": 100},
+        "agent_execution": {"requests": 10, "window": 60, "burst": 5}
+    }
+
+@pytest.fixture
+def mock_message_queue() -> MagicMock:
+    """Mock message queue"""
+    queue = MagicMock()
+    queue.enqueue_message = AsyncMock()
+    queue.dequeue_message = AsyncMock()
+    queue.process_messages = AsyncMock()
+    queue.get_status = AsyncMock()
+    return queue
+
+@pytest.fixture
+def mock_agent_monitor() -> MagicMock:
+    """Mock agent monitor"""
+    monitor = MagicMock()
+    monitor.start_execution = AsyncMock()
+    monitor.update_execution = AsyncMock()
+    monitor.complete_execution = AsyncMock()
+    monitor.get_agent_status = AsyncMock()
+    monitor.subscribe_connection = AsyncMock()
+    monitor.unsubscribe_connection = AsyncMock()
+    return monitor
+
+@pytest.fixture
+def mock_workspace_manager() -> MagicMock:
+    """Mock workspace manager"""
+    manager = MagicMock()
+    manager.create_workspace = AsyncMock()
+    manager.get_workspace = AsyncMock()
+    manager.join_workspace = AsyncMock()
+    manager.leave_workspace = AsyncMock()
+    manager.get_workspace_users = AsyncMock()
+    return manager
+
+@pytest.fixture
+def mock_websocket_manager() -> MagicMock:
+    """Mock WebSocket manager"""
+    manager = MagicMock()
+    manager.add_connection = AsyncMock()
+    manager.remove_connection = AsyncMock()
+    manager.send_to_connection = AsyncMock()
+    manager.broadcast_to_all = AsyncMock()
+    manager.broadcast_to_workspace = AsyncMock()
+    manager.get_connection_count = AsyncMock()
+    return manager
+
+@pytest.fixture
+def mock_auth_manager() -> MagicMock:
+    """Mock authentication manager"""
+    manager = MagicMock()
+    manager.create_session = AsyncMock()
+    manager.get_session = AsyncMock()
+    manager.revoke_session = AsyncMock()
+    manager.validate_token = AsyncMock()
+    manager.check_permission = AsyncMock()
+    manager.check_role = AsyncMock()
+    return manager
+
+@pytest.fixture
+def mock_rate_limiter() -> MagicMock:
+    """Mock rate limiter"""
+    limiter = MagicMock()
+    limiter.check_rate_limit = AsyncMock()
+    limiter.get_rate_limit_status = AsyncMock()
+    limiter.reset_rate_limit = AsyncMock()
+    limiter.is_blocked = AsyncMock()
+    return limiter
+
+@pytest.fixture
+def mock_protocol_translator() -> MagicMock:
+    """Mock protocol translator"""
+    translator = MagicMock()
+    translator.translate = AsyncMock()
+    translator.get_supported_translations = AsyncMock()
+    return translator
+
+@pytest.fixture
+def mock_protocol_manager() -> MagicMock:
+    """Mock protocol manager"""
+    manager = MagicMock()
+    manager.add_server = AsyncMock()
+    manager.remove_server = AsyncMock()
+    manager.start_server = AsyncMock()
+    manager.stop_server = AsyncMock()
+    manager.get_server_status = AsyncMock()
+    manager.get_all_servers = AsyncMock()
+    return manager
+
+@pytest.fixture
+def mock_protocol_registry() -> MagicMock:
+    """Mock protocol registry"""
+    registry = MagicMock()
+    registry.register_protocol = AsyncMock()
+    registry.get_protocol = AsyncMock()
+    registry.get_all_protocols = AsyncMock()
+    registry.validate_message = AsyncMock()
+    registry.get_statistics = AsyncMock()
+    return registry
+
+# Test configuration
+@pytest.fixture(autouse=True)
+def setup_test_environment():
+    """Setup test environment"""
+    # Set test environment variables
+    os.environ.update({
+        "TEST_ENVIRONMENT": "testing",
+        "TEST_DATABASE_URL": "postgresql://test:test@localhost:5432/test_db",
+        "TEST_REDIS_URL": "redis://localhost:6379/1",
+        "TEST_AI_AGENTS_URL": "http://localhost:3000",
+        "TEST_IDE_BRIDGE_URL": "http://localhost:3004",
+        "TEST_PROTOCOL_INTEGRATION_URL": "http://localhost:3005",
+        "TEST_REALTIME_COLLABORATION_URL": "http://localhost:3006"
+    })
+    
     yield
-    # Add cleanup logic here if needed
-    pass
+    
+    # Cleanup after tests
+    # Remove test environment variables if needed
+    for key in list(os.environ.keys()):
+        if key.startswith("TEST_"):
+            del os.environ[key]
+
+# Pytest configuration
+def pytest_configure(config):
+    """Configure pytest"""
+    config.addinivalue_line(
+        "markers", "unit: mark test as a unit test"
+    )
+    config.addinivalue_line(
+        "markers", "integration: mark test as an integration test"
+    )
+    config.addinivalue_line(
+        "markers", "performance: mark test as a performance test"
+    )
+    config.addinivalue_line(
+        "markers", "e2e: mark test as an end-to-end test"
+    )
+    config.addinivalue_line(
+        "markers", "slow: mark test as slow running"
+    )
+
+def pytest_collection_modifyitems(config, items):
+    """Modify test collection"""
+    for item in items:
+        # Add slow marker to tests that take more than 1 second
+        if "slow" in item.nodeid:
+            item.add_marker(pytest.mark.slow)
+        
+        # Add unit marker to tests in unit directory
+        if "unit" in item.nodeid:
+            item.add_marker(pytest.mark.unit)
+        
+        # Add integration marker to tests in integration directory
+        if "integration" in item.nodeid:
+            item.add_marker(pytest.mark.integration)
+        
+        # Add performance marker to tests in performance directory
+        if "performance" in item.nodeid:
+            item.add_marker(pytest.mark.performance)
+        
+        # Add e2e marker to tests in e2e directory
+        if "e2e" in item.nodeid:
+            item.add_marker(pytest.mark.e2e)

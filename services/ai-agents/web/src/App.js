@@ -3,8 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react
 import axios from 'axios';
 import AgentList from './components/AgentList';
 import AgentDetail from './components/AgentDetail';
+import EnhancedAgentDetail from './components/EnhancedAgentDetail';
 import TemplateList from './components/TemplateList';
 import CreateAgent from './components/CreateAgent';
+import RealTimeMonitor from './components/RealTimeMonitor';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
 import {
     Bot,
     List,
@@ -13,7 +16,9 @@ import {
     Settings,
     Home,
     BookOpen,
-    ExternalLink
+    ExternalLink,
+    BarChart3,
+    Activity
 } from 'lucide-react';
 
 // API base URL
@@ -154,6 +159,20 @@ function App() {
                                     <span>Templates</span>
                                 </Link>
                                 <Link
+                                    to="/monitor"
+                                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md"
+                                >
+                                    <Activity className="h-4 w-4" />
+                                    <span>Monitor</span>
+                                </Link>
+                                <Link
+                                    to="/analytics"
+                                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md"
+                                >
+                                    <BarChart3 className="h-4 w-4" />
+                                    <span>Analytics</span>
+                                </Link>
+                                <Link
                                     to="/create"
                                     className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700"
                                 >
@@ -228,11 +247,19 @@ function App() {
                         />
                         <Route
                             path="/agents/:agentId"
-                            element={<AgentDetail agents={agents} onExecute={executeAgent} />}
+                            element={<EnhancedAgentDetail agents={agents} onExecute={executeAgent} />}
                         />
                         <Route
                             path="/templates"
                             element={<TemplateList templates={templates} />}
+                        />
+                        <Route
+                            path="/monitor"
+                            element={<RealTimeMonitor />}
+                        />
+                        <Route
+                            path="/analytics"
+                            element={<AnalyticsDashboard />}
                         />
                         <Route
                             path="/create"

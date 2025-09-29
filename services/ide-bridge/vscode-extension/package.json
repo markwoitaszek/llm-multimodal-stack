@@ -1,0 +1,239 @@
+{
+  "name": "multimodal-llm-stack-ide-bridge",
+  "displayName": "Multimodal LLM Stack IDE Bridge",
+  "description": "AI-powered code assistance and IDE integration for the Multimodal LLM Stack",
+  "version": "1.0.0",
+  "publisher": "multimodal-llm-stack",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning",
+    "Snippets"
+  ],
+  "keywords": [
+    "ai",
+    "llm",
+    "code-assistance",
+    "multimodal",
+    "lsp",
+    "mcp"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ide-bridge.analyzeCode",
+        "title": "Analyze Code with AI",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.generateCode",
+        "title": "Generate Code with AI",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.refactorCode",
+        "title": "Refactor Code with AI",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.generateDocumentation",
+        "title": "Generate Documentation",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.generateTests",
+        "title": "Generate Tests",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.detectBugs",
+        "title": "Detect Bugs",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.analyzePerformance",
+        "title": "Analyze Performance",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.analyzeSecurity",
+        "title": "Analyze Security",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.connect",
+        "title": "Connect to IDE Bridge",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.disconnect",
+        "title": "Disconnect from IDE Bridge",
+        "category": "IDE Bridge"
+      },
+      {
+        "command": "ide-bridge.showStatus",
+        "title": "Show Connection Status",
+        "category": "IDE Bridge"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "ide-bridge.analyzeCode",
+          "group": "ide-bridge",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "ide-bridge.refactorCode",
+          "group": "ide-bridge",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "ide-bridge.generateDocumentation",
+          "group": "ide-bridge",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "ide-bridge.generateTests",
+          "group": "ide-bridge",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "ide-bridge.detectBugs",
+          "group": "ide-bridge",
+          "when": "editorHasSelection"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "ide-bridge.generateCode",
+          "when": "editorTextFocus"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "IDE Bridge",
+      "properties": {
+        "ide-bridge.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8007",
+          "description": "URL of the IDE Bridge server"
+        },
+        "ide-bridge.wsUrl": {
+          "type": "string",
+          "default": "ws://localhost:8007/ws",
+          "description": "WebSocket URL for real-time communication"
+        },
+        "ide-bridge.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically connect to IDE Bridge on startup"
+        },
+        "ide-bridge.enableCompletions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable AI-powered code completions"
+        },
+        "ide-bridge.enableHover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable AI-powered hover information"
+        },
+        "ide-bridge.enableCodeActions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable AI-powered code actions"
+        },
+        "ide-bridge.timeout": {
+          "type": "number",
+          "default": 30,
+          "description": "Request timeout in seconds"
+        },
+        "ide-bridge.maxCompletions": {
+          "type": "number",
+          "default": 20,
+          "description": "Maximum number of completions to show"
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "python",
+        "extensions": [".py", ".pyi", ".pyc", ".pyo", ".pyd"],
+        "aliases": ["Python", "py"],
+        "configuration": "./language-configurations/python.json"
+      },
+      {
+        "id": "javascript",
+        "extensions": [".js", ".jsx", ".mjs", ".cjs"],
+        "aliases": ["JavaScript", "javascript", "js"],
+        "configuration": "./language-configurations/javascript.json"
+      },
+      {
+        "id": "typescript",
+        "extensions": [".ts", ".tsx"],
+        "aliases": ["TypeScript", "typescript", "ts"],
+        "configuration": "./language-configurations/typescript.json"
+      },
+      {
+        "id": "go",
+        "extensions": [".go"],
+        "aliases": ["Go", "go"],
+        "configuration": "./language-configurations/go.json"
+      },
+      {
+        "id": "rust",
+        "extensions": [".rs"],
+        "aliases": ["Rust", "rust"],
+        "configuration": "./language-configurations/rust.json"
+      },
+      {
+        "id": "java",
+        "extensions": [".java"],
+        "aliases": ["Java", "java"],
+        "configuration": "./language-configurations/java.json"
+      },
+      {
+        "id": "cpp",
+        "extensions": [".cpp", ".cc", ".cxx", ".c++", ".hpp", ".hh", ".hxx", ".h++"],
+        "aliases": ["C++", "cpp", "c++"],
+        "configuration": "./language-configurations/cpp.json"
+      },
+      {
+        "id": "c",
+        "extensions": [".c", ".h"],
+        "aliases": ["C", "c"],
+        "configuration": "./language-configurations/c.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.28.0",
+    "typescript": "^4.9.4",
+    "@vscode/test-electron": "^2.2.0",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "axios": "^1.6.0"
+  }
+}

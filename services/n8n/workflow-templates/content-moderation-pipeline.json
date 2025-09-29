@@ -1,0 +1,628 @@
+{
+  "name": "Content Moderation Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-upload",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "content-upload-webhook",
+      "name": "Content Upload Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "content-upload-webhook"
+    },
+    {
+      "parameters": {
+        "url": "http://multimodal-worker:8001/api/v1/process/image",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "multipart/form-data"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "value": "={{ $json.file }}"
+            },
+            {
+              "name": "document_name",
+              "value": "={{ $json.filename }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "analyze-image-content",
+      "name": "Analyze Image Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://multimodal-worker:8001/api/v1/process/text",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.text_content }}"
+            },
+            {
+              "name": "document_name",
+              "value": "={{ $json.filename }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "analyze-text-content",
+      "name": "Analyze Text Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://ai-agents:8003/api/v1/agents/from-template",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "template_name",
+              "value": "content_analyzer"
+            },
+            {
+              "name": "agent_name",
+              "value": "Moderation Agent {{ $json.content_id }}"
+            },
+            {
+              "name": "user_id",
+              "value": "n8n-system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-moderation-agent",
+      "name": "Create Moderation Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ai-agents:8003/api/v1/agents/{{ $json.agent_id }}/execute",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "task",
+              "value": "Moderate this content for policy violations. Content ID: {{ $('Content Upload Webhook').item.json.content_id }}, User ID: {{ $('Content Upload Webhook').item.json.user_id }}, Content Type: {{ $('Content Upload Webhook').item.json.content_type }}. Image analysis: {{ $('Analyze Image Content').item.json.analysis || 'N/A' }}. Text analysis: {{ $('Analyze Text Content').item.json.analysis || 'N/A' }}"
+            },
+            {
+              "name": "user_id",
+              "value": "n8n-system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "execute-moderation",
+      "name": "Execute Moderation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "moderation-decision",
+              "leftValue": "={{ $json.result }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-moderation-decision",
+      "name": "Check Moderation Decision",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://cms-service:8080/api/content/{{ $('Content Upload Webhook').item.json.content_id }}/approve",
+        "authentication": "none",
+        "requestMethod": "PUT",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $vars.CMS_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "approved"
+            },
+            {
+              "name": "moderation_notes",
+              "value": "={{ $('Execute Moderation').item.json.result }}"
+            },
+            {
+              "name": "approved_by",
+              "value": "ai-moderator"
+            },
+            {
+              "name": "approved_at",
+              "value": "={{ $now }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "approve-content",
+      "name": "Approve Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://cms-service:8080/api/content/{{ $('Content Upload Webhook').item.json.content_id }}/flag",
+        "authentication": "none",
+        "requestMethod": "PUT",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $vars.CMS_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "flagged"
+            },
+            {
+              "name": "moderation_notes",
+              "value": "={{ $('Execute Moderation').item.json.result }}"
+            },
+            {
+              "name": "flagged_by",
+              "value": "ai-moderator"
+            },
+            {
+              "name": "flagged_at",
+              "value": "={{ $now }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "flag-content",
+      "name": "Flag Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://notification-service:8080/api/notify",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $('Content Upload Webhook').item.json.user_id }}"
+            },
+            {
+              "name": "type",
+              "value": "content_approved"
+            },
+            {
+              "name": "message",
+              "value": "Your content has been approved and is now live!"
+            },
+            {
+              "name": "content_id",
+              "value": "={{ $('Content Upload Webhook').item.json.content_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-user-approved",
+      "name": "Notify User (Approved)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://notification-service:8080/api/notify",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $('Content Upload Webhook').item.json.user_id }}"
+            },
+            {
+              "name": "type",
+              "value": "content_flagged"
+            },
+            {
+              "name": "message",
+              "value": "Your content has been flagged for review. Our moderation team will review it shortly."
+            },
+            {
+              "name": "content_id",
+              "value": "={{ $('Content Upload Webhook').item.json.content_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-user-flagged",
+      "name": "Notify User (Flagged)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://slack-service:8080/api/notify",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "#content-moderation"
+            },
+            {
+              "name": "message",
+              "value": "🚩 Content flagged for review: {{ $('Content Upload Webhook').item.json.content_id }} by user {{ $('Content Upload Webhook').item.json.user_id }}. Reason: {{ $('Execute Moderation').item.json.result }}"
+            },
+            {
+              "name": "priority",
+              "value": "medium"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-moderators",
+      "name": "Notify Moderators",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 500]
+    },
+    {
+      "parameters": {
+        "url": "http://analytics-service:8080/api/events",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "content_moderation"
+            },
+            {
+              "name": "content_id",
+              "value": "={{ $('Content Upload Webhook').item.json.content_id }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $('Content Upload Webhook').item.json.user_id }}"
+            },
+            {
+              "name": "content_type",
+              "value": "={{ $('Content Upload Webhook').item.json.content_type }}"
+            },
+            {
+              "name": "moderation_decision",
+              "value": "={{ $('Check Moderation Decision').item.json.result ? 'approved' : 'flagged' }}"
+            },
+            {
+              "name": "execution_time_ms",
+              "value": "={{ $('Execute Moderation').item.json.execution_time_ms }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-moderation-analytics",
+      "name": "Log Moderation Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 300]
+    }
+  ],
+  "connections": {
+    "Content Upload Webhook": {
+      "main": [
+        [
+          {
+            "node": "Analyze Image Content",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Analyze Text Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Image Content": {
+      "main": [
+        [
+          {
+            "node": "Create Moderation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Text Content": {
+      "main": [
+        [
+          {
+            "node": "Create Moderation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Moderation Agent": {
+      "main": [
+        [
+          {
+            "node": "Execute Moderation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Moderation": {
+      "main": [
+        [
+          {
+            "node": "Check Moderation Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Moderation Decision": {
+      "main": [
+        [
+          {
+            "node": "Approve Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Flag Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve Content": {
+      "main": [
+        [
+          {
+            "node": "Notify User (Approved)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag Content": {
+      "main": [
+        [
+          {
+            "node": "Notify User (Flagged)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Moderators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify User (Approved)": {
+      "main": [
+        [
+          {
+            "node": "Log Moderation Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify User (Flagged)": {
+      "main": [
+        [
+          {
+            "node": "Log Moderation Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Moderators": {
+      "main": [
+        [
+          {
+            "node": "Log Moderation Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "content-moderation",
+      "name": "Content Moderation"
+    },
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "ai-agents",
+      "name": "AI Agents"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
