@@ -1,55 +1,54 @@
-# Testing Dependencies for LLM Multimodal Stack
-# Comprehensive test suite requirements
+# Testing Dependencies
 
-# Core Testing Framework
-pytest==8.4.2
-pytest-asyncio==1.2.0
-pytest-cov==7.0.0
-pytest-mock==3.15.1
-pytest-xdist==3.5.0  # Parallel test execution
+# Core testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-xdist==3.5.0
+pytest-html==4.1.1
+pytest-benchmark==4.0.0
 
-# HTTP Testing
-httpx==0.28.1
-requests==2.32.5
-aiofiles==24.1.0
+# API testing
+httpx==0.25.2
+requests==2.31.0
 
-# Core Dependencies for Services
-semver==3.0.4  # Version management
-cryptography==46.0.1  # Security features
-jsonschema==4.25.1  # Configuration validation
+# WebSocket testing
+websockets==12.0
 
-# Mocking and Fixtures
-# unittest-mock==1.0.1  # Not available for Python 3.13
-factory-boy==3.3.3  # Test data generation
+# Database testing
+sqlalchemy==2.0.23
+alembic==1.13.1
+asyncpg==0.29.0
 
-# Performance Testing
-psutil==5.9.6
+# Mock and fixtures
+factory-boy==3.3.0
+faker==20.1.0
+freezegun==1.2.2
+
+# Performance testing
+locust==2.17.0
 memory-profiler==0.61.0
 
-# Security Testing
+# E2E testing
+selenium==4.15.2
+playwright==1.40.0
+pytest-playwright==0.4.3
+
+# Code quality
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
+isort==5.12.0
+
+# Security testing
 bandit==1.7.5
 safety==2.3.5
 
-# Code Quality
-black==23.9.1
-isort==5.12.0
-flake8==6.1.0
-mypy==1.6.1
-
-# Database Testing
-pytest-postgresql==7.0.2
-pytest-redis==3.1.3
-psycopg[binary]==3.2.10  # PostgreSQL adapter with binary support
-
-# Coverage Reporting
+# Coverage reporting
 coverage==7.3.2
 codecov==2.1.13
 
-# Test Utilities
-freezegun==1.2.2  # Time mocking
-responses==0.24.1  # HTTP mocking
-faker==20.1.0  # Fake data generation
-
-# Development Tools
-pre-commit==3.5.0
-tox==4.11.4  # Multi-environment testing
+# Test utilities
+responses==0.24.1
+vcrpy==6.0.1
