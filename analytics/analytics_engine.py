@@ -127,7 +127,13 @@ class AnalyticsCollector:
         
         # Initialize database
         self.db_path = self.data_dir / "analytics.db"
-        asyncio.create_task(self._initialize_database())
+        self._db_initialized = False
+    
+    async def initialize(self):
+        """Initialize the analytics collector (call this after creation)"""
+        if not self._db_initialized:
+            await self._initialize_database()
+            self._db_initialized = True
     
     async def _initialize_database(self):
         """Initialize SQLite database for analytics storage"""
@@ -238,6 +244,11 @@ class AnalyticsCollector:
             
         except Exception as e:
             logger.error(f"Error recording event: {e}")
+    
+    async def flush_events(self):
+        """Force flush all pending events to database"""
+        if self.events:
+            await self._flush_events_to_db()
     
     async def _update_session(self, event: AnalyticsEvent):
         """Update user session with event data"""
@@ -436,24 +447,26 @@ class AnalyticsCollector:
             async with aiosqlite.connect(self.db_path) as db:
                 # Get event counts by type
                 event_counts = {}
-                async for row in db.execute("""
+                rows = await db.execute_fetchall("""
                     SELECT event_type, COUNT(*) as count 
                     FROM events 
                     WHERE timestamp >= ? AND timestamp <= ?
                     GROUP BY event_type
-                """, (start_time.isoformat(), end_time.isoformat())):
+                """, (start_time.isoformat(), end_time.isoformat()))
+                for row in rows:
                     event_counts[row[0]] = row[1]
                 
                 # Get service metrics
                 service_metrics = {}
-                async for row in db.execute("""
+                rows = await db.execute_fetchall("""
                     SELECT service, COUNT(*) as requests, 
                            AVG(response_time_ms) as avg_response_time,
                            COUNT(CASE WHEN status_code >= 400 THEN 1 END) as errors
                     FROM events 
                     WHERE timestamp >= ? AND timestamp <= ?
                     GROUP BY service
-                """, (start_time.isoformat(), end_time.isoformat())):
+                """, (start_time.isoformat(), end_time.isoformat()))
+                for row in rows:
                     service_metrics[row[0]] = {
                         "requests": row[1],
                         "avg_response_time_ms": row[2] or 0,
@@ -462,21 +475,23 @@ class AnalyticsCollector:
                 
                 # Get unique users
                 unique_users = 0
-                async for row in db.execute("""
+                rows = await db.execute_fetchall("""
                     SELECT COUNT(DISTINCT user_id) 
                     FROM events 
                     WHERE timestamp >= ? AND timestamp <= ? AND user_id IS NOT NULL
-                """, (start_time.isoformat(), end_time.isoformat())):
-                    unique_users = row[0]
+                """, (start_time.isoformat(), end_time.isoformat()))
+                if rows:
+                    unique_users = rows[0][0]
                 
                 # Get performance metrics
                 performance_data = []
-                async for row in db.execute("""
+                rows = await db.execute_fetchall("""
                     SELECT timestamp, cpu_percent, memory_percent, disk_usage_percent
                     FROM performance_metrics 
                     WHERE timestamp >= ? AND timestamp <= ?
                     ORDER BY timestamp
-                """, (start_time.isoformat(), end_time.isoformat())):
+                """, (start_time.isoformat(), end_time.isoformat()))
+                for row in rows:
                     performance_data.append({
                         "timestamp": row[0],
                         "cpu_percent": row[1],

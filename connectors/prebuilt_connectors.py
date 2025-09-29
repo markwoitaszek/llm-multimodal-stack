@@ -471,6 +471,7 @@ class CustomRESTConnector(BaseConnector):
         
         # Load endpoints from config if provided
         custom_endpoints = self.config.custom_config.get('endpoints', [])
+        
         for endpoint_config in custom_endpoints:
             endpoint = ConnectorEndpoint(
                 name=endpoint_config['name'],

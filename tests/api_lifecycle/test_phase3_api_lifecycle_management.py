@@ -26,7 +26,8 @@ import time
 
 # Import the modules under test
 import sys
-sys.path.append('/workspace/api_lifecycle')
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'api_lifecycle'))
 
 from version_manager import (
     VersionManager, APIVersion, APIChange, VersionPolicy, VersionStatus,

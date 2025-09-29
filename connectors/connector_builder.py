@@ -67,11 +67,29 @@ class ConnectorBuilder:
             "rate_limit": None,
             "rate_limit_window": 60,
             "data_format": "json",
-            "endpoints": endpoints or [],
+            "endpoints": self._normalize_endpoints(endpoints or []),
             "custom_config": {}
         }
         
         return spec
+    
+    def _normalize_endpoints(self, endpoints: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Normalize endpoints to ensure they have all required fields"""
+        normalized = []
+        for endpoint in endpoints:
+            normalized_endpoint = {
+                "name": endpoint.get("name", ""),
+                "path": endpoint.get("path", ""),
+                "method": endpoint.get("method", "GET").upper(),
+                "description": endpoint.get("description", ""),
+                "parameters": endpoint.get("parameters", {}),
+                "request_schema": endpoint.get("request_schema", {}),
+                "response_schema": endpoint.get("response_schema", {}),
+                "authentication_required": endpoint.get("authentication_required", True),
+                "rate_limit": endpoint.get("rate_limit")
+            }
+            normalized.append(normalized_endpoint)
+        return normalized
     
     def add_endpoint(
         self,

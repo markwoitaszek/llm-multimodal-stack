@@ -519,6 +519,7 @@ class TestConnectorBuilder:
             saved_doc = f.read()
             assert "# Test API Connector" in saved_doc
     
+    @pytest.mark.asyncio
     async def test_test_connector(self):
         """Test connector testing functionality"""
         spec = self.builder.create_connector_spec(
@@ -709,6 +710,9 @@ class TestConnectorIntegration:
         )
         
         # Create connector from specification
+        custom_config = spec["custom_config"].copy()
+        custom_config["endpoints"] = spec["endpoints"]
+        
         config = ConnectorConfig(
             connector_id=spec["connector_id"],
             name=spec["name"],
@@ -721,7 +725,7 @@ class TestConnectorIntegration:
             timeout=spec["timeout"],
             retry_attempts=spec["retry_attempts"],
             data_format=DataFormat(spec["data_format"]),
-            custom_config=spec["custom_config"]
+            custom_config=custom_config
         )
         
         connector = self.registry.create_connector(config, "custom_rest")

@@ -239,7 +239,7 @@ def generate_test_embeddings():
     return _generate
 
 # Cleanup fixtures
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def cleanup_test_data():
     """Cleanup test data after each test"""
     yield

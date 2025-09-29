@@ -27,7 +27,8 @@ import time
 
 # Import the modules under test
 import sys
-sys.path.append('/workspace/auth')
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'auth'))
 
 from auth_manager import (
     AuthManager, User, Token, Session, Permission, Role, UserRole, UserStatus,

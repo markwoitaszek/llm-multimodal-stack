@@ -27,7 +27,8 @@ import time
 
 # Import the modules under test
 import sys
-sys.path.append('/workspace/mcp')
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'mcp'))
 
 from mcp_protocol import (
     MCPClient, MCPServer, MCPTool, MCPResource, MCPPrompt, MCPCompletion,

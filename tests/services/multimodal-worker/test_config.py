@@ -4,6 +4,12 @@ Unit tests for configuration in multimodal-worker service
 import pytest
 from unittest.mock import patch, Mock
 import os
+import sys
+from pathlib import Path
+
+# Add the service directory to the path
+service_dir = Path(__file__).parent.parent.parent / "services" / "multimodal-worker"
+sys.path.insert(0, str(service_dir))
 
 from app.config import settings
 
