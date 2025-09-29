@@ -6,6 +6,24 @@ set -e
 echo "🚀 LLM Multimodal Stack - Environment Startup"
 echo "=============================================="
 
+# Function to check and cleanup Docker system if needed
+check_docker_cleanup() {
+    echo "🔍 Checking Docker system health..."
+    
+    # Get reclaimable space percentage
+    RECLAIMABLE=$(docker system df --format "{{.Reclaimable}}" | head -1 | sed 's/[()%]//g' 2>/dev/null || echo "0")
+    
+    if [ "$RECLAIMABLE" -gt 30 ]; then
+        echo "⚠️  High Docker reclaimable space detected: $RECLAIMABLE%"
+        echo "🧹 Running automatic cleanup..."
+        docker system prune -f
+        echo "✅ Docker cleanup complete"
+    else
+        echo "✅ Docker system healthy ($RECLAIMABLE% reclaimable)"
+    fi
+    echo ""
+}
+
 # Function to display usage
 usage() {
     echo "Usage: $0 [environment]"
@@ -35,6 +53,9 @@ if [ $# -eq 0 ]; then
 fi
 
 ENVIRONMENT=$1
+
+# Run Docker cleanup check before starting environment
+check_docker_cleanup
 
 case $ENVIRONMENT in
     "dev"|"development")
