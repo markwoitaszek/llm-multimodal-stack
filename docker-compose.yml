@@ -28,13 +28,13 @@ services:
     image: qdrant/qdrant:v1.12.0
     container_name: multimodal-qdrant
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "${QDRANT_HTTP_PORT:-6333}:${QDRANT_HTTP_PORT:-6333}"
+      - "${QDRANT_GRPC_PORT:-6334}:${QDRANT_GRPC_PORT:-6334}"
     volumes:
       - qdrant_data:/qdrant/storage
     environment:
-      - QDRANT__SERVICE__HTTP_PORT=6333
-      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__SERVICE__HTTP_PORT=${QDRANT_HTTP_PORT:-6333}
+      - QDRANT__SERVICE__GRPC_PORT=${QDRANT_GRPC_PORT:-6334}
     healthcheck:
       test: ["CMD-SHELL", "pidof qdrant || exit 1"]
       interval: 30s
@@ -50,7 +50,7 @@ services:
     image: postgres:16-alpine
     container_name: multimodal-postgres
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-multimodal}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -72,7 +72,7 @@ services:
     image: redis:7-alpine
     container_name: multimodal-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -90,8 +90,8 @@ services:
     image: minio/minio:latest
     container_name: multimodal-minio
     ports:
-      - "9000:9000"
-      - "9002:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9002}:9001"
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -113,19 +113,19 @@ services:
     image: vllm/vllm-openai:latest
     container_name: multimodal-vllm
     ports:
-      - "8000:8000"
+      - "${VLLM_PORT:-8000}:8000"
     environment:
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
       - VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
-      - VLLM_HOST=0.0.0.0
-      - VLLM_PORT=8000
+      - VLLM_HOST=${VLLM_HOST:-0.0.0.0}
+      - VLLM_PORT=${VLLM_PORT:-8000}
     volumes:
       - vllm_cache:/root/.cache
       - ./models:/models
     command: >
       --model ${VLLM_MODEL:-microsoft/DialoGPT-medium}
-      --host 0.0.0.0
-      --port 8000
+      --host ${VLLM_HOST:-0.0.0.0}
+      --port ${VLLM_PORT:-8000}
       --gpu-memory-utilization 0.8
       --max-model-len 1024
       --dtype auto
@@ -151,7 +151,7 @@ services:
     image: ghcr.io/berriai/litellm:main-latest
     container_name: multimodal-litellm
     ports:
-      - "4000:4000"
+      - "${LITELLM_PORT:-4000}:4000"
     environment:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
       - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}
@@ -160,7 +160,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./configs/litellm_simple.yaml:/app/config.yaml
-    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1", "--database_url", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"]
+    command: ["--config", "/app/config.yaml", "--port", "${LITELLM_PORT:-4000}", "--num_workers", "1", "--database_url", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB}"]
     depends_on:
       vllm:
         condition: service_healthy
@@ -182,21 +182,21 @@ services:
       dockerfile: Dockerfile
     container_name: multimodal-worker
     ports:
-      - "8001:8001"
+      - "${MULTIMODAL_WORKER_PORT:-8001}:8001"
     environment:
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+      - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_DB=${POSTGRES_DB:-multimodal}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=0
     volumes:
       - multimodal_cache:/app/cache
@@ -233,21 +233,21 @@ services:
       dockerfile: Dockerfile
     container_name: retrieval-proxy
     ports:
-      - "8002:8002"
+      - "${RETRIEVAL_PROXY_PORT:-8002}:8002"
     environment:
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+      - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_DB=${POSTGRES_DB:-multimodal}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=1
     depends_on:
       multimodal-worker:
@@ -272,9 +272,9 @@ services:
     image: ghcr.io/open-webui/open-webui:main
     container_name: multimodal-openwebui
     ports:
-      - "3030:8080"
+      - "${OPENWEBUI_PORT:-3030}:8080"
     environment:
-      - OPENAI_API_BASE_URL=http://vllm:8000/v1
+      - OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL:-http://vllm:8000/v1}
       - OPENAI_API_KEY=${VLLM_API_KEY}
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
     volumes:
@@ -298,24 +298,24 @@ services:
       dockerfile: Dockerfile
     container_name: multimodal-ai-agents
     ports:
-      - "8003:8003"
+      - "${AI_AGENTS_PORT:-8003}:8003"
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_DB=${POSTGRES_DB:-multimodal}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - LLM_BASE_URL=http://vllm:8000/v1
+      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+      - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+      - LLM_BASE_URL=${LLM_BASE_URL:-http://vllm:8000/v1}
       - LLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
-      - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
-      - RETRIEVAL_PROXY_URL=http://retrieval-proxy:8002
-      - SEARCH_ENGINE_URL=http://search-engine:8004
-      - MEMORY_SYSTEM_URL=http://memory-system:8005
-      - USER_MANAGEMENT_URL=http://user-management:8006
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
+      - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://retrieval-proxy:8002}
+      - SEARCH_ENGINE_URL=${SEARCH_ENGINE_URL:-http://search-engine:8004}
+      - MEMORY_SYSTEM_URL=${MEMORY_SYSTEM_URL:-http://memory-system:8005}
+      - USER_MANAGEMENT_URL=${USER_MANAGEMENT_URL:-http://user-management:8006}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=2
     depends_on:
       postgres:
@@ -353,15 +353,15 @@ services:
       dockerfile: Dockerfile
     container_name: multimodal-memory-system
     ports:
-      - "8005:8005"
+      - "${MEMORY_SYSTEM_PORT:-8005}:8005"
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_DB=${POSTGRES_DB:-multimodal}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=4
     depends_on:
       postgres:
@@ -384,20 +384,20 @@ services:
       dockerfile: Dockerfile
     container_name: multimodal-search-engine
     ports:
-      - "8004:8004"
+      - "${SEARCH_ENGINE_PORT:-8004}:8004"
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_DB=${POSTGRES_DB:-multimodal}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+      - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=3
-      - MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
-      - RETRIEVAL_PROXY_URL=http://retrieval-proxy:8002
+      - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
+      - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://retrieval-proxy:8002}
     depends_on:
       postgres:
         condition: service_healthy
@@ -445,15 +445,15 @@ services:
       dockerfile: Dockerfile
     container_name: multimodal-user-management
     ports:
-      - "8006:8006"
+      - "${USER_MANAGEMENT_PORT:-8006}:8006"
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_DB=${POSTGRES_DB:-multimodal}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=5
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - DEBUG=${DEBUG:-false}
