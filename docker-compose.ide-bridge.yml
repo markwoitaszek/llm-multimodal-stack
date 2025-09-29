@@ -52,7 +52,7 @@ services:
       - REDIS_DB=6
       
       # Security
-      - SECRET_KEY=${IDE_BRIDGE_SECRET_KEY:-ide-bridge-secret-key}
+      - SECRET_KEY=${IDE_BRIDGE_SECRET_KEY}
       - ALLOWED_ORIGINS=*
       
       # Performance

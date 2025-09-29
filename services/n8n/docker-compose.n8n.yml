@@ -9,7 +9,7 @@ services:
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
       - N8N_HOST=localhost
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
@@ -19,7 +19,7 @@ services:
       - N8N_LOG_LEVEL=info
       - N8N_LOG_OUTPUT=console
       - N8N_USER_FOLDER=/home/node/.n8n
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-multimodal-n8n-key}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/home/node/.n8n/workflows

@@ -275,8 +275,8 @@ services:
       - "3030:8080"
     environment:
       - OPENAI_API_BASE_URL=http://vllm:8000/v1
-      - OPENAI_API_KEY=${VLLM_API_KEY:-dummy-key}
-      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-webui-secret}
+      - OPENAI_API_KEY=${VLLM_API_KEY}
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
     volumes:
       - openwebui_data:/app/backend/data
     depends_on:
@@ -505,7 +505,7 @@ services:
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
       - N8N_HOST=localhost
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
@@ -513,7 +513,7 @@ services:
       - GENERIC_TIMEZONE=UTC
       - N8N_METRICS=true
       - N8N_LOG_LEVEL=info
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-Chimp-Relax-Viable}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       # Fix deprecation warnings
       - DB_SQLITE_POOL_SIZE=5
       - N8N_RUNNERS_ENABLED=true

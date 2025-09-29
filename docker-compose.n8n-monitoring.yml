@@ -70,7 +70,7 @@ services:
       - REQUEST_TIMEOUT=30
       
       # Security
-      - SECRET_KEY=${N8N_MONITORING_SECRET_KEY:-n8n-monitoring-secret-key}
+      - SECRET_KEY=${N8N_MONITORING_SECRET_KEY}
       - ALLOWED_ORIGINS=*
       
       # Logging
