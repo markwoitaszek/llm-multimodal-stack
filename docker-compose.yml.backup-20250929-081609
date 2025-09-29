@@ -1,26 +1,4 @@
 # Docker Compose file for Multimodal LLM Stack
-# Optimized with templates for better maintainability
-
-# Shared configuration templates
-x-common-variables: &common-variables
-  POSTGRES_DB: ${POSTGRES_DB:-multimodal}
-  POSTGRES_USER: ${POSTGRES_USER:-postgres}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-  MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-
-# Standard restart policy
-x-restart-policy: &restart-policy
-  restart: unless-stopped
-
-# Standard network configuration
-x-network: &network
-  networks:
-    - multimodal-net
-
-# Standard volume configuration
-x-volume-config: &volume-config
-  driver: local
 
 services:
   # Vector Database
@@ -155,16 +133,11 @@ services:
     environment:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
       - LITELLM_SALT_KEY=${LITELLM_SALT_KEY:-sk-salt-1234}
-      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./configs/litellm_simple.yaml:/app/config.yaml
-    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1", "--database_url", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"]
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
     depends_on:
       vllm:
-        condition: service_healthy
-      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:4000/', timeout=5)\""]
@@ -537,21 +510,13 @@ services:
 
 volumes:
   qdrant_data:
-    <<: *volume-config
   postgres_data:
-    <<: *volume-config
   redis_data:
-    <<: *volume-config
   minio_data:
-    <<: *volume-config
   vllm_cache:
-    <<: *volume-config
   multimodal_cache:
-    <<: *volume-config
   openwebui_data:
-    <<: *volume-config
   n8n_data:
-    <<: *volume-config
 
 networks:
   multimodal-net:

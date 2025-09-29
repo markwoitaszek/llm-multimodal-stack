@@ -153,9 +153,12 @@ class DeleteResponse(BaseModel):
 class HealthResponse(BaseModel):
     """Health check response model"""
     status: str = Field(..., description="Service status")
+    service: str = Field(default="memory-system", description="Service name")
     timestamp: datetime = Field(..., description="Health check timestamp")
     version: str = Field(..., description="Service version")
-    dependencies: Dict[str, str] = Field(..., description="Dependency status")
+    database_status: str = Field(..., description="Database health status")
+    redis_status: str = Field(..., description="Redis health status")
+    memory_stats: Optional[Dict[str, Any]] = Field(None, description="Memory statistics")
 
 
 class StatsResponse(BaseModel):

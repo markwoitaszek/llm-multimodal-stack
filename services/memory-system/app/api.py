@@ -96,19 +96,58 @@ async def health_check():
         except Exception:
             db_healthy = False
         
-        # Check embedding service health
-        embedding_healthy = await cached_embedding_service.embedding_service.health_check()
+        # Check Redis/cache health
+        redis_healthy = True
+        try:
+            # Check if cache manager is available and working
+            if hasattr(cached_embedding_service, 'cache_manager'):
+                await cached_embedding_service.cache_manager.health_check()
+        except Exception:
+            redis_healthy = False
         
-        overall_status = "healthy" if all([db_healthy, embedding_healthy]) else "unhealthy"
+        # Determine overall status
+        if db_healthy and redis_healthy:
+            overall_status = "healthy"
+        elif db_healthy or redis_healthy:
+            overall_status = "degraded"
+        else:
+            overall_status = "unhealthy"
+        
+        # Get memory stats if database is healthy
+        memory_stats = None
+        if db_healthy:
+            try:
+                total_memories = await db_manager.get_memory_count()
+                total_conversations = await db_manager.get_conversation_count()
+                
+                # Get cache stats if Redis is healthy
+                cache_hit_rate = 0.0
+                memory_usage_mb = 0.0
+                if redis_healthy and hasattr(cached_embedding_service, 'cache_manager'):
+                    try:
+                        cache_stats = await cached_embedding_service.cache_manager.get_stats()
+                        cache_hit_rate = cache_stats.get('hit_rate', 0.0)
+                        memory_usage_mb = cache_stats.get('used_memory', 0) / (1024 * 1024)
+                    except Exception:
+                        pass
+                
+                memory_stats = {
+                    "total_memories": total_memories,
+                    "total_conversations": total_conversations,
+                    "cache_hit_rate": cache_hit_rate,
+                    "memory_usage_mb": memory_usage_mb
+                }
+            except Exception:
+                memory_stats = None
         
         return HealthResponse(
             status=overall_status,
+            service="memory-system",
             timestamp=datetime.utcnow(),
             version="1.0.0",
-            dependencies={
-                "database": "healthy" if db_healthy else "unhealthy",
-                "embedding_service": "healthy" if embedding_healthy else "unhealthy"
-            }
+            database_status="healthy" if db_healthy else "unhealthy",
+            redis_status="healthy" if redis_healthy else "unhealthy",
+            memory_stats=memory_stats
         )
         
     except Exception as e:
