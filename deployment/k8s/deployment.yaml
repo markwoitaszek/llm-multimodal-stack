@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multimodal-worker
+  namespace: multimodal
+  labels:
+    app: multimodal-worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: multimodal-worker
+  template:
+    metadata:
+      labels:
+        app: multimodal-worker
+    spec:
+      containers:
+      - name: multimodal-worker
+        image: multimodal-worker:latest
+        ports:
+        - containerPort: 8001
+        envFrom:
+        - configMapRef:
+            name: multimodal-config
+        - secretRef:
+            name: multimodal-secrets
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 5

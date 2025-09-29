@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: multimodal-config
+  namespace: multimodal
+data:
+  POSTGRES_DB: "multimodal"
+  POSTGRES_USER: "postgres"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  QDRANT_HOST: "qdrant"
+  QDRANT_PORT: "6333"

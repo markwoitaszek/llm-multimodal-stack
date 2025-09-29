@@ -1,0 +1,79 @@
+name: Allure Test Reports
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        test-type: [unit, integration, performance, api]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+        pip install allure-pytest
+    
+    - name: Install Allure
+      run: |
+        wget https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.tgz
+        tar -xzf allure-2.24.0.tgz
+        sudo mv allure-2.24.0 /opt/allure
+        sudo ln -s /opt/allure/bin/allure /usr/local/bin/allure
+    
+    - name: Run ${{ matrix.test-type }} tests
+      run: |
+        python -m pytest tests/ -m ${{ matrix.test-type }} --alluredir=allure-results --allure-clean -v
+    
+    - name: Generate Allure Report
+      if: always()
+      run: |
+        allure generate allure-results -o allure-report --clean
+    
+    - name: Upload Allure Report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: allure-report-${{ matrix.test-type }}
+        path: allure-report/
+    
+    - name: Deploy to Allure Server
+      if: always()
+      run: |
+        # Deploy to Allure server (configure with your server details)
+        echo "Deploying report to Allure server..."
+        # Add deployment commands here
+
+  deploy-report:
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Download Allure Reports
+      uses: actions/download-artifact@v3
+      with:
+        path: allure-reports/
+    
+    - name: Deploy Combined Report
+      run: |
+        # Combine and deploy all test reports
+        echo "Deploying combined Allure report..."
+        # Add deployment commands here

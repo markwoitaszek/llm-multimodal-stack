@@ -1,0 +1,118 @@
+# Test Environment Management
+# Generated on: 2025-09-29T10:27:54.022810
+
+environments:
+  # Local development environment
+  local:
+    name: "Local Development"
+    description: "Local development environment for testing"
+    docker_compose: "docker-compose.test.yml"
+    services:
+      - postgres
+      - redis
+      - qdrant
+      - multimodal-worker
+      - retrieval-proxy
+    resources:
+      cpu: "2.0"
+      memory: "4G"
+    cleanup: true
+  
+  # CI/CD environment
+  ci:
+    name: "CI/CD Environment"
+    description: "Continuous integration environment"
+    docker_compose: "docker-compose.ci.yml"
+    services:
+      - postgres
+      - redis
+      - qdrant
+      - multimodal-worker
+      - retrieval-proxy
+    resources:
+      cpu: "4.0"
+      memory: "8G"
+    cleanup: true
+    timeout: "30m"
+  
+  # Staging environment
+  staging:
+    name: "Staging Environment"
+    description: "Staging environment for pre-production testing"
+    docker_compose: "docker-compose.staging.yml"
+    services:
+      - postgres
+      - redis
+      - qdrant
+      - multimodal-worker
+      - retrieval-proxy
+      - litellm
+      - vllm
+    resources:
+      cpu: "8.0"
+      memory: "16G"
+    cleanup: false
+    persistent: true
+
+# Environment provisioning
+provisioning:
+  # Database setup
+  database:
+    init_script: "./sql/init.sql"
+    test_data: "./test_data/database/"
+    migrations: "./sql/migrations/"
+  
+  # Service configuration
+  services:
+    multimodal-worker:
+      config: "./configs/multimodal-worker-test.yaml"
+      models: "./models/test/"
+    
+    retrieval-proxy:
+      config: "./configs/retrieval-proxy-test.yaml"
+      indexes: "./test_data/indexes/"
+  
+  # Monitoring setup
+  monitoring:
+    prometheus: true
+    grafana: true
+    logs: true
+
+# Test execution configuration
+execution:
+  # Test categories
+  categories:
+    unit:
+      parallel: true
+      timeout: "5m"
+      resources:
+        cpu: "0.5"
+        memory: "1G"
+    
+    integration:
+      parallel: false
+      timeout: "15m"
+      resources:
+        cpu: "1.0"
+        memory: "2G"
+    
+    performance:
+      parallel: false
+      timeout: "30m"
+      resources:
+        cpu: "2.0"
+        memory: "4G"
+    
+    e2e:
+      parallel: false
+      timeout: "60m"
+      resources:
+        cpu: "4.0"
+        memory: "8G"
+  
+  # Test data management
+  data_management:
+    setup_before: true
+    cleanup_after: true
+    backup_on_failure: true
+    isolation: true

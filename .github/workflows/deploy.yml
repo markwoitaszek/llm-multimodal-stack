@@ -1,0 +1,93 @@
+name: Production Deployment
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker images
+      run: |
+        docker build -t multimodal-worker:${{ github.sha }} -f services/multimodal-worker/Dockerfile services/multimodal-worker/
+        docker tag multimodal-worker:${{ github.sha }} multimodal-worker:latest
+    
+    - name: Push to registry
+      run: |
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push multimodal-worker:${{ github.sha }}
+        docker push multimodal-worker:latest
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run tests
+      run: |
+        python -m pytest tests/ --alluredir=allure-results --allure-clean -v
+    
+    - name: Run performance tests
+      run: |
+        python scripts/run_jmeter_tests.py --test all
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.ref == 'refs/heads/main'
+    
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to staging
+      run: |
+        python scripts/deploy.py --environment staging --version ${{ github.sha }}
+    
+    - name: Health check
+      run: |
+        python scripts/health_check.py
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to production
+      run: |
+        python scripts/deploy.py --environment production --version ${{ github.ref_name }}
+    
+    - name: Health check
+      run: |
+        python scripts/health_check.py
+    
+    - name: Notify deployment
+      run: |
+        echo "Production deployment completed successfully"
+        # Add notification logic here

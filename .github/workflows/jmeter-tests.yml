@@ -1,0 +1,46 @@
+name: JMeter Performance Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * *'  # Daily at 3 AM
+
+jobs:
+  performance-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JMeter
+      run: |
+        wget https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.6.2.tgz
+        tar -xzf apache-jmeter-5.6.2.tgz
+        sudo mv apache-jmeter-5.6.2 /opt/jmeter
+        sudo ln -s /opt/jmeter/bin/jmeter /usr/local/bin/jmeter
+    
+    - name: Run API Load Test
+      run: |
+        jmeter -n -t jmeter/api_load_test.jmx -l jmeter-results/api_load_test_results.jtl -e -o jmeter-reports/api_load_test_report
+    
+    - name: Run Stress Test
+      run: |
+        jmeter -n -t jmeter/stress_test.jmx -l jmeter-results/stress_test_results.jtl -e -o jmeter-reports/stress_test_report
+    
+    - name: Run Spike Test
+      run: |
+        jmeter -n -t jmeter/spike_test.jmx -l jmeter-results/spike_test_results.jtl -e -o jmeter-reports/spike_test_report
+    
+    - name: Upload Test Reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: jmeter-reports
+        path: jmeter-reports/
+    
+    - name: Deploy Reports
+      run: |
+        echo "Deploying JMeter reports..."
+        # Add deployment commands here

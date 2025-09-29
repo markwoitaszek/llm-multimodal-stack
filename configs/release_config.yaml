@@ -1,0 +1,70 @@
+# Release Management Configuration
+# Generated on: 2025-09-29T10:37:23.240059
+
+release:
+  # Release strategies
+  strategies:
+    blue_green:
+      enabled: true
+      health_check_timeout: 300
+      rollback_timeout: 60
+    
+    canary:
+      enabled: true
+      traffic_percentage: 10
+      evaluation_duration: 600
+    
+    rolling:
+      enabled: true
+      max_unavailable: 1
+      max_surge: 1
+  
+  # Environment configurations
+  environments:
+    development:
+      auto_deploy: True
+      replicas: 1
+      resources: {'cpu': '1.0', 'memory': '2G'}
+    
+    staging:
+      auto_deploy: True
+      replicas: 2
+      resources: {'cpu': '2.0', 'memory': '4G'}
+    
+    production:
+      auto_deploy: False
+      replicas: 3
+      resources: {'cpu': '4.0', 'memory': '8G'}
+  
+  # Release pipeline
+  pipeline:
+    stages:
+      - name: "build"
+        commands:
+          - "docker build -t multimodal-worker:${VERSION} ."
+          - "docker tag multimodal-worker:${VERSION} multimodal-worker:latest"
+      
+      - name: "test"
+        commands:
+          - "python -m pytest tests/"
+          - "python scripts/run_jmeter_tests.py --test all"
+      
+      - name: "deploy_staging"
+        environment: "staging"
+        commands:
+          - "docker-compose -f docker-compose.staging.yml up -d"
+          - "python scripts/health_check.py"
+      
+      - name: "deploy_production"
+        environment: "production"
+        requires_approval: true
+        commands:
+          - "docker-compose -f docker-compose.production.yml up -d"
+          - "python scripts/health_check.py"
+  
+  # Rollback configuration
+  rollback:
+    enabled: true
+    max_rollback_versions: 5
+    rollback_timeout: 300
+    health_check_after_rollback: true

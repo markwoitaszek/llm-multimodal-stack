@@ -1,0 +1,40 @@
+access_control:
+  environment_separation:
+    development:
+    - admin
+    - operator
+    - viewer
+    production:
+    - admin
+    - operator
+    staging:
+    - admin
+    - operator
+    - viewer
+  principle_of_least_privilege: true
+  role_based_access:
+    admin:
+    - read
+    - write
+    - delete
+    - rotate
+    operator:
+    - read
+    - write
+    viewer:
+    - read
+audit:
+  alert_on_unauthorized_access: true
+  audit_trail_immutable: true
+  log_all_access: true
+  log_retention_days: 365
+backup:
+  backup_encryption: true
+  backup_frequency: daily
+  backup_retention_days: 30
+  backup_verification: true
+encryption:
+  encryption_algorithm: AES-256-GCM
+  encryption_at_rest: true
+  encryption_in_transit: true
+  key_rotation_policy: 90_days

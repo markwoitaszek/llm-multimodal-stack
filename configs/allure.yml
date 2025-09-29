@@ -1,0 +1,54 @@
+# Allure Framework Configuration
+# Generated on: 2025-09-29T10:27:54.021962
+
+allure:
+  version: 2.24.0
+  results_dir: allure-results
+  report_dir: allure-report
+  history_dir: allure-history
+  server:
+    port: 8080
+    host: 0.0.0.0
+
+pytest:
+  allure_dir: allure-results
+  allure_clean: True
+  allure_attach: True
+  allure_links: True
+
+reporting:
+  title: "LLM Multimodal Stack Test Report"
+  description: "Comprehensive test reporting for the LLM Multimodal Stack"
+  logo: "https://example.com/logo.png"
+  theme: "default"
+  language: "en"
+
+# Test categories
+categories:
+  - name: "Failed tests"
+    matchedStatuses: ["failed", "broken"]
+  - name: "Skipped tests"
+    matchedStatuses: ["skipped"]
+  - name: "Passed tests"
+    matchedStatuses: ["passed"]
+  - name: "Performance tests"
+    matchedStatuses: ["passed", "failed"]
+    messageRegex: ".*performance.*"
+
+# Test environment
+environment:
+  project: "LLM Multimodal Stack"
+  version: "1.0.0"
+  environment: "production"
+  browser: "Docker"
+  os: "Linux"
+  python: "3.13"
+
+# Links configuration
+links:
+  - name: "GitHub Issues"
+    pattern: "https://github.com/markwoitaszek/llm-multimodal-stack/issues/{issue}"
+    type: "issue"
+  - name: "Test Management"
+    pattern: "https://testmanagement.example.com/testcase/{tms}"
+    type: "tms"

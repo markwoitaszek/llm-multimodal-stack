@@ -1,0 +1,67 @@
+groups:
+- name: performance_alerts
+  rules:
+  - alert: HighCPUUsage
+    expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage detected"
+      description: "CPU usage is above 80% for more than 5 minutes"
+
+  - alert: HighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage detected"
+      description: "Memory usage is above 85% for more than 5 minutes"
+
+  - alert: HighDiskUsage
+    expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 90
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High disk usage detected"
+      description: "Disk usage is above 90% for more than 5 minutes"
+
+  - alert: HighAPIResponseTime
+    expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High API response time"
+      description: "95th percentile API response time is above 2 seconds"
+
+  - alert: HighErrorRate
+    expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High error rate detected"
+      description: "Error rate is above 10% for more than 5 minutes"
+
+  - alert: ServiceDown
+    expr: up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Service is down"
+      description: "Service {{ $labels.instance }} is down"
+
+- name: scaling_alerts
+  rules:
+  - alert: AutoScalingTriggered
+    expr: avg_over_time(container_cpu_usage_seconds_total[5m]) > 0.7
+    for: 2m
+    labels:
+      severity: info
+    annotations:
+      summary: "Auto-scaling triggered"
+      description: "CPU usage above 70% for 2 minutes, triggering auto-scaling"

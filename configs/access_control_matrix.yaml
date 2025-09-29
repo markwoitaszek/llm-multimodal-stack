@@ -1,0 +1,35 @@
+environments:
+  development:
+    allowed_users:
+    - admin
+    - operator
+    - senior_operator
+    - developer
+    audit_level: low
+    required_approval: false
+  production:
+    allowed_users:
+    - admin
+    - senior_operator
+    audit_level: high
+    required_approval: true
+  staging:
+    allowed_users:
+    - admin
+    - operator
+    - senior_operator
+    audit_level: medium
+    required_approval: false
+secret_types:
+  api_keys:
+    access_level: restricted
+    approval_required: true
+    rotation_frequency: 180_days
+  database_passwords:
+    access_level: restricted
+    approval_required: true
+    rotation_frequency: 90_days
+  jwt_secrets:
+    access_level: high
+    approval_required: true
+    rotation_frequency: 30_days
