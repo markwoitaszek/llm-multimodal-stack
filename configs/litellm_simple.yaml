@@ -18,7 +18,10 @@ litellm_settings:
   drop_params: true
   set_verbose: false
   json_logs: true
+  master_key: ${LITELLM_MASTER_KEY}
 
-# Disable database for now - use in-memory only
+# Authentication and general settings
 general_settings:
   completion_model: gpt-3.5-turbo
+  master_key: ${LITELLM_MASTER_KEY}
+  # Disable database for now - use in-memory only

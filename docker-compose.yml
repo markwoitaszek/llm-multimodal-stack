@@ -14,7 +14,7 @@ services:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334
     healthcheck:
-      test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
+      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -77,7 +77,7 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -140,7 +140,7 @@ services:
       vllm:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python3", "-c", "import os, urllib.request; req = urllib.request.Request('http://localhost:4000/health'); req.add_header('Authorization', f'Bearer {os.environ[\"LITELLM_MASTER_KEY\"]}'); urllib.request.urlopen(req, timeout=10)"]
+      test: ["CMD", "curl", "-f", "-H", "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-1234}", "http://localhost:4000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -255,7 +255,7 @@ services:
     depends_on:
       - vllm
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -310,7 +310,7 @@ services:
       user-management:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -402,7 +402,7 @@ services:
       ai-agents:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -475,7 +475,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://localhost:5678/healthz | grep -q 'ok' || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:5678/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
