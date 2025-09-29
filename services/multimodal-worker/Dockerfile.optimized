@@ -1,0 +1,48 @@
+# Optimized Multimodal Worker Service Dockerfile
+# Uses shared base image and advanced caching
+
+# Build stage - use shared base image
+FROM multimodal-base:latest as builder
+
+# Set environment variables
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Switch to root for package installation
+USER root
+
+# Copy requirements first for better layer caching
+COPY requirements.txt .
+
+# Install Python dependencies with caching
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Production stage
+FROM multimodal-base:latest as production
+
+# Switch to root temporarily for setup
+USER root
+
+# Copy Python dependencies from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Create cache directory
+RUN mkdir -p /app/cache && chown appuser:appuser /app/cache
+
+# Switch back to appuser
+USER appuser
+
+# Expose port
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Run the application
+CMD ["python", "main.py"]

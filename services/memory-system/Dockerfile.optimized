@@ -1,0 +1,30 @@
+# Optimized Dockerfile for Memory System Service
+# Inherits from shared base image for better caching
+FROM multimodal-base:latest
+
+# Switch to root for package installation
+USER root
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt shared-requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Ensure proper ownership of app directory
+RUN chown -R appuser:appuser /app
+
+# Expose port
+EXPOSE 8005
+
+# Health check (curl is available in base image)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8005/health || exit 1
+
+# Run application as non-root user
+USER appuser
+CMD ["python", "main.py"]

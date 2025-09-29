@@ -411,7 +411,7 @@ services:
     networks:
       - multimodal-net
 
-  # User Management Service
+  # Phase 2: User Management Service
   user-management:
     build:
       context: ./services/user-management
