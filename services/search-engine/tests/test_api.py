@@ -57,7 +57,7 @@ class TestSearchEngineAPI:
         }
         mock_search.return_value = AsyncMock(return_value=mock_search_response)
         
-        response = test_client.post("/api/v1/search", json=sample_search_request.dict())
+        response = test_client.post("/api/v1/search", json=sample_search_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["query"] == "test search query"
@@ -78,17 +78,16 @@ class TestSearchEngineAPI:
     @patch('app.search_engine.search_engine.search')
     def test_semantic_search_endpoint(self, mock_search, test_client):
         """Test semantic search endpoint"""
-        mock_search.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: {
-                "query": "semantic test",
-                "search_type": "semantic",
-                "total_results": 1,
-                "results": [],
-                "execution_time_ms": 30.0,
-                "cached": False,
-                "search_id": "semantic_test_id"
-            })()
-        )
+        mock_semantic_response = {
+            "query": "semantic test",
+            "search_type": "semantic",
+            "total_results": 1,
+            "results": [],
+            "execution_time_ms": 30.0,
+            "cached": False,
+            "search_id": "semantic_test_id"
+        }
+        mock_search.return_value = AsyncMock(return_value=mock_semantic_response)
         
         request_data = {
             "query": "semantic test",
@@ -128,16 +127,12 @@ class TestSearchEngineAPI:
     def test_index_content_endpoint(self, mock_embedding, mock_create, test_client, sample_index_request):
         """Test index content endpoint"""
         # Mock embedding generation
-        mock_embedding.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: [0.1] * 384)()
-        )
+        mock_embedding.return_value = AsyncMock(return_value=[0.1] * 384)
         
         # Mock database creation
-        mock_create.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: True)()
-        )
+        mock_create.return_value = AsyncMock(return_value=True)
         
-        response = test_client.post("/api/v1/index", json=sample_index_request.dict())
+        response = test_client.post("/api/v1/index", json=sample_index_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["content_id"] == sample_index_request.content_id
@@ -147,9 +142,7 @@ class TestSearchEngineAPI:
     @patch('app.database.db_manager.create_content')
     def test_index_content_with_embedding(self, mock_create, test_client):
         """Test index content with pre-computed embedding"""
-        mock_create.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: True)()
-        )
+        mock_create.return_value = AsyncMock(return_value=True)
         
         request_data = {
             "content_id": "test_with_embedding",
@@ -175,9 +168,7 @@ class TestSearchEngineAPI:
             "updated_at": datetime.utcnow()
         }
         
-        mock_get_content.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_content)()
-        )
+        mock_get_content.return_value = AsyncMock(return_value=mock_content)
         
         response = test_client.get("/api/v1/index/test_content")
         assert response.status_code == 200
@@ -193,9 +184,7 @@ class TestSearchEngineAPI:
     @patch('app.database.db_manager.delete_content')
     def test_delete_indexed_content_endpoint(self, mock_delete, test_client):
         """Test delete indexed content endpoint"""
-        mock_delete.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: True)()
-        )
+        mock_delete.return_value = AsyncMock(return_value=True)
         
         response = test_client.delete("/api/v1/index/test_content")
         assert response.status_code == 200
@@ -211,16 +200,15 @@ class TestSearchEngineAPI:
     @patch('app.search_engine.search_engine.get_search_stats')
     def test_stats_endpoint(self, mock_stats, test_client):
         """Test statistics endpoint"""
-        mock_stats.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: {
-                "total_searches": 100,
-                "average_search_time_ms": 50.0,
-                "cache_hit_rate": 0.8,
-                "vector_store_points": 1000,
-                "embedding_cache_size": 50,
-                "result_cache_size": 20
-            })()
-        )
+        mock_stats_response = {
+            "total_searches": 100,
+            "average_search_time_ms": 50.0,
+            "cache_hit_rate": 0.8,
+            "vector_store_points": 1000,
+            "embedding_cache_size": 50,
+            "result_cache_size": 20
+        }
+        mock_stats.return_value = AsyncMock(return_value=mock_stats_response)
         
         response = test_client.get("/api/v1/stats")
         assert response.status_code == 200

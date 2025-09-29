@@ -80,7 +80,7 @@ async def global_exception_handler(request, exc):
             error="Internal server error",
             error_code="INTERNAL_ERROR",
             timestamp=datetime.utcnow()
-        ).dict()
+        ).model_dump()
     )
 
 

@@ -54,7 +54,7 @@ class TestMemorySystemAPI:
         
         mock_store_memory.return_value = AsyncMock(return_value=mock_memory_response)
         
-        response = test_client.post("/api/v1/memories", json=sample_memory_request.dict())
+        response = test_client.post("/api/v1/memories", json=sample_memory_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["content"] == sample_memory_request.content
@@ -166,7 +166,7 @@ class TestMemorySystemAPI:
         
         mock_retrieve_memories.return_value = AsyncMock(return_value=mock_retrieve_response)
         
-        response = test_client.post("/api/v1/memories/retrieve", json=sample_retrieve_request.dict())
+        response = test_client.post("/api/v1/memories/retrieve", json=sample_retrieve_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["query"] == sample_retrieve_request.query
@@ -188,7 +188,7 @@ class TestMemorySystemAPI:
         
         mock_store_conversation.return_value = AsyncMock(return_value=mock_conversation_response)
         
-        response = test_client.post("/api/v1/conversations", json=sample_conversation_request.dict())
+        response = test_client.post("/api/v1/conversations", json=sample_conversation_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["conversation_id"] == "test_conversation_id"
@@ -264,7 +264,7 @@ class TestMemorySystemAPI:
         
         mock_get_context.return_value = AsyncMock(return_value=mock_context_response)
         
-        response = test_client.post("/api/v1/context", json=sample_context_request.dict())
+        response = test_client.post("/api/v1/context", json=sample_context_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["query"] == sample_context_request.query
@@ -282,7 +282,7 @@ class TestMemorySystemAPI:
         
         mock_consolidate_memories.return_value = AsyncMock(return_value=mock_consolidate_response)
         
-        response = test_client.post("/api/v1/memories/consolidate", json=sample_consolidate_request.dict())
+        response = test_client.post("/api/v1/memories/consolidate", json=sample_consolidate_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["consolidated_count"] == 5
