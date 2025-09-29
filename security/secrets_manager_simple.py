@@ -493,5 +493,5 @@ if __name__ == "__main__":
         logger.info(f"Compliance report generated: {compliance_score:.1f}% compliance")
         return report
 
-# Global secrets manager instance
-secrets_manager = SimpleSecretsManager()
+# Global secrets manager instance - will be initialized when needed
+# secrets_manager = SimpleSecretsManager()
