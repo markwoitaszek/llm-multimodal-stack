@@ -25,7 +25,7 @@ class Memory(Base):
     memory_type: Mapped[str] = mapped_column(String(50), nullable=False)
     importance: Mapped[str] = mapped_column(String(20), nullable=False)
     tags: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    memory_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     embedding: Mapped[Optional[List[float]]] = mapped_column(JSON, nullable=True)
     user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     session_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -192,7 +192,7 @@ class DatabaseManager:
                         "memory_type": result.memory_type,
                         "importance": result.importance,
                         "tags": result.tags,
-                        "metadata": result.metadata,
+                        "metadata": result.memory_metadata,
                         "embedding": result.embedding,
                         "user_id": result.user_id,
                         "session_id": result.session_id,
@@ -229,7 +229,7 @@ class DatabaseManager:
                     if tags is not None:
                         result.tags = tags
                     if metadata is not None:
-                        result.metadata = metadata
+                        result.memory_metadata = metadata
                     if embedding is not None:
                         result.embedding = embedding
                     result.updated_at = datetime.utcnow()

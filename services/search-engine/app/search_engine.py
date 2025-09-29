@@ -288,8 +288,8 @@ class SearchEngine:
                     if result.score < float(filter_value):
                         include_result = False
                         break
-                elif result.metadata and filter_key in result.metadata:
-                    if result.metadata[filter_key] != filter_value:
+                elif result.content_metadata and filter_key in result.content_metadata:
+                    if result.content_metadata[filter_key] != filter_value:
                         include_result = False
                         break
             

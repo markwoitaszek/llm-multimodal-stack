@@ -23,7 +23,7 @@ class SearchContent(Base):
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     content_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    content_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     embedding: Mapped[Optional[List[float]]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -140,7 +140,7 @@ class DatabaseManager:
                         "id": result.id,
                         "content": result.content,
                         "content_type": result.content_type,
-                        "metadata": result.metadata,
+                        "metadata": result.content_metadata,
                         "embedding": result.embedding,
                         "created_at": result.created_at,
                         "updated_at": result.updated_at
@@ -162,7 +162,7 @@ class DatabaseManager:
                     if content is not None:
                         result.content = content
                     if metadata is not None:
-                        result.metadata = metadata
+                        result.content_metadata = metadata
                     if embedding is not None:
                         result.embedding = embedding
                     result.updated_at = datetime.utcnow()
