@@ -43,9 +43,10 @@ This automatically creates:
 - ✅ **21 secure secrets** (passwords, API keys, etc.)
 - ✅ **Encrypted storage** with proper permissions
 - ✅ **Environment-specific** configurations
-- ✅ **Docker Compose** integration
+- ✅ **Docker Compose** integration with environment variables
 - ✅ **Kubernetes secrets** templates
-- NVIDIA Docker runtime
+- ✅ **Configurable service ports and hosts**
+- ✅ **Flexible service URLs for different environments**
 
 **Quick Check:**
 ```bash

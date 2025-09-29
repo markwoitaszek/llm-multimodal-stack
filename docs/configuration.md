@@ -26,6 +26,8 @@ This creates:
 POSTGRES_DB=multimodal                    # Database name
 POSTGRES_USER=postgres                    # Database user
 POSTGRES_PASSWORD=<secure_password>       # Database password (auto-generated)
+POSTGRES_HOST=postgres                    # Database host
+POSTGRES_PORT=5432                        # Database port
 ```
 
 ### Storage Configuration
@@ -48,10 +50,63 @@ CACHE_PATH=/mnt/nvme/cache               # Model and processing cache
 # vLLM Configuration
 VLLM_MODEL=microsoft/DialoGPT-medium     # LLM model to load
 VLLM_API_KEY=your_secure_api_key         # API key for vLLM (auto-generated)
+VLLM_HOST=0.0.0.0                        # vLLM host
+VLLM_PORT=8000                           # vLLM port
 
 # LiteLLM Configuration  
 LITELLM_MASTER_KEY=sk-your_master_key    # Master key for LiteLLM (auto-generated)
 LITELLM_SALT_KEY=sk-your_salt_key        # Salt key for encryption (auto-generated)
+LITELLM_PORT=4000                        # LiteLLM port
+```
+
+### Service Configuration
+
+```env
+# Service Ports
+VLLM_PORT=8000                           # vLLM inference server
+LITELLM_PORT=4000                        # LiteLLM proxy router
+MULTIMODAL_WORKER_PORT=8001              # Multimodal worker service
+RETRIEVAL_PROXY_PORT=8002                # Retrieval proxy service
+AI_AGENTS_PORT=8003                      # AI agents service
+SEARCH_ENGINE_PORT=8004                  # Search engine service
+MEMORY_SYSTEM_PORT=8005                  # Memory system service
+USER_MANAGEMENT_PORT=8006                # User management service
+OPENWEBUI_PORT=3030                      # OpenWebUI interface
+QDRANT_HTTP_PORT=6333                    # Qdrant HTTP port
+QDRANT_GRPC_PORT=6334                    # Qdrant gRPC port
+REDIS_PORT=6379                          # Redis port
+MINIO_PORT=9000                          # MinIO API port
+MINIO_CONSOLE_PORT=9002                  # MinIO console port
+
+# Additional Service Ports
+IDE_BRIDGE_PORT=8007                     # IDE bridge service
+IDE_BRIDGE_WEB_PORT=3002                 # IDE bridge web interface
+N8N_MONITORING_PORT=8008                 # n8n monitoring service
+N8N_MONITORING_DASHBOARD_PORT=3003       # n8n monitoring dashboard
+N8N_PORT=5678                            # n8n workflow platform
+REALTIME_COLLABORATION_PORT=3006         # Real-time collaboration service
+
+# Service Hosts
+VLLM_HOST=0.0.0.0                        # vLLM host
+QDRANT_HOST=qdrant                       # Qdrant host
+POSTGRES_HOST=postgres                   # PostgreSQL host
+REDIS_HOST=redis                         # Redis host
+MINIO_ENDPOINT=minio:9000                # MinIO endpoint
+IDE_BRIDGE_HOST=0.0.0.0                  # IDE bridge host
+N8N_MONITORING_HOST=0.0.0.0              # n8n monitoring host
+N8N_HOST=localhost                       # n8n host
+
+# Service URLs (Internal Communication)
+MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
+RETRIEVAL_PROXY_URL=http://retrieval-proxy:8002
+SEARCH_ENGINE_URL=http://search-engine:8004
+MEMORY_SYSTEM_URL=http://memory-system:8005
+USER_MANAGEMENT_URL=http://user-management:8006
+LLM_BASE_URL=http://vllm:8000/v1
+OPENAI_API_BASE_URL=http://vllm:8000/v1
+AI_AGENTS_URL=http://ai-agents:8003
+IDE_BRIDGE_URL=http://ide-bridge:8007
+N8N_URL=http://n8n:5678
 ```
 
 ### GPU Configuration

@@ -48,8 +48,9 @@ docs/
 
 ### For DevOps
 1. [Deployment Guide](developer/deployment/README.md)
-2. [Monitoring Setup](developer/deployment/monitoring.md)
-3. [Troubleshooting](troubleshooting/README.md)
+2. [Environment Variables Reference](ENVIRONMENT_VARIABLES.md)
+3. [Monitoring Setup](developer/deployment/monitoring.md)
+4. [Troubleshooting](troubleshooting/README.md)
 
 ## API Documentation
 
