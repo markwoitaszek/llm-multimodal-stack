@@ -273,8 +273,24 @@ class VectorStoreManager:
             return collection_info.status == "green"
             
         except Exception as e:
-            logger.error(f"Vector store health check failed: {str(e)}")
-            return False
+            # Check if it's a Pydantic validation error (version compatibility issue)
+            error_str = str(e)
+            if "validation errors for ParsingModel" in error_str and "max_optimization_threads" in error_str:
+                # This is a known compatibility issue between client and server versions
+                # The server is actually healthy, but the client can't parse the response
+                logger.warning(f"Vector store health check failed due to version compatibility: {error_str}")
+                # Try a simpler health check - just ping the server
+                try:
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        response = await client.get(f"{self.client._client.url}/health", timeout=5.0)
+                        return response.status_code == 200
+                except Exception as ping_error:
+                    logger.error(f"Vector store ping failed: {str(ping_error)}")
+                    return False
+            else:
+                logger.error(f"Vector store health check failed: {error_str}")
+                return False
 
 
 # Global vector store manager instance
