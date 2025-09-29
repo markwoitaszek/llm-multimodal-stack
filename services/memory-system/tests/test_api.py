@@ -52,11 +52,9 @@ class TestMemorySystemAPI:
             "embedding": [0.1] * 384
         }
         
-        mock_store_memory.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_memory_response)()
-        )
+        mock_store_memory.return_value = mock_memory_response
         
-        response = test_client.post("/api/v1/memories", json=sample_memory_request.dict())
+        response = test_client.post("/api/v1/memories", json=sample_memory_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["content"] == sample_memory_request.content
@@ -90,9 +88,7 @@ class TestMemorySystemAPI:
             "consolidated": False
         }
         
-        mock_get_memory.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_memory)()
-        )
+        mock_get_memory.return_value = mock_memory
         
         response = test_client.get("/api/v1/memories/test_memory_id")
         assert response.status_code == 200
@@ -124,9 +120,7 @@ class TestMemorySystemAPI:
             "updated_at": datetime.utcnow()
         }
         
-        mock_update_memory.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_updated_memory)()
-        )
+        mock_update_memory.return_value = mock_updated_memory
         
         response = test_client.put("/api/v1/memories/test_memory_id", json=update_request)
         assert response.status_code == 200
@@ -137,9 +131,7 @@ class TestMemorySystemAPI:
     @patch('app.memory_manager.memory_manager.delete_memory')
     def test_delete_memory_endpoint(self, mock_delete_memory, test_client):
         """Test delete memory endpoint"""
-        mock_delete_memory.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: True)()
-        )
+        mock_delete_memory.return_value = True
         
         response = test_client.delete("/api/v1/memories/test_memory_id")
         assert response.status_code == 200
@@ -172,11 +164,9 @@ class TestMemorySystemAPI:
             "retrieval_id": "test_retrieval_id"
         }
         
-        mock_retrieve_memories.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_retrieve_response)()
-        )
+        mock_retrieve_memories.return_value = mock_retrieve_response
         
-        response = test_client.post("/api/v1/memories/retrieve", json=sample_retrieve_request.dict())
+        response = test_client.post("/api/v1/memories/retrieve", json=sample_retrieve_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["query"] == sample_retrieve_request.query
@@ -196,11 +186,9 @@ class TestMemorySystemAPI:
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        mock_store_conversation.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_conversation_response)()
-        )
+        mock_store_conversation.return_value = mock_conversation_response
         
-        response = test_client.post("/api/v1/conversations", json=sample_conversation_request.dict())
+        response = test_client.post("/api/v1/conversations", json=sample_conversation_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["conversation_id"] == "test_conversation_id"
@@ -218,9 +206,7 @@ class TestMemorySystemAPI:
             "updated_at": datetime.utcnow()
         }
         
-        mock_get_conversation.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_conversation)()
-        )
+        mock_get_conversation.return_value = mock_conversation
         
         response = test_client.get("/api/v1/conversations/test_conversation_id")
         assert response.status_code == 200
@@ -249,9 +235,7 @@ class TestMemorySystemAPI:
             }
         ]
         
-        mock_get_conversations.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_conversations)()
-        )
+        mock_get_conversations.return_value = mock_conversations
         
         response = test_client.get("/api/v1/conversations/session/test_session")
         assert response.status_code == 200
@@ -278,11 +262,9 @@ class TestMemorySystemAPI:
             "context_id": "test_context_id"
         }
         
-        mock_get_context.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_context_response)()
-        )
+        mock_get_context.return_value = mock_context_response
         
-        response = test_client.post("/api/v1/context", json=sample_context_request.dict())
+        response = test_client.post("/api/v1/context", json=sample_context_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["query"] == sample_context_request.query
@@ -298,11 +280,9 @@ class TestMemorySystemAPI:
             "consolidation_id": "test_consolidation_id"
         }
         
-        mock_consolidate_memories.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_consolidate_response)()
-        )
+        mock_consolidate_memories.return_value = mock_consolidate_response
         
-        response = test_client.post("/api/v1/memories/consolidate", json=sample_consolidate_request.dict())
+        response = test_client.post("/api/v1/memories/consolidate", json=sample_consolidate_request.model_dump())
         assert response.status_code == 200
         data = response.json()
         assert data["consolidated_count"] == 5
@@ -321,9 +301,7 @@ class TestMemorySystemAPI:
             "active_sessions": 5
         }
         
-        mock_get_stats.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_stats)()
-        )
+        mock_get_stats.return_value = mock_stats
         
         response = test_client.get("/api/v1/stats")
         assert response.status_code == 200
@@ -342,9 +320,7 @@ class TestMemorySystemAPI:
     @patch('app.database.db_manager.cleanup_old_memories')
     def test_cleanup_old_memories_endpoint(self, mock_cleanup, test_client):
         """Test cleanup old memories endpoint"""
-        mock_cleanup.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: 25)()
-        )
+        mock_cleanup.return_value = 25
         
         response = test_client.post("/api/v1/cleanup")
         assert response.status_code == 200

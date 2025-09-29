@@ -58,7 +58,11 @@ class EmbeddingService:
                 lambda: self.model.encode(text, convert_to_numpy=True)
             )
             
-            return embedding.tolist()
+            # Handle both numpy arrays and lists
+            if hasattr(embedding, 'tolist'):
+                return embedding.tolist()
+            else:
+                return embedding
             
         except Exception as e:
             logger.error(f"Error generating embedding: {str(e)}")
@@ -80,7 +84,11 @@ class EmbeddingService:
                 lambda: self.model.encode(cleaned_texts, convert_to_numpy=True)
             )
             
-            return embeddings.tolist()
+            # Handle both numpy arrays and lists
+            if hasattr(embeddings, 'tolist'):
+                return embeddings.tolist()
+            else:
+                return embeddings
             
         except Exception as e:
             logger.error(f"Error generating batch embeddings: {str(e)}")

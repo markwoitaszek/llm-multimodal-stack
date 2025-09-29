@@ -39,7 +39,7 @@ class User(Base):
     locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    user_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     
     # Indexes for performance
     __table_args__ = (
@@ -64,7 +64,7 @@ class Tenant(Base):
     max_users: Mapped[int] = mapped_column(Integer, default=1000)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    user_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     
     # Indexes for performance
     __table_args__ = (
@@ -165,13 +165,13 @@ class DatabaseManager:
         if self._connection_pool:
             await self._connection_pool.close()
     
-    async def get_session(self) -> AsyncSession:
+    def get_session(self) -> AsyncSession:
         """Get database session"""
         if not self.session_factory:
             raise Exception("Database not initialized")
         return self.session_factory()
     
-    async def get_connection(self):
+    def get_connection(self):
         """Get raw database connection"""
         if not self._connection_pool:
             raise Exception("Database not initialized")
@@ -232,7 +232,7 @@ class DatabaseManager:
                         "locked_until": result.locked_until,
                         "created_at": result.created_at,
                         "updated_at": result.updated_at,
-                        "metadata": result.metadata
+                        "metadata": result.user_metadata
                     }
                 return None
         except Exception as e:
@@ -408,7 +408,7 @@ class DatabaseManager:
                         "max_users": result.max_users,
                         "created_at": result.created_at,
                         "updated_at": result.updated_at,
-                        "metadata": result.metadata
+                        "metadata": result.user_metadata
                     }
                 return None
         except Exception as e:
