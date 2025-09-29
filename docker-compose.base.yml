@@ -185,3 +185,4 @@ volumes:
   minio_test_data:
     <<: *volume-config
 
+
