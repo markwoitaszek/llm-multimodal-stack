@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [multimodal-worker, retrieval-proxy, ai-agents]
+        service: [multimodal-worker, retrieval-proxy, ai-agents, memory-system, search-engine, user-management]
     
     steps:
     - uses: actions/checkout@v4

@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     tags: [ 'v*' ]
   workflow_run:
-    workflows: ["🔄 Continuous Integration"]
+    workflows: ["Continuous Integration"]
     types: [completed]
     branches: [ main ]
 
@@ -21,7 +21,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'push'
     strategy:
       matrix:
-        service: [multimodal-worker, retrieval-proxy, ai-agents]
+        service: [multimodal-worker, retrieval-proxy, ai-agents, memory-system, search-engine, user-management]
     permissions:
       contents: read
       packages: write
@@ -144,15 +144,14 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: 📦 Create Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          name: Release ${{ github.ref }}
           body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
           draft: false
           prerelease: false
+          generate_release_notes: true
 
   # Deploy to Staging
   deploy-staging:

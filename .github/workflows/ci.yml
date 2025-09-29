@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [multimodal-worker, retrieval-proxy, ai-agents]
+        service: [multimodal-worker, retrieval-proxy, ai-agents, memory-system, search-engine, user-management]
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -272,31 +272,3 @@ jobs:
           echo "🔄 Service communication testing"
           echo "💾 Database integration testing"
 
-# Create markdown link check config
-name: Create markdown link check config
-runs-on: ubuntu-latest
-steps:
-  - name: Create config
-    run: |
-      mkdir -p .github/workflows
-      cat > .github/workflows/markdown-link-check.json << 'EOF'
-      {
-        "ignorePatterns": [
-          {
-            "pattern": "^http://localhost"
-          },
-          {
-            "pattern": "^https://localhost"
-          },
-          {
-            "pattern": "^http://127.0.0.1"
-          }
-        ],
-        "replacementPatterns": [],
-        "httpHeaders": [],
-        "timeout": "20s",
-        "retryOn429": true,
-        "retryCount": 3,
-        "fallbackHttpStatus": [400, 401, 403, 404, 500, 502, 503, 504]
-      }
-      EOF
