@@ -102,6 +102,53 @@ def test_config():
         print(f"✗ Configuration test failed: {e}")
         return False
 
+def test_health_endpoint():
+    """Test health endpoint models and structure"""
+    try:
+        from app.models import HealthResponse, MemoryStats
+        from datetime import datetime
+        
+        # Test MemoryStats model
+        stats = MemoryStats(
+            total_conversations=10,
+            total_messages=50,
+            total_knowledge_items=5,
+            total_summaries=2,
+            active_conversations=3,
+            cache_hit_rate=85.5,
+            memory_usage_mb=1.0
+        )
+        print("✓ MemoryStats model works")
+        
+        # Test HealthResponse model
+        health = HealthResponse(
+            status="healthy",
+            service="memory-system",
+            version="1.0.0",
+            timestamp=datetime.utcnow(),
+            database_status="healthy",
+            redis_status="healthy",
+            memory_stats=stats
+        )
+        print("✓ HealthResponse model works")
+        
+        # Test health response without stats
+        health_no_stats = HealthResponse(
+            status="degraded",
+            service="memory-system",
+            version="1.0.0",
+            timestamp=datetime.utcnow(),
+            database_status="healthy",
+            redis_status="unhealthy"
+        )
+        print("✓ HealthResponse model works without stats")
+        
+        return True
+        
+    except Exception as e:
+        print(f"✗ Health endpoint test failed: {e}")
+        return False
+
 def main():
     """Run all tests"""
     print("Testing Memory System Service...")
@@ -110,7 +157,8 @@ def main():
     tests = [
         ("Import Test", test_imports),
         ("Model Test", test_models),
-        ("Config Test", test_config)
+        ("Config Test", test_config),
+        ("Health Endpoint Test", test_health_endpoint)
     ]
     
     passed = 0
