@@ -1,0 +1,107 @@
+# Multi-GPU Configuration for RTX 3090s with NVLink
+# This configuration maximizes GPU utilization across both services
+
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: multimodal-vllm
+    ports:
+      - "8000:8000"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0,1
+      - NVIDIA_VISIBLE_DEVICES=0,1
+      - VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
+      - VLLM_HOST=0.0.0.0
+      - VLLM_PORT=8000
+    volumes:
+      - vllm_cache:/root/.cache
+      - ./models:/models
+    command: [
+      "--model", "microsoft/DialoGPT-medium",
+      "--host", "0.0.0.0",
+      "--port", "8000",
+      "--gpu-memory-utilization", "0.8",
+      "--max-model-len", "1024",
+      "--dtype", "auto"
+      # Removed tensor-parallel-size for now to test basic dual GPU access
+    ]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/models', timeout=10)\""]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 180s
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+  multimodal-worker:
+    build:
+      context: ./services/multimodal-worker
+      dockerfile: Dockerfile.optimized
+      cache_from:
+        - multimodal-base:latest
+        - multimodal-worker:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: multimodal-worker
+    ports:
+      - "8001:8001"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0,1  # Allow access to both GPUs
+      - NVIDIA_VISIBLE_DEVICES=0,1
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+    volumes:
+      - multimodal_cache:/app/cache
+      - /tmp:/tmp
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - multimodal-net
+
+volumes:
+  vllm_cache:
+  multimodal_cache:
+
+networks:
+  multimodal-net:
+    driver: bridge
