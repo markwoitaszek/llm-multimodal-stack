@@ -37,26 +37,25 @@ class TestSearchEngineAPI:
     def test_search_endpoint(self, mock_search, test_client, sample_search_request):
         """Test search endpoint"""
         # Mock search response
-        mock_search.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: {
-                "query": "test search query",
-                "search_type": "hybrid",
-                "total_results": 2,
-                "results": [
-                    {
-                        "id": "test_1",
-                        "content": "Test content 1",
-                        "content_type": "text",
-                        "score": 0.95,
-                        "created_at": datetime.utcnow().isoformat(),
-                        "updated_at": datetime.utcnow().isoformat()
-                    }
-                ],
-                "execution_time_ms": 50.0,
-                "cached": False,
-                "search_id": "test_search_id"
-            })()
-        )
+        mock_search_response = {
+            "query": "test search query",
+            "search_type": "hybrid",
+            "total_results": 2,
+            "results": [
+                {
+                    "id": "test_1",
+                    "content": "Test content 1",
+                    "content_type": "text",
+                    "score": 0.95,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+            ],
+            "execution_time_ms": 50.0,
+            "cached": False,
+            "search_id": "test_search_id"
+        }
+        mock_search.return_value = AsyncMock(return_value=mock_search_response)
         
         response = test_client.post("/api/v1/search", json=sample_search_request.dict())
         assert response.status_code == 200
