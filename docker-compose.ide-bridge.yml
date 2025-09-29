@@ -72,7 +72,7 @@ services:
       ai-agents:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${IDE_BRIDGE_PORT:-8007}/health"]
       interval: 30s
       timeout: 10s
       retries: 3

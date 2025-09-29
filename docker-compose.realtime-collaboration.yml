@@ -35,7 +35,7 @@ services:
       - redis
       - postgres
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${REALTIME_COLLABORATION_PORT:-3006}/health"]
       interval: 30s
       timeout: 10s
       retries: 3

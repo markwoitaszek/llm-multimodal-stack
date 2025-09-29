@@ -99,7 +99,7 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:${MINIO_PORT:-9000}/minio/health/live"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -137,7 +137,7 @@ services:
               count: 1
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/models', timeout=10)\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${VLLM_PORT:-8000}/v1/models', timeout=10)\""]
       interval: 60s
       timeout: 30s
       retries: 5
@@ -167,7 +167,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:4000/', timeout=5)\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${LITELLM_PORT:-4000}/', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -218,7 +218,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${MULTIMODAL_WORKER_PORT:-8001}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -231,7 +231,7 @@ services:
     build:
       context: ./services/retrieval-proxy
       dockerfile: Dockerfile
-    container_name: retrieval-proxy
+    container_name: multimodal-retrieval-proxy
     ports:
       - "${RETRIEVAL_PROXY_PORT:-8002}:8002"
     environment:
@@ -259,7 +259,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health', timeout=5)\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${RETRIEVAL_PROXY_PORT:-8002}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -310,7 +310,7 @@ services:
       - LLM_BASE_URL=${LLM_BASE_URL:-http://vllm:8000/v1}
       - LLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
       - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
-      - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://retrieval-proxy:8002}
+      - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://multimodal-retrieval-proxy:8002}
       - SEARCH_ENGINE_URL=${SEARCH_ENGINE_URL:-http://search-engine:8004}
       - MEMORY_SYSTEM_URL=${MEMORY_SYSTEM_URL:-http://memory-system:8005}
       - USER_MANAGEMENT_URL=${USER_MANAGEMENT_URL:-http://user-management:8006}
@@ -337,7 +337,7 @@ services:
       user-management:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${AI_AGENTS_PORT:-8003}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -369,7 +369,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8005/health', timeout=5)\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${MEMORY_SYSTEM_PORT:-8005}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -397,7 +397,7 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=3
       - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
-      - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://retrieval-proxy:8002}
+      - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://multimodal-retrieval-proxy:8002}
     depends_on:
       postgres:
         condition: service_healthy
@@ -406,7 +406,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8004/health', timeout=5)\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${SEARCH_ENGINE_PORT:-8004}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -463,7 +463,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8006/health', timeout=5)\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${USER_MANAGEMENT_PORT:-8006}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -526,7 +526,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:${N8N_PORT:-5678}/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
