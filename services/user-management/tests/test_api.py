@@ -55,14 +55,10 @@ class TestUserManagementAPI:
             "updated_at": datetime.utcnow(),
             "metadata": {}
         }
-        mock_authenticate.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_user)()
-        )
+        mock_authenticate.return_value = mock_user
         
         # Mock session creation
-        mock_create_session.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: ("access_token", "refresh_token", "session_id"))()
-        )
+        mock_create_session.return_value = ("access_token", "refresh_token", "session_id")
         
         # Test login
         login_request = {
@@ -82,9 +78,7 @@ class TestUserManagementAPI:
     def test_login_endpoint_invalid_credentials(self, test_client):
         """Test login endpoint with invalid credentials"""
         with patch('app.auth.auth_service.authenticate_user') as mock_authenticate:
-            mock_authenticate.return_value = asyncio.create_task(
-                asyncio.coroutine(lambda: None)()
-            )
+            mock_authenticate.return_value = None
             
             login_request = {
                 "username": "invaliduser",
@@ -110,17 +104,11 @@ class TestUserManagementAPI:
     def test_register_endpoint(self, mock_create_user, mock_get_email, mock_get_username, test_client):
         """Test register endpoint"""
         # Mock no existing user
-        mock_get_username.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: None)()
-        )
-        mock_get_email.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: None)()
-        )
+        mock_get_username.return_value = None
+        mock_get_email.return_value = None
         
         # Mock user creation
-        mock_create_user.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: True)()
-        )
+        mock_create_user.return_value = True
         
         # Test registration
         register_request = {
@@ -158,9 +146,7 @@ class TestUserManagementAPI:
                 "username": "existinguser",
                 "email": "existing@example.com"
             }
-            mock_get_username.return_value = asyncio.create_task(
-                asyncio.coroutine(lambda: mock_existing_user)()
-            )
+            mock_get_username.return_value = mock_existing_user
             
             register_request = {
                 "username": "existinguser",
@@ -176,9 +162,7 @@ class TestUserManagementAPI:
     def test_refresh_token_endpoint(self, mock_refresh, test_client):
         """Test refresh token endpoint"""
         # Mock token refresh
-        mock_refresh.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: ("new_access_token", "session_id"))()
-        )
+        mock_refresh.return_value = ("new_access_token", "session_id")
         
         refresh_request = {
             "refresh_token": "valid_refresh_token"
@@ -193,9 +177,7 @@ class TestUserManagementAPI:
     def test_refresh_token_endpoint_invalid_token(self, test_client):
         """Test refresh token endpoint with invalid token"""
         with patch('app.auth.auth_service.refresh_access_token') as mock_refresh:
-            mock_refresh.return_value = asyncio.create_task(
-                asyncio.coroutine(lambda: None)()
-            )
+            mock_refresh.return_value = None
             
             refresh_request = {
                 "refresh_token": "invalid_refresh_token"
@@ -225,9 +207,7 @@ class TestUserManagementAPI:
             "updated_at": datetime.utcnow(),
             "metadata": {}
         }
-        mock_get_user.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_user)()
-        )
+        mock_get_user.return_value = mock_user
         
         # Test with valid token
         headers = {"Authorization": "Bearer valid_token"}
@@ -245,9 +225,7 @@ class TestUserManagementAPI:
     def test_get_current_user_endpoint_invalid_token(self, test_client):
         """Test get current user endpoint with invalid token"""
         with patch('app.auth.auth_service.get_user_from_token') as mock_get_user:
-            mock_get_user.return_value = asyncio.create_task(
-                asyncio.coroutine(lambda: None)()
-            )
+            mock_get_user.return_value = None
             
             headers = {"Authorization": "Bearer invalid_token"}
             response = test_client.get("/api/v1/users/me", headers=headers)
@@ -276,22 +254,16 @@ class TestUserManagementAPI:
             "updated_at": datetime.utcnow(),
             "metadata": {}
         }
-        mock_get_user_from_token.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_user)()
-        )
+        mock_get_user_from_token.return_value = mock_user
         
         # Mock user update
-        mock_update_user.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: True)()
-        )
+        mock_update_user.return_value = True
         
         # Mock get updated user
         updated_user = mock_user.copy()
         updated_user["full_name"] = "Updated User"
         updated_user["phone"] = "+0987654321"
-        mock_get_user.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: updated_user)()
-        )
+        mock_get_user.return_value = updated_user
         
         # Test update
         update_request = {
@@ -317,14 +289,10 @@ class TestUserManagementAPI:
             "users_by_status": {"active": 95, "inactive": 5},
             "login_attempts_last_hour": 25
         }
-        mock_get_stats.return_value = asyncio.create_task(
-            asyncio.coroutine(lambda: mock_stats)()
-        )
+        mock_get_stats.return_value = mock_stats
         
         with patch('app.database.db_manager.get_tenant_count') as mock_tenant_count:
-            mock_tenant_count.return_value = asyncio.create_task(
-                asyncio.coroutine(lambda: 5)()
-            )
+            mock_tenant_count.return_value = 5
             
             headers = {"Authorization": "Bearer valid_token"}
             response = test_client.get("/api/v1/stats", headers=headers)
@@ -411,19 +379,13 @@ class TestUserManagementAPIIntegration:
             }
             
             # Mock authentication
-            mock_authenticate.return_value = asyncio.create_task(
-                asyncio.coroutine(lambda: mock_user)()
-            )
+            mock_authenticate.return_value = mock_user
             
             # Mock session creation
-            mock_create_session.return_value = asyncio.create_task(
-                asyncio.coroutine(lambda: ("access_token", "refresh_token", "session_id"))()
-            )
+            mock_create_session.return_value = ("access_token", "refresh_token", "session_id")
             
             # Mock token validation
-            mock_get_user.return_value = asyncio.create_task(
-                asyncio.coroutine(lambda: mock_user)()
-            )
+            mock_get_user.return_value = mock_user
             
             # Login
             login_request = {

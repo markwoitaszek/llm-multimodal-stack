@@ -5,7 +5,7 @@ pydantic-settings==2.1.0
 sqlalchemy==2.0.23
 asyncpg==0.29.0
 redis==5.0.1
-qdrant-client==1.7.0
+qdrant-client==1.7.1
 numpy==1.24.3
 sentence-transformers==2.2.2
 huggingface-hub==0.16.4

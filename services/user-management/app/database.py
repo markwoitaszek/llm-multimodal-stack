@@ -165,13 +165,13 @@ class DatabaseManager:
         if self._connection_pool:
             await self._connection_pool.close()
     
-    async def get_session(self) -> AsyncSession:
+    def get_session(self) -> AsyncSession:
         """Get database session"""
         if not self.session_factory:
             raise Exception("Database not initialized")
         return self.session_factory()
     
-    async def get_connection(self):
+    def get_connection(self):
         """Get raw database connection"""
         if not self._connection_pool:
             raise Exception("Database not initialized")

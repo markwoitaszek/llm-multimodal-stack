@@ -55,7 +55,7 @@ class TestSearchEngineAPI:
             "cached": False,
             "search_id": "test_search_id"
         }
-        mock_search.return_value = AsyncMock(return_value=mock_search_response)
+        mock_search.return_value = mock_search_response
         
         response = test_client.post("/api/v1/search", json=sample_search_request.model_dump())
         assert response.status_code == 200
@@ -87,7 +87,7 @@ class TestSearchEngineAPI:
             "cached": False,
             "search_id": "semantic_test_id"
         }
-        mock_search.return_value = AsyncMock(return_value=mock_semantic_response)
+        mock_search.return_value = mock_semantic_response
         
         request_data = {
             "query": "semantic test",
@@ -100,20 +100,41 @@ class TestSearchEngineAPI:
         assert data["search_type"] == "semantic"
     
     @patch('app.search_engine.search_engine.search')
-    def test_keyword_search_endpoint(self, test_client):
+    def test_keyword_search_endpoint(self, mock_search, test_client):
         """Test keyword search endpoint"""
+        # Mock search response
+        mock_search.return_value = {
+            "query": "keyword test",
+            "search_type": "keyword",
+            "total_results": 0,
+            "results": [],
+            "execution_time_ms": 10.0,
+            "cached": False,
+            "search_id": "keyword_test_id"
+        }
+        
         request_data = {
             "query": "keyword test",
             "limit": 5
         }
         
         response = test_client.post("/api/v1/search/keyword", json=request_data)
-        # Should work even without mocking due to async nature
         assert response.status_code in [200, 500]  # Either success or internal error
     
     @patch('app.search_engine.search_engine.search')
-    def test_hybrid_search_endpoint(self, test_client):
+    def test_hybrid_search_endpoint(self, mock_search, test_client):
         """Test hybrid search endpoint"""
+        # Mock search response
+        mock_search.return_value = {
+            "query": "hybrid test",
+            "search_type": "hybrid",
+            "total_results": 0,
+            "results": [],
+            "execution_time_ms": 15.0,
+            "cached": False,
+            "search_id": "hybrid_test_id"
+        }
+        
         request_data = {
             "query": "hybrid test",
             "limit": 10
@@ -127,10 +148,10 @@ class TestSearchEngineAPI:
     def test_index_content_endpoint(self, mock_embedding, mock_create, test_client, sample_index_request):
         """Test index content endpoint"""
         # Mock embedding generation
-        mock_embedding.return_value = AsyncMock(return_value=[0.1] * 384)
+        mock_embedding.return_value = [0.1] * 384
         
         # Mock database creation
-        mock_create.return_value = AsyncMock(return_value=True)
+        mock_create.return_value = True
         
         response = test_client.post("/api/v1/index", json=sample_index_request.model_dump())
         assert response.status_code == 200
@@ -142,7 +163,7 @@ class TestSearchEngineAPI:
     @patch('app.database.db_manager.create_content')
     def test_index_content_with_embedding(self, mock_create, test_client):
         """Test index content with pre-computed embedding"""
-        mock_create.return_value = AsyncMock(return_value=True)
+        mock_create.return_value = True
         
         request_data = {
             "content_id": "test_with_embedding",
@@ -168,7 +189,7 @@ class TestSearchEngineAPI:
             "updated_at": datetime.utcnow()
         }
         
-        mock_get_content.return_value = AsyncMock(return_value=mock_content)
+        mock_get_content.return_value = mock_content
         
         response = test_client.get("/api/v1/index/test_content")
         assert response.status_code == 200
@@ -184,7 +205,7 @@ class TestSearchEngineAPI:
     @patch('app.database.db_manager.delete_content')
     def test_delete_indexed_content_endpoint(self, mock_delete, test_client):
         """Test delete indexed content endpoint"""
-        mock_delete.return_value = AsyncMock(return_value=True)
+        mock_delete.return_value = True
         
         response = test_client.delete("/api/v1/index/test_content")
         assert response.status_code == 200
@@ -208,7 +229,7 @@ class TestSearchEngineAPI:
             "embedding_cache_size": 50,
             "result_cache_size": 20
         }
-        mock_stats.return_value = AsyncMock(return_value=mock_stats_response)
+        mock_stats.return_value = mock_stats_response
         
         response = test_client.get("/api/v1/stats")
         assert response.status_code == 200

@@ -82,7 +82,13 @@ async def initialized_db_manager(test_engine):
         test_engine, class_=AsyncSession, expire_on_commit=False
     )
     
+    # Initialize the database manager
+    await db_manager.initialize()
+    
     yield db_manager
+    
+    # Cleanup
+    await db_manager.close()
 
 
 @pytest.fixture
@@ -264,6 +270,14 @@ async def clean_test_environment():
     # Clear caches
     if hasattr(cached_embedding_service, 'clear_cache'):
         cached_embedding_service.clear_cache()
+
+
+@pytest.fixture
+async def async_test_client():
+    """Create async test client for testing async endpoints"""
+    from httpx import AsyncClient
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
 
 
 @pytest.fixture
