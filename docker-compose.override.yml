@@ -10,8 +10,8 @@ services:
               count: 2
               capabilities: [gpu]
     environment:
-      - CUDA_VISIBLE_DEVICES=0,1
-      - NVIDIA_VISIBLE_DEVICES=0,1
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}
+      - NVIDIA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}
     command: [
       "--model", "microsoft/DialoGPT-small",
       "--host", "0.0.0.0",
@@ -31,5 +31,5 @@ services:
               count: 1
               capabilities: [gpu]
     environment:
-      - CUDA_VISIBLE_DEVICES=1
-      - NVIDIA_VISIBLE_DEVICES=1
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-1}
+      - NVIDIA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-1}

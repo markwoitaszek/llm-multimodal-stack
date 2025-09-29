@@ -93,7 +93,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - CUDA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
       - VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
       - VLLM_HOST=0.0.0.0
       - VLLM_PORT=8000
@@ -157,7 +157,7 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - CUDA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - POSTGRES_HOST=postgres
