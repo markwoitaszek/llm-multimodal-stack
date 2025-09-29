@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     
     # Authentication
     JWT_SECRET: str = Field(
-        default="your-secret-key-change-in-production",
+        default="",
         env="JWT_SECRET"
     )
     JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")

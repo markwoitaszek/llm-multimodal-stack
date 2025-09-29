@@ -4,6 +4,7 @@ Authentication Manager for WebSocket connections
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, Set
 from dataclasses import dataclass, field
@@ -44,7 +45,7 @@ class AuthManager:
         self.tokens: Dict[str, AuthToken] = {}
         self.user_sessions: Dict[str, Set[str]] = {}  # user_id -> session_ids
         self.lock = asyncio.Lock()
-        self.jwt_secret = "your-secret-key-change-in-production"
+        self.jwt_secret = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
         self.jwt_algorithm = "HS256"
         self.token_expiration_hours = 24
         self.session_expiration_hours = 8

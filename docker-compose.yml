@@ -153,8 +153,8 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-1234}
-      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY:-sk-salt-1234}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}
       - POSTGRES_DB=${POSTGRES_DB:-multimodal}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
@@ -275,7 +275,7 @@ services:
       - "3030:8080"
     environment:
       - OPENAI_API_BASE_URL=http://vllm:8000/v1
-      - OPENAI_API_KEY=dummy-key
+      - OPENAI_API_KEY=${VLLM_API_KEY:-dummy-key}
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-webui-secret}
     volumes:
       - openwebui_data:/app/backend/data
@@ -455,7 +455,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=5
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - DEBUG=${DEBUG:-false}
     depends_on:
       postgres:
