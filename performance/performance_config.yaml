@@ -1,0 +1,210 @@
+# Performance Testing and Optimization Configuration
+# LLM Multimodal Stack
+
+# Performance Thresholds
+thresholds:
+  # API Performance
+  api_response_time_ms: 1000
+  api_timeout_ms: 30000
+  
+  # Model Inference
+  model_inference_time_ms: 5000
+  model_loading_time_seconds: 10
+  
+  # Database Performance
+  database_query_time_ms: 100
+  database_connection_timeout_ms: 5000
+  
+  # Vector Search
+  vector_search_time_ms: 200
+  vector_index_time_ms: 1000
+  
+  # File Operations
+  file_upload_time_ms: 2000
+  file_processing_time_ms: 5000
+  
+  # System Resources
+  cpu_percent: 70
+  memory_percent: 80
+  disk_io_mb_per_sec: 50
+  network_mb_per_sec: 25
+  
+  # Cache Performance
+  cache_hit_rate_percent: 80
+  cache_response_time_ms: 10
+  
+  # Error Rates
+  error_rate_percent: 5
+  timeout_rate_percent: 1
+
+# Load Test Configurations
+load_tests:
+  basic:
+    name: "Basic Load Test"
+    duration_seconds: 60
+    concurrent_users: 10
+    ramp_up_seconds: 10
+    ramp_down_seconds: 10
+    think_time_seconds: 1.0
+    max_errors: 100
+    timeout_seconds: 30
+    
+  stress:
+    name: "Stress Test"
+    duration_seconds: 300
+    concurrent_users: 50
+    ramp_up_seconds: 30
+    ramp_down_seconds: 30
+    think_time_seconds: 0.5
+    max_errors: 500
+    timeout_seconds: 60
+    
+  spike:
+    name: "Spike Test"
+    duration_seconds: 120
+    concurrent_users: 100
+    ramp_up_seconds: 5
+    ramp_down_seconds: 5
+    think_time_seconds: 0.1
+    max_errors: 200
+    timeout_seconds: 30
+    
+  endurance:
+    name: "Endurance Test"
+    duration_seconds: 1800  # 30 minutes
+    concurrent_users: 20
+    ramp_up_seconds: 60
+    ramp_down_seconds: 60
+    think_time_seconds: 2.0
+    max_errors: 1000
+    timeout_seconds: 45
+
+# Test Endpoints Configuration
+endpoints:
+  health:
+    path: "/health"
+    method: "GET"
+    expected_status: 200
+    
+  process_text:
+    path: "/api/v1/process/text"
+    method: "POST"
+    data:
+      content: "Performance test content for text processing"
+    expected_status: 200
+    
+  process_image:
+    path: "/api/v1/process/image"
+    method: "POST"
+    data:
+      content_type: "image/jpeg"
+      metadata: {"test": true}
+    expected_status: 200
+    
+  search:
+    path: "/api/v1/search"
+    method: "POST"
+    data:
+      query: "performance test query"
+      limit: 10
+    expected_status: 200
+    
+  agents_list:
+    path: "/api/v1/agents"
+    method: "GET"
+    expected_status: 200
+    
+  agents_create:
+    path: "/api/v1/agents"
+    method: "POST"
+    data:
+      name: "Performance Test Agent"
+      goal: "Execute performance tests"
+      tools: []
+    expected_status: 201
+
+# Performance Monitoring Configuration
+monitoring:
+  collection_interval_seconds: 1.0
+  max_metrics: 10000
+  max_system_metrics: 1000
+  max_alerts: 1000
+  
+  # Alert thresholds
+  alert_thresholds:
+    cpu_percent: 80
+    memory_percent: 85
+    disk_io_mb_per_sec: 100
+    network_mb_per_sec: 50
+    error_rate_percent: 10
+    response_time_ms: 2000
+
+# Optimization Recommendations
+optimization_categories:
+  infrastructure:
+    - "Scale horizontally with additional instances"
+    - "Upgrade hardware resources (CPU, RAM, storage)"
+    - "Implement load balancing"
+    - "Use CDN for static content"
+    
+  caching:
+    - "Implement Redis caching layer"
+    - "Add application-level caching"
+    - "Use HTTP caching headers"
+    - "Implement database query caching"
+    
+  database:
+    - "Add database indexes for frequently queried columns"
+    - "Optimize slow database queries"
+    - "Implement connection pooling"
+    - "Use read replicas for read-heavy workloads"
+    
+  api:
+    - "Implement API response caching"
+    - "Add request/response compression"
+    - "Optimize API endpoint logic"
+    - "Implement rate limiting"
+    
+  code:
+    - "Profile and optimize CPU-intensive operations"
+    - "Implement async/await patterns"
+    - "Optimize memory usage"
+    - "Use efficient data structures"
+
+# Performance Test Data
+test_data:
+  text_samples:
+    small: "Machine learning is a subset of artificial intelligence."
+    medium: "Machine learning is a subset of artificial intelligence that focuses on algorithms and statistical models. It enables computer systems to improve their performance on a specific task through experience."
+    large: "Machine learning is a subset of artificial intelligence that focuses on algorithms and statistical models that enable computer systems to improve their performance on a specific task through experience. The field has applications in computer vision, natural language processing, robotics, and many other domains. There are three main types of machine learning: supervised learning, unsupervised learning, and reinforcement learning."
+    
+  image_sizes:
+    small: [100, 100]
+    medium: [512, 512]
+    large: [1024, 1024]
+    
+  query_samples:
+    - "machine learning artificial intelligence"
+    - "deep learning neural networks"
+    - "computer vision natural language processing"
+    - "supervised unsupervised reinforcement learning"
+    - "transformer attention mechanisms"
+
+# Performance Grading Scale
+grading:
+  A: 90-100  # Excellent performance
+  B: 80-89   # Good performance
+  C: 70-79   # Acceptable performance
+  D: 60-69   # Poor performance
+  F: 0-59    # Unacceptable performance
+
+# Report Configuration
+reporting:
+  include_system_metrics: true
+  include_api_metrics: true
+  include_database_metrics: true
+  include_cache_metrics: true
+  include_error_analysis: true
+  include_recommendations: true
+  max_history_days: 30
+  export_formats: ["json", "html", "csv"]
