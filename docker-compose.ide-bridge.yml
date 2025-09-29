@@ -9,10 +9,10 @@ services:
       dockerfile: Dockerfile
     container_name: multimodal-ide-bridge
     ports:
-      - "8007:8007"
+      - "${IDE_BRIDGE_PORT:-8007}:8007"
     environment:
-      - IDE_BRIDGE_HOST=0.0.0.0
-      - IDE_BRIDGE_PORT=8007
+      - IDE_BRIDGE_HOST=${IDE_BRIDGE_HOST:-0.0.0.0}
+      - IDE_BRIDGE_PORT=${IDE_BRIDGE_PORT:-8007}
       - DEBUG=${DEBUG:-false}
       
       # LSP Configuration
@@ -31,7 +31,7 @@ services:
       - WS_ENABLED=true
       
       # Agent Integration
-      - AI_AGENTS_URL=http://ai-agents:8003
+      - AI_AGENTS_URL=${AI_AGENTS_URL:-http://ai-agents:8003}
       - AGENT_TIMEOUT=60
       - AGENT_ENABLED=true
       
@@ -40,15 +40,15 @@ services:
       - SUPPORTED_LANGUAGES=python,javascript,typescript,go,rust,java,cpp,c
       
       # Database Configuration
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_DB=${POSTGRES_DB:-multimodal}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       
       # Redis Configuration
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=6
       
       # Security
@@ -88,10 +88,10 @@ services:
       dockerfile: Dockerfile
     container_name: multimodal-ide-bridge-web
     ports:
-      - "3002:3000"
+      - "${IDE_BRIDGE_WEB_PORT:-3002}:3000"
     environment:
-      - REACT_APP_IDE_BRIDGE_URL=http://localhost:8007
-      - REACT_APP_WS_URL=ws://localhost:8007/ws
+      - REACT_APP_IDE_BRIDGE_URL=${IDE_BRIDGE_WEB_URL:-http://localhost:8007}
+      - REACT_APP_WS_URL=${IDE_BRIDGE_WS_URL:-ws://localhost:8007/ws}
     depends_on:
       ide-bridge:
         condition: service_healthy

@@ -7,17 +7,17 @@ services:
       dockerfile: Dockerfile
     container_name: realtime-collaboration
     ports:
-      - "3006:3006"
+      - "${REALTIME_COLLABORATION_PORT:-3006}:3006"
     environment:
       - ENVIRONMENT=development
       - LOG_LEVEL=INFO
-      - PORT=3006
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=postgresql://user:password@postgres:5432/realtime_collaboration
+      - PORT=${REALTIME_COLLABORATION_PORT:-3006}
+      - REDIS_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/realtime_collaboration
       - JWT_SECRET=${JWT_SECRET_KEY}
-      - AI_AGENTS_URL=http://ai-agents:3000
-      - IDE_BRIDGE_URL=http://ide-bridge:3004
-      - N8N_URL=http://n8n:5678
+      - AI_AGENTS_URL=${AI_AGENTS_URL:-http://ai-agents:3000}
+      - IDE_BRIDGE_URL=${IDE_BRIDGE_URL:-http://ide-bridge:3004}
+      - N8N_URL=${N8N_URL:-http://n8n:5678}
       - MAX_CONNECTIONS=1000
       - HEARTBEAT_INTERVAL=30
       - MESSAGE_QUEUE_SIZE=10000
@@ -45,7 +45,7 @@ services:
     image: redis:7-alpine
     container_name: realtime-collaboration-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -57,10 +57,10 @@ services:
     image: postgres:15-alpine
     container_name: realtime-collaboration-postgres
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
       - POSTGRES_DB=realtime_collaboration
-      - POSTGRES_USER=user
+      - POSTGRES_USER=${POSTGRES_USER:-user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
