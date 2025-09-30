@@ -271,12 +271,13 @@ class SimpleSecretsManager:
                     f.write(f"  {service}:\n")
                     f.write("    env_file:\n")
                     f.write(f"      - .env.{environment}\n")
-                    f.write("    environment:\n")
                     
                     # Add relevant environment variables for each service
                     service_vars = self._get_service_variables(service, env_config.get('variables', {}))
-                    for var_name in service_vars:
-                        f.write(f"      - {var_name}=${{{var_name}}}\n")
+                    if service_vars:  # Only add environment section if there are variables
+                        f.write("    environment:\n")
+                        for var_name in service_vars:
+                            f.write(f"      - {var_name}=${{{var_name}}}\n")
                     
                     f.write("\n")
             

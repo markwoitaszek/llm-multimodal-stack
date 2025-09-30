@@ -87,6 +87,7 @@ configs/*_temp.*
 # Phase-6A Secrets Management System
 secrets/
 docker-compose.*.override.yml
+docker-compose.override.yml
 k8s-secrets-*.yaml
 
 # Backup files
