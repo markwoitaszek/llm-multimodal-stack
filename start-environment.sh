@@ -183,7 +183,7 @@ first_run_setup() {
     echo "🚀 Step 3: Starting development environment..."
     
     # Start the development environment
-    docker-compose up -d
+    docker-compose -f docker-compose.yml -f docker-compose.development.override.yml up -d
     
     echo ""
     echo "🎉 First run setup completed successfully!"
@@ -251,7 +251,7 @@ case $ENVIRONMENT in
     
     "dev"|"development")
         echo "🔧 Starting Development Environment..."
-        docker-compose up -d
+        docker-compose -f docker-compose.yml -f docker-compose.development.override.yml up -d
         echo "✅ Development environment started!"
         echo "📊 Services available:"
         echo "   - OpenWebUI: http://localhost:3030"

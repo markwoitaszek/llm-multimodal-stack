@@ -157,13 +157,12 @@ class SimpleSecretsManager:
         compose_override = self.workspace_path / f"docker-compose.{environment}.override.yml"
         with open(compose_override, 'w') as f:
             f.write(f"# Docker Compose Override for {environment.upper()}\n")
-            f.write("version: '3.8'\n\n")
             f.write("services:\n")
             
             # Add environment variables to services
             services = [
                 'postgres', 'minio', 'vllm', 'litellm', 'openwebui', 
-                'n8n', 'grafana', 'multimodal-worker', 'retrieval-proxy'
+                'n8n', 'multimodal-worker', 'retrieval-proxy'
             ]
             
             for service in services:
@@ -174,21 +173,19 @@ class SimpleSecretsManager:
                 
                 # Add relevant environment variables for each service
                 if service == 'postgres':
-                    f.write("      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}\n")
+                    f.write("      - POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD}\"\n")
                 elif service == 'minio':
-                    f.write("      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}\n")
+                    f.write("      - MINIO_ROOT_PASSWORD=\"${MINIO_ROOT_PASSWORD}\"\n")
                 elif service == 'vllm':
-                    f.write("      - VLLM_API_KEY=${VLLM_API_KEY}\n")
+                    f.write("      - VLLM_API_KEY=\"${VLLM_API_KEY}\"\n")
                 elif service == 'litellm':
-                    f.write("      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}\n")
-                    f.write("      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}\n")
+                    f.write("      - LITELLM_MASTER_KEY=\"${LITELLM_MASTER_KEY}\"\n")
+                    f.write("      - LITELLM_SALT_KEY=\"${LITELLM_SALT_KEY}\"\n")
                 elif service == 'openwebui':
-                    f.write("      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}\n")
+                    f.write("      - WEBUI_SECRET_KEY=\"${WEBUI_SECRET_KEY}\"\n")
                 elif service == 'n8n':
-                    f.write("      - N8N_PASSWORD=${N8N_PASSWORD}\n")
-                    f.write("      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}\n")
-                elif service == 'grafana':
-                    f.write("      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}\n")
+                    f.write("      - N8N_PASSWORD=\"${N8N_PASSWORD}\"\n")
+                    f.write("      - N8N_ENCRYPTION_KEY=\"${N8N_ENCRYPTION_KEY}\"\n")
                 
                 f.write("\n")
         

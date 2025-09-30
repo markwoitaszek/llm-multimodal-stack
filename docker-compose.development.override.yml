@@ -1,0 +1,50 @@
+# Docker Compose Override for DEVELOPMENT
+services:
+  postgres:
+    env_file:
+      - .env.development
+    environment:
+      - POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+
+  minio:
+    env_file:
+      - .env.development
+    environment:
+      - MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD}"
+
+  vllm:
+    env_file:
+      - .env.development
+    environment:
+      - VLLM_API_KEY="${VLLM_API_KEY}"
+
+  litellm:
+    env_file:
+      - .env.development
+    environment:
+      - LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY}"
+      - LITELLM_SALT_KEY="${LITELLM_SALT_KEY}"
+
+  openwebui:
+    env_file:
+      - .env.development
+    environment:
+      - WEBUI_SECRET_KEY="${WEBUI_SECRET_KEY}"
+
+  n8n:
+    env_file:
+      - .env.development
+    environment:
+      - N8N_PASSWORD="${N8N_PASSWORD}"
+      - N8N_ENCRYPTION_KEY="${N8N_ENCRYPTION_KEY}"
+
+  multimodal-worker:
+    env_file:
+      - .env.development
+    environment:
+
+  retrieval-proxy:
+    env_file:
+      - .env.development
+    environment:
+

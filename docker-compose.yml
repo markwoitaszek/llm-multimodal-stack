@@ -160,7 +160,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./configs/litellm_simple.yaml:/app/config.yaml
-    command: ["--config", "/app/config.yaml", "--port", "${LITELLM_PORT:-4000}", "--num_workers", "1", "--database_url", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB}"]
+    command: ["--config", "/app/config.yaml", "--port", "${LITELLM_PORT:-4000}", "--num_workers", "1", "--database-url", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB}"]
     depends_on:
       vllm:
         condition: service_healthy
