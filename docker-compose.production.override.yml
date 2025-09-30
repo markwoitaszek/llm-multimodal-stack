@@ -1,50 +1,36 @@
 # Docker Compose Override for PRODUCTION
-version: '3.8'
-
 services:
   postgres:
     env_file:
       - .env.production
     environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+  redis:
+    env_file:
+      - .env.production
+    environment:
+
+  qdrant:
+    env_file:
+      - .env.production
+    environment:
 
   minio:
     env_file:
       - .env.production
     environment:
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
 
   vllm:
     env_file:
       - .env.production
     environment:
-      - VLLM_API_KEY=${VLLM_API_KEY}
+      - VLLM_GPU_MEMORY_UTILIZATION=${VLLM_GPU_MEMORY_UTILIZATION}
+      - VLLM_MAX_MODEL_LEN=${VLLM_MAX_MODEL_LEN}
 
   litellm:
     env_file:
       - .env.production
     environment:
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
-      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}
-
-  openwebui:
-    env_file:
-      - .env.production
-    environment:
-      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
-
-  n8n:
-    env_file:
-      - .env.production
-    environment:
-      - N8N_PASSWORD=${N8N_PASSWORD}
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-
-  grafana:
-    env_file:
-      - .env.production
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
 
   multimodal-worker:
     env_file:
@@ -55,4 +41,51 @@ services:
     env_file:
       - .env.production
     environment:
+
+  ai-agents:
+    env_file:
+      - .env.production
+    environment:
+
+  search-engine:
+    env_file:
+      - .env.production
+    environment:
+
+  memory-system:
+    env_file:
+      - .env.production
+    environment:
+
+  user-management:
+    env_file:
+      - .env.production
+    environment:
+
+  openwebui:
+    env_file:
+      - .env.production
+    environment:
+
+  n8n:
+    env_file:
+      - .env.production
+    environment:
+
+  nginx:
+    env_file:
+      - .env.production
+    environment:
+
+  prometheus:
+    env_file:
+      - .env.production
+    environment:
+      - PROMETHEUS_ADMIN_PASSWORD=${PROMETHEUS_ADMIN_PASSWORD}
+
+  grafana:
+    env_file:
+      - .env.production
+    environment:
+      - GRAFANA_PASSWORD=${GRAFANA_PASSWORD}
 
