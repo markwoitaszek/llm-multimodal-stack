@@ -38,8 +38,29 @@ python3 setup_secrets.py
 - **Multimodal Worker**: http://localhost:8001
 - **Retrieval Proxy**: http://localhost:8002
 
-## 🏗️ **Environment Options**
+## 🏗️ **Deployment Options**
 
+### **Normalized Compose Structure (Recommended)**
+The stack now uses a normalized Docker Compose structure with profiles for flexible deployments:
+
+```bash
+# Core services only
+docker compose up -d
+
+# With monitoring tools
+docker compose --profile monitoring up -d
+
+# With all services
+docker compose --profile services --profile monitoring up -d
+
+# Production deployment with resource limits
+docker compose -f compose.yml -f compose.production.yml up -d
+
+# GPU-optimized deployment
+docker compose -f compose.yml -f compose.gpu.yml up -d
+```
+
+### **Legacy Environment Scripts**
 | Environment | Command | Purpose |
 |-------------|---------|---------|
 | **Development** | `./start-environment.sh dev` | Core services for development |
@@ -48,6 +69,48 @@ python3 setup_secrets.py
 | **Testing** | `./start-environment.sh testing` | Allure test reporting |
 | **Performance** | `./start-environment.sh performance` | JMeter load testing |
 | **Monitoring** | `./start-environment.sh monitoring` | ELK stack for observability |
+
+> **📋 See [Compose Deployment Guide](docs/COMPOSE_DEPLOYMENT_GUIDE.md) for detailed information about the new normalized structure and control plane integration.**
+
+## 🔐 **Control Plane Integration**
+
+### **Environment Templates**
+The stack now includes Jinja2 environment templates for seamless integration with the Ops control plane:
+
+- **Template Location**: `env-templates/` directory
+- **Format**: Jinja2 templates (`.env.j2`) with OpenBao integration
+- **Secrets**: All secrets prefixed with `vault_` for OpenBao compatibility
+- **Rendering**: Templates render to `/etc/llm-ms/.env.d/` directory
+
+### **Available Templates**
+- `core.env.j2` - Core services (postgres, redis, minio, qdrant)
+- `vllm.env.j2` - vLLM inference server
+- `litellm.env.j2` - LiteLLM proxy service
+- `multimodal-worker.env.j2` - Multimodal worker service
+- `retrieval-proxy.env.j2` - Retrieval proxy service
+- `ai-agents.env.j2` - AI agents service
+- `memory-system.env.j2` - Memory system service
+- `search-engine.env.j2` - Search engine service
+- `user-management.env.j2` - User management service
+- `openwebui.env.j2` - OpenWebUI interface
+- `n8n.env.j2` - n8n workflow platform
+- `n8n-monitoring.env.j2` - n8n monitoring service
+- `master.env.j2` - Combined template for all services
+
+### **Ansible Integration Example**
+```yaml
+- name: Render environment templates
+  template:
+    src: "env-templates/{{ item }}.j2"
+    dest: "/etc/llm-ms/.env.d/{{ item | regex_replace('\\.env\\.j2$', '.env') }}"
+    mode: '0600'
+  loop:
+    - core.env.j2
+    - vllm.env.j2
+    - litellm.env.j2
+```
+
+> **📋 See [Environment Templates README](env-templates/README.md) and [Secrets Mapping](env-templates/secrets-mapping.md) for detailed integration information.**
 
 ## 🔐 **Secrets Management**
 

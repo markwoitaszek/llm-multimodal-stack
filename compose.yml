@@ -1,0 +1,290 @@
+# Base Docker Compose configuration for Multimodal LLM Stack
+# This file contains core services required for basic functionality
+# Use override files and profiles for optional services and environment-specific configurations
+
+version: '3.8'
+
+# Shared configuration templates
+x-common-variables: &common-variables
+  POSTGRES_DB: ${POSTGRES_DB:-multimodal}
+  POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+  MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+  QDRANT__SERVICE__HTTP_PORT: ${QDRANT_HTTP_PORT:-6333}
+  QDRANT__SERVICE__GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+
+# Standard restart policy
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+# Standard network configuration
+x-network: &network
+  networks:
+    - multimodal-net
+
+# Standard volume configuration
+x-volume-config: &volume-config
+  driver: local
+
+# Health check templates
+x-health-check-standard: &health-check-standard
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+x-health-check-extended: &health-check-extended
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 30s
+
+x-health-check-slow: &health-check-slow
+  interval: 60s
+  timeout: 30s
+  retries: 5
+  start_period: 180s
+
+services:
+  # Vector Database - Core Service
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: multimodal-qdrant
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:${QDRANT_HTTP_PORT:-6333}"
+      - "${QDRANT_GRPC_PORT:-6334}:${QDRANT_GRPC_PORT:-6334}"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=${QDRANT_HTTP_PORT:-6333}
+      - QDRANT__SERVICE__GRPC_PORT=${QDRANT_GRPC_PORT:-6334}
+    healthcheck:
+      test: ["CMD-SHELL", "pidof qdrant || exit 1"]
+      <<: *health-check-extended
+    <<: *restart-policy
+    <<: *network
+
+  # PostgreSQL - Core Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: multimodal-postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      <<: *health-check-standard
+    <<: *restart-policy
+    <<: *network
+
+  # Redis - Core Service
+  redis:
+    image: redis:7-alpine
+    container_name: multimodal-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *health-check-standard
+    <<: *restart-policy
+    <<: *network
+
+  # MinIO S3-compatible storage - Core Service
+  minio:
+    image: minio/minio:latest
+    container_name: multimodal-minio
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9002}:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${MINIO_PORT:-9000}/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    <<: *restart-policy
+    <<: *network
+
+  # vLLM inference server - Core Service
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: multimodal-vllm
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    environment:
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
+      - VLLM_HOST=${VLLM_HOST:-0.0.0.0}
+      - VLLM_PORT=${VLLM_PORT:-8000}
+    volumes:
+      - vllm_cache:/root/.cache
+      - ./models:/models
+    command: >
+      --model ${VLLM_MODEL:-microsoft/DialoGPT-medium}
+      --host ${VLLM_HOST:-0.0.0.0}
+      --port ${VLLM_PORT:-8000}
+      --gpu-memory-utilization 0.8
+      --max-model-len 1024
+      --dtype auto
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${VLLM_PORT:-8000}/v1/models', timeout=10)\""]
+      <<: *health-check-slow
+    <<: *restart-policy
+    <<: *network
+
+  # LiteLLM proxy router - Core Service
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: multimodal-litellm
+    ports:
+      - "${LITELLM_PORT:-4000}:4000"
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./configs/litellm_simple.yaml:/app/config.yaml
+    command: ["--config", "/app/config.yaml", "--port", "${LITELLM_PORT:-4000}", "--num_workers", "1", "--database-url", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB}"]
+    depends_on:
+      vllm:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${LITELLM_PORT:-4000}/', timeout=5)\""]
+      <<: *health-check-standard
+    <<: *restart-policy
+    <<: *network
+
+  # Multimodal worker service - Core Service
+  multimodal-worker:
+    build:
+      context: ./services/multimodal-worker
+      dockerfile: Dockerfile
+    container_name: multimodal-worker
+    ports:
+      - "${MULTIMODAL_WORKER_PORT:-8001}:8001"
+    environment:
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+      - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=0
+    volumes:
+      - multimodal_cache:/app/cache
+      - /tmp:/tmp
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${MULTIMODAL_WORKER_PORT:-8001}/health', timeout=5)\""]
+      <<: *health-check-standard
+    <<: *restart-policy
+    <<: *network
+
+  # Retrieval proxy service - Core Service
+  retrieval-proxy:
+    build:
+      context: ./services/retrieval-proxy
+      dockerfile: Dockerfile
+    container_name: multimodal-retrieval-proxy
+    ports:
+      - "${RETRIEVAL_PROXY_PORT:-8002}:8002"
+    environment:
+      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+      - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=1
+    depends_on:
+      multimodal-worker:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${RETRIEVAL_PROXY_PORT:-8002}/health', timeout=5)\""]
+      <<: *health-check-standard
+    <<: *restart-policy
+    <<: *network
+
+volumes:
+  qdrant_data:
+    <<: *volume-config
+  postgres_data:
+    <<: *volume-config
+  redis_data:
+    <<: *volume-config
+  minio_data:
+    <<: *volume-config
+  vllm_cache:
+    <<: *volume-config
+  multimodal_cache:
+    <<: *volume-config
+
+networks:
+  multimodal-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/24
+          gateway: 172.25.0.1
