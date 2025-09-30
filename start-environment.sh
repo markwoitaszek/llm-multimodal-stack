@@ -226,6 +226,11 @@ first_run_setup() {
     echo "   - Stopping all multimodal containers..."
     docker-compose down --remove-orphans 2>/dev/null || true
     
+    # Force stop any remaining PostgreSQL containers
+    echo "   - Ensuring PostgreSQL containers are stopped..."
+    docker stop $(docker ps -q --filter "name=postgres") 2>/dev/null || true
+    docker rm $(docker ps -aq --filter "name=postgres") 2>/dev/null || true
+    
     # Show what volumes will be deleted
     echo "   - Volumes to be deleted:"
     volumes_to_delete=$(docker volume ls -q | grep llm-multimodal-stack || echo "   (none found)")
@@ -235,9 +240,13 @@ first_run_setup() {
         echo "     (none found)"
     fi
     
-    # Remove all volumes
-    echo "   - Removing all multimodal volumes..."
+    # Remove all volumes (including PostgreSQL data)
+    echo "   - Removing all multimodal volumes (including PostgreSQL databases)..."
     docker volume ls -q | grep llm-multimodal-stack | xargs -r docker volume rm 2>/dev/null || true
+    
+    # Additional cleanup for any remaining PostgreSQL data
+    echo "   - Ensuring complete PostgreSQL data cleanup..."
+    docker volume ls -q | grep -E "(postgres|multimodal)" | xargs -r docker volume rm 2>/dev/null || true
     
     # Show what networks will be deleted
     echo "   - Networks to be deleted:"
