@@ -28,7 +28,15 @@ class SecretsManager:
         self.workspace_path = Path(workspace_path)
         self.secrets_dir = self.workspace_path / "secrets"
         self.config_dir = self.workspace_path / "configs"
+        self.archive_dir = self.workspace_path / "archive"
         self.secrets_dir.mkdir(exist_ok=True)
+        self.config_dir.mkdir(exist_ok=True)
+        self.archive_dir.mkdir(exist_ok=True)
+        
+        # Create archive subdirectories
+        (self.archive_dir / "env-backups").mkdir(exist_ok=True)
+        (self.archive_dir / "secrets-backups").mkdir(exist_ok=True)
+        (self.archive_dir / "config-backups").mkdir(exist_ok=True)
         
         # Initialize encryption
         self.master_key = self._get_or_create_master_key()
@@ -102,6 +110,25 @@ class SecretsManager:
         }
         
         return secrets_dict
+    
+    def _archive_existing_file(self, file_path: Path, archive_type: str = "env-backups") -> Optional[Path]:
+        """Archive an existing file before creating a new one"""
+        if not file_path.exists():
+            return None
+        
+        # Create timestamp for backup
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        backup_name = f"{file_path.name}.backup.{timestamp}"
+        archive_path = self.archive_dir / archive_type / backup_name
+        
+        try:
+            # Move the existing file to archive
+            file_path.rename(archive_path)
+            logger.info(f"Archived existing file {file_path} to {archive_path}")
+            return archive_path
+        except Exception as e:
+            logger.error(f"Failed to archive {file_path}: {e}")
+            return None
     
     def _generate_password(self, length: int = 32) -> str:
         """Generate cryptographically secure password"""

@@ -109,3 +109,6 @@ secrets/.env.*.json
 secrets/.env.*.metadata
 secrets/.master_key
 secrets/.env.*.encrypted
+
+# Archive folder for backup files
+archive/

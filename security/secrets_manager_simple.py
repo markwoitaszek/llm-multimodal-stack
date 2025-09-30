@@ -25,8 +25,15 @@ class SimpleSecretsManager:
         self.workspace_path = Path(workspace_path)
         self.secrets_dir = self.workspace_path / "secrets"
         self.config_dir = self.workspace_path / "configs"
+        self.archive_dir = self.workspace_path / "archive"
         self.secrets_dir.mkdir(exist_ok=True)
         self.config_dir.mkdir(exist_ok=True)
+        self.archive_dir.mkdir(exist_ok=True)
+        
+        # Create archive subdirectories
+        (self.archive_dir / "env-backups").mkdir(exist_ok=True)
+        (self.archive_dir / "secrets-backups").mkdir(exist_ok=True)
+        (self.archive_dir / "config-backups").mkdir(exist_ok=True)
         
         # Load environment schema
         self.schema_file = self.config_dir / "environment_schema.yaml"
@@ -142,6 +149,9 @@ class SimpleSecretsManager:
         # Create environment-specific secrets file
         secrets_file = self.secrets_dir / f".env.{environment}.json"
         
+        # Archive existing secrets file if it exists
+        self._archive_existing_file(secrets_file, "secrets-backups")
+        
         # Store secrets as JSON
         with open(secrets_file, 'w') as f:
             json.dump(secrets_dict, f, indent=2)
@@ -176,6 +186,25 @@ class SimpleSecretsManager:
         
         return secrets_dict
     
+    def _archive_existing_file(self, file_path: Path, archive_type: str = "env-backups") -> Optional[Path]:
+        """Archive an existing file before creating a new one"""
+        if not file_path.exists():
+            return None
+        
+        # Create timestamp for backup
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        backup_name = f"{file_path.name}.backup.{timestamp}"
+        archive_path = self.archive_dir / archive_type / backup_name
+        
+        try:
+            # Move the existing file to archive
+            file_path.rename(archive_path)
+            logger.info(f"Archived existing file {file_path} to {archive_path}")
+            return archive_path
+        except Exception as e:
+            logger.error(f"Failed to archive {file_path}: {e}")
+            return None
+    
     async def create_environment_files(self, environment: str = "development") -> List[str]:
         """Create environment files based on schema configuration"""
         logger.info(f"Creating environment files for {environment}")
@@ -194,6 +223,10 @@ class SimpleSecretsManager:
         
         # Create .env file with all variables from schema
         env_file = self.workspace_path / f".env.{environment}"
+        
+        # Archive existing file if it exists
+        self._archive_existing_file(env_file, "env-backups")
+        
         with open(env_file, 'w') as f:
             f.write(f"# {environment.upper()} Environment Variables\n")
             f.write(f"# Generated on: {datetime.utcnow().isoformat()}\n")
