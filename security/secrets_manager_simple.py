@@ -214,7 +214,7 @@ class SimpleSecretsManager:
                 if description:
                     f.write(f"# {description}\n")
                 
-                f.write(f"{var_name}={value}\n")
+                f.write(f'{var_name}="{value}"\n')
                 f.write("\n")
         
         os.chmod(env_file, 0o600)

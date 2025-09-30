@@ -179,7 +179,7 @@ class SecretsManager:
             f.write("# DO NOT COMMIT THIS FILE TO VERSION CONTROL\n\n")
             
             for key, value in secrets_dict.items():
-                f.write(f"{key}={value}\n")
+                f.write(f'{key}="{value}"\n')
         
         os.chmod(env_file, 0o600)
         created_files.append(str(env_file))
