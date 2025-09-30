@@ -1,0 +1,582 @@
+# Environment Configuration Schema
+# Defines all environment variables and their properties for each environment type
+
+environments:
+  development:
+    description: "Local development environment with debugging enabled"
+    gpu_required: true
+    memory_min_gb: 24
+    services:
+      - postgres
+      - redis
+      - qdrant
+      - minio
+      - vllm
+      - litellm
+      - multimodal-worker
+      - retrieval-proxy
+      - ai-agents
+      - search-engine
+      - memory-system
+      - user-management
+      - openwebui
+      - n8n
+      - nginx
+    variables:
+      # Database Configuration
+      POSTGRES_DB:
+        value: "multimodal"
+        required: true
+        type: "string"
+        description: "PostgreSQL database name"
+      POSTGRES_USER:
+        value: "postgres"
+        required: true
+        type: "string"
+        description: "PostgreSQL username"
+      POSTGRES_PASSWORD:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "database_password"
+        length: 32
+        description: "PostgreSQL password"
+      
+      # Storage Configuration
+      MINIO_ROOT_USER:
+        value: "minioadmin"
+        required: true
+        type: "string"
+        description: "MinIO root username"
+      MINIO_ROOT_PASSWORD:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "storage_password"
+        length: 32
+        description: "MinIO root password"
+      
+      # Model Configuration
+      VLLM_MODEL:
+        value: "microsoft/DialoGPT-medium"
+        required: true
+        type: "string"
+        description: "vLLM model to use"
+      VLLM_GPU_MEMORY_UTILIZATION:
+        value: "0.6"
+        required: true
+        type: "float"
+        description: "GPU memory utilization for vLLM"
+      VLLM_MAX_MODEL_LEN:
+        value: "1024"
+        required: true
+        type: "integer"
+        description: "Maximum model length for vLLM"
+      
+      # LiteLLM Configuration
+      LITELLM_MASTER_KEY:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "api_key"
+        length: 64
+        description: "LiteLLM master key"
+      LITELLM_SALT_KEY:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "api_key"
+        length: 64
+        description: "LiteLLM salt key"
+      VLLM_API_KEY:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "api_key"
+        length: 64
+        description: "vLLM API key"
+      
+      # Security Configuration
+      JWT_SECRET_KEY:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "jwt_secret"
+        length: 64
+        description: "JWT secret key for authentication"
+      WEBUI_SECRET_KEY:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "webui_secret"
+        length: 32
+        description: "OpenWebUI secret key"
+      N8N_PASSWORD:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "service_password"
+        length: 32
+        description: "n8n admin password"
+      N8N_ENCRYPTION_KEY:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "encryption_key"
+        length: 32
+        description: "n8n encryption key"
+      N8N_USER:
+        value: "admin"
+        required: true
+        type: "string"
+        description: "n8n admin username"
+      
+      # Service Configuration
+      DEBUG:
+        value: "true"
+        required: true
+        type: "boolean"
+        description: "Enable debug mode"
+      LOG_LEVEL:
+        value: "DEBUG"
+        required: true
+        type: "string"
+        description: "Logging level"
+      
+      # Port Configuration
+      VLLM_PORT:
+        value: "8000"
+        required: true
+        type: "integer"
+        description: "vLLM service port"
+      LITELLM_PORT:
+        value: "4000"
+        required: true
+        type: "integer"
+        description: "LiteLLM service port"
+      MULTIMODAL_WORKER_PORT:
+        value: "8001"
+        required: true
+        type: "integer"
+        description: "Multimodal worker service port"
+      RETRIEVAL_PROXY_PORT:
+        value: "8002"
+        required: true
+        type: "integer"
+        description: "Retrieval proxy service port"
+      AI_AGENTS_PORT:
+        value: "8003"
+        required: true
+        type: "integer"
+        description: "AI agents service port"
+      SEARCH_ENGINE_PORT:
+        value: "8004"
+        required: true
+        type: "integer"
+        description: "Search engine service port"
+      MEMORY_SYSTEM_PORT:
+        value: "8005"
+        required: true
+        type: "integer"
+        description: "Memory system service port"
+      USER_MANAGEMENT_PORT:
+        value: "8006"
+        required: true
+        type: "integer"
+        description: "User management service port"
+      OPENWEBUI_PORT:
+        value: "3030"
+        required: true
+        type: "integer"
+        description: "OpenWebUI service port"
+      QDRANT_HTTP_PORT:
+        value: "6333"
+        required: true
+        type: "integer"
+        description: "Qdrant HTTP port"
+      QDRANT_GRPC_PORT:
+        value: "6334"
+        required: true
+        type: "integer"
+        description: "Qdrant gRPC port"
+      POSTGRES_PORT:
+        value: "5432"
+        required: true
+        type: "integer"
+        description: "PostgreSQL port"
+      REDIS_PORT:
+        value: "6379"
+        required: true
+        type: "integer"
+        description: "Redis port"
+      MINIO_PORT:
+        value: "9000"
+        required: true
+        type: "integer"
+        description: "MinIO service port"
+      MINIO_CONSOLE_PORT:
+        value: "9002"
+        required: true
+        type: "integer"
+        description: "MinIO console port"
+      N8N_PORT:
+        value: "5678"
+        required: true
+        type: "integer"
+        description: "n8n service port"
+      
+      # Host Configuration
+      VLLM_HOST:
+        value: "0.0.0.0"
+        required: true
+        type: "string"
+        description: "vLLM host address"
+      QDRANT_HOST:
+        value: "qdrant"
+        required: true
+        type: "string"
+        description: "Qdrant host address"
+      POSTGRES_HOST:
+        value: "postgres"
+        required: true
+        type: "string"
+        description: "PostgreSQL host address"
+      REDIS_HOST:
+        value: "redis"
+        required: true
+        type: "string"
+        description: "Redis host address"
+      MINIO_ENDPOINT:
+        value: "minio:9000"
+        required: true
+        type: "string"
+        description: "MinIO endpoint"
+
+  staging:
+    description: "Staging environment for pre-production testing"
+    gpu_required: true
+    memory_min_gb: 12
+    services:
+      - postgres
+      - redis
+      - qdrant
+      - minio
+      - vllm
+      - litellm
+      - multimodal-worker
+      - retrieval-proxy
+      - ai-agents
+      - search-engine
+      - memory-system
+      - user-management
+      - openwebui
+      - n8n
+      - nginx
+    variables:
+      # Inherit from development with staging-specific overrides
+      DEBUG:
+        value: "false"
+        required: true
+        type: "boolean"
+        description: "Disable debug mode for staging"
+      LOG_LEVEL:
+        value: "INFO"
+        required: true
+        type: "string"
+        description: "Set log level to INFO for staging"
+      VLLM_GPU_MEMORY_UTILIZATION:
+        value: "0.85"
+        required: true
+        type: "float"
+        description: "Higher GPU utilization for staging"
+      VLLM_MAX_MODEL_LEN:
+        value: "2048"
+        required: true
+        type: "integer"
+        description: "Higher model length for staging"
+
+  production:
+    description: "Production environment with full monitoring"
+    gpu_required: true
+    memory_min_gb: 20
+    services:
+      - postgres
+      - redis
+      - qdrant
+      - minio
+      - vllm
+      - litellm
+      - multimodal-worker
+      - retrieval-proxy
+      - ai-agents
+      - search-engine
+      - memory-system
+      - user-management
+      - openwebui
+      - n8n
+      - nginx
+      - prometheus
+      - grafana
+    variables:
+      # Inherit from development with production-specific overrides
+      DEBUG:
+        value: "false"
+        required: true
+        type: "boolean"
+        description: "Disable debug mode for production"
+      LOG_LEVEL:
+        value: "WARNING"
+        required: true
+        type: "string"
+        description: "Set log level to WARNING for production"
+      VLLM_GPU_MEMORY_UTILIZATION:
+        value: "0.9"
+        required: true
+        type: "float"
+        description: "Maximum GPU utilization for production"
+      VLLM_MAX_MODEL_LEN:
+        value: "4096"
+        required: true
+        type: "integer"
+        description: "Maximum model length for production"
+      # Additional production secrets
+      GRAFANA_PASSWORD:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "service_password"
+        length: 32
+        description: "Grafana admin password"
+      PROMETHEUS_ADMIN_PASSWORD:
+        value: null
+        required: true
+        type: "secret"
+        secret_type: "service_password"
+        length: 32
+        description: "Prometheus admin password"
+
+  testing:
+    description: "Testing environment with Allure reporting"
+    gpu_required: false
+    memory_min_gb: 2
+    services:
+      - allure-results
+      - allure-report
+      - allure-cli
+    variables:
+      # Testing-specific configuration
+      ALLURE_RESULTS_PORT:
+        value: "5050"
+        required: true
+        type: "integer"
+        description: "Allure results server port"
+      ALLURE_REPORT_PORT:
+        value: "8080"
+        required: true
+        type: "integer"
+        description: "Allure report server port"
+      ALLURE_CLI_PORT:
+        value: "8081"
+        required: true
+        type: "integer"
+        description: "Allure CLI port"
+      DEBUG:
+        value: "true"
+        required: true
+        type: "boolean"
+        description: "Enable debug mode for testing"
+      LOG_LEVEL:
+        value: "DEBUG"
+        required: true
+        type: "string"
+        description: "Set log level to DEBUG for testing"
+
+  performance:
+    description: "Performance testing environment with JMeter"
+    gpu_required: false
+    memory_min_gb: 4
+    services:
+      - jmeter-master
+      - jmeter-results
+    variables:
+      # Performance testing configuration
+      JMETER_HEAP:
+        value: "-Xms2g -Xmx4g"
+        required: true
+        type: "string"
+        description: "JMeter heap size configuration"
+      JMETER_RESULTS_PORT:
+        value: "8080"
+        required: true
+        type: "integer"
+        description: "JMeter results server port"
+      DEBUG:
+        value: "false"
+        required: true
+        type: "boolean"
+        description: "Disable debug mode for performance testing"
+      LOG_LEVEL:
+        value: "INFO"
+        required: true
+        type: "string"
+        description: "Set log level to INFO for performance testing"
+
+  monitoring:
+    description: "Monitoring environment with ELK stack"
+    gpu_required: true
+    memory_min_gb: 16
+    services:
+      - postgres
+      - redis
+      - qdrant
+      - minio
+      - vllm
+      - litellm
+      - multimodal-worker
+      - retrieval-proxy
+      - ai-agents
+      - search-engine
+      - memory-system
+      - user-management
+      - openwebui
+      - n8n
+      - nginx
+      - elasticsearch
+      - logstash
+      - kibana
+      - filebeat
+    variables:
+      # Inherit from development with monitoring-specific overrides
+      DEBUG:
+        value: "false"
+        required: true
+        type: "boolean"
+        description: "Disable debug mode for monitoring"
+      LOG_LEVEL:
+        value: "INFO"
+        required: true
+        type: "string"
+        description: "Set log level to INFO for monitoring"
+      # ELK Stack ports
+      ELASTICSEARCH_PORT:
+        value: "9200"
+        required: true
+        type: "integer"
+        description: "Elasticsearch port"
+      KIBANA_PORT:
+        value: "5601"
+        required: true
+        type: "integer"
+        description: "Kibana port"
+      LOGSTASH_PORT:
+        value: "5044"
+        required: true
+        type: "integer"
+        description: "Logstash port"
+
+  optimized:
+    description: "High-performance optimized environment"
+    gpu_required: true
+    memory_min_gb: 24
+    services:
+      - postgres
+      - redis
+      - qdrant
+      - minio
+      - vllm
+      - litellm
+      - multimodal-worker
+      - retrieval-proxy
+      - ai-agents
+      - search-engine
+      - memory-system
+      - user-management
+      - nginx
+    variables:
+      # Inherit from development with optimization-specific overrides
+      DEBUG:
+        value: "false"
+        required: true
+        type: "boolean"
+        description: "Disable debug mode for optimized"
+      LOG_LEVEL:
+        value: "WARNING"
+        required: true
+        type: "string"
+        description: "Set log level to WARNING for optimized"
+      VLLM_GPU_MEMORY_UTILIZATION:
+        value: "0.95"
+        required: true
+        type: "float"
+        description: "Maximum GPU utilization for optimized"
+      VLLM_MAX_MODEL_LEN:
+        value: "8192"
+        required: true
+        type: "integer"
+        description: "Maximum model length for optimized"
+      # Performance optimizations
+      LITELLM_WORKERS:
+        value: "8"
+        required: true
+        type: "integer"
+        description: "Number of LiteLLM workers"
+      MULTIMODAL_WORKER_WORKERS:
+        value: "4"
+        required: true
+        type: "integer"
+        description: "Number of multimodal worker processes"
+      RETRIEVAL_PROXY_WORKERS:
+        value: "8"
+        required: true
+        type: "integer"
+        description: "Number of retrieval proxy workers"
+
+# Secret generation configuration
+secret_types:
+  database_password:
+    description: "Database passwords"
+    length: 32
+    rotation_days: 90
+    complexity: "high"
+  storage_password:
+    description: "Storage service passwords"
+    length: 32
+    rotation_days: 90
+    complexity: "high"
+  api_key:
+    description: "API keys and tokens"
+    length: 64
+    rotation_days: 180
+    complexity: "medium"
+  jwt_secret:
+    description: "JWT signing secrets"
+    length: 64
+    rotation_days: 30
+    complexity: "high"
+  webui_secret:
+    description: "Web UI secrets"
+    length: 32
+    rotation_days: 90
+    complexity: "medium"
+  service_password:
+    description: "Service-specific passwords"
+    length: 32
+    rotation_days: 90
+    complexity: "high"
+  encryption_key:
+    description: "Encryption keys"
+    length: 32
+    rotation_days: 365
+    complexity: "high"
+
+# Environment inheritance rules
+inheritance:
+  base_environment: "development"
+  inherit_variables: true
+  override_behavior: "merge"
+  required_overrides:
+    - "DEBUG"
+    - "LOG_LEVEL"
+    - "VLLM_GPU_MEMORY_UTILIZATION"
+    - "VLLM_MAX_MODEL_LEN"
+

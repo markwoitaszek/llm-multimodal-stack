@@ -1,0 +1,31 @@
+# LiteLLM Optimized Configuration
+model_list:
+  - model_name: gpt-3.5-turbo
+    litellm_params:
+      model: vllm/microsoft/DialoGPT-medium
+      api_base: http://vllm:8000/v1
+      api_key: ${VLLM_API_KEY}
+
+# Database configuration
+database_url: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+
+# Optimized settings
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  max_budget: 2000
+  cache: true
+  cache_ttl: 3600
+
+# Enhanced rate limiting
+rate_limiting: true
+rate_limiting_requests_per_minute: 120
+
+# Performance optimizations
+max_workers: 8
+worker_timeout: 300
+
+# Health check configuration
+health_check_interval: 15
+
+

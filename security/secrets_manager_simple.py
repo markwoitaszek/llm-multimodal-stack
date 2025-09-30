@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 import hashlib
 import base64
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -27,58 +28,102 @@ class SimpleSecretsManager:
         self.secrets_dir.mkdir(exist_ok=True)
         self.config_dir.mkdir(exist_ok=True)
         
-        # Secret rotation policies
-        self.rotation_policies = {
-            'database_passwords': 90,  # days
-            'api_keys': 180,          # days
-            'jwt_secrets': 30,        # days
-            'encryption_keys': 365    # days
-        }
-    
-    async def generate_secure_secrets(self) -> Dict[str, str]:
-        """Generate secure secrets for all services"""
-        logger.info("Generating secure secrets for production environment")
+        # Load environment schema
+        self.schema_file = self.config_dir / "environment_schema.yaml"
+        self.schema = self._load_schema()
         
-        secrets_dict = {
-            # Database secrets
+        # Secret rotation policies (now from schema)
+        self.rotation_policies = self._extract_rotation_policies()
+    
+    def _load_schema(self) -> Dict[str, Any]:
+        """Load environment schema from YAML file"""
+        if not self.schema_file.exists():
+            logger.warning(f"Schema file not found: {self.schema_file}")
+            return {}
+        
+        try:
+            with open(self.schema_file, 'r') as f:
+                schema = yaml.safe_load(f)
+            logger.info(f"Loaded environment schema from {self.schema_file}")
+            return schema
+        except Exception as e:
+            logger.error(f"Failed to load schema: {e}")
+            return {}
+    
+    def _extract_rotation_policies(self) -> Dict[str, int]:
+        """Extract rotation policies from schema"""
+        if not self.schema or 'secret_types' not in self.schema:
+            # Fallback to default policies
+            return {
+                'database_passwords': 90,
+                'api_keys': 180,
+                'jwt_secrets': 30,
+                'encryption_keys': 365
+            }
+        
+        policies = {}
+        for secret_type, config in self.schema['secret_types'].items():
+            policies[secret_type] = config.get('rotation_days', 90)
+        
+        return policies
+    
+    async def generate_secure_secrets(self, environment: str = "development") -> Dict[str, str]:
+        """Generate secure secrets based on environment schema"""
+        logger.info(f"Generating secure secrets for {environment} environment")
+        
+        if not self.schema or 'environments' not in self.schema:
+            logger.warning("No schema available, using fallback secret generation")
+            return self._generate_fallback_secrets()
+        
+        if environment not in self.schema['environments']:
+            logger.error(f"Environment '{environment}' not found in schema")
+            return self._generate_fallback_secrets()
+        
+        env_config = self.schema['environments'][environment]
+        secrets_dict = {}
+        
+        # Generate secrets for all variables in the environment
+        for var_name, var_config in env_config.get('variables', {}).items():
+            if var_config.get('type') == 'secret':
+                secret_type = var_config.get('secret_type', 'service_password')
+                length = var_config.get('length', 32)
+                
+                if secret_type in ['database_password', 'storage_password', 'service_password', 'jwt_secret', 'webui_secret', 'encryption_key']:
+                    secrets_dict[var_name] = self._generate_password(length)
+                elif secret_type == 'api_key':
+                    secrets_dict[var_name] = self._generate_api_key(length)
+                else:
+                    # Fallback to password generation
+                    secrets_dict[var_name] = self._generate_password(length)
+        
+        # Add external API key placeholders
+        secrets_dict.update({
+            'OPENAI_API_KEY': 'sk-placeholder-change-me',
+            'ANTHROPIC_API_KEY': 'sk-ant-placeholder-change-me',
+            'GOOGLE_API_KEY': 'placeholder-change-me'
+        })
+        
+        logger.info(f"Generated {len(secrets_dict)} secrets for {environment} environment")
+        return secrets_dict
+    
+    def _generate_fallback_secrets(self) -> Dict[str, str]:
+        """Fallback secret generation when schema is not available"""
+        return {
             'POSTGRES_PASSWORD': self._generate_password(32),
-            'POSTGRES_REPLICATION_PASSWORD': self._generate_password(32),
-            
-            # Storage secrets
             'MINIO_ROOT_PASSWORD': self._generate_password(32),
-            'MINIO_ACCESS_KEY': self._generate_api_key(32),
-            'MINIO_SECRET_KEY': self._generate_api_key(64),
-            
-            # API keys
             'LITELLM_MASTER_KEY': self._generate_api_key(64),
             'LITELLM_SALT_KEY': self._generate_api_key(64),
             'VLLM_API_KEY': self._generate_api_key(64),
-            
-            # Authentication secrets
             'JWT_SECRET_KEY': self._generate_password(64),
             'WEBUI_SECRET_KEY': self._generate_password(32),
             'N8N_PASSWORD': self._generate_password(32),
             'N8N_ENCRYPTION_KEY': self._generate_password(32),
             'GRAFANA_PASSWORD': self._generate_password(32),
-            
-            # External API keys (placeholders)
+            'PROMETHEUS_ADMIN_PASSWORD': self._generate_password(32),
             'OPENAI_API_KEY': 'sk-placeholder-change-me',
             'ANTHROPIC_API_KEY': 'sk-ant-placeholder-change-me',
-            'GOOGLE_API_KEY': 'placeholder-change-me',
-            
-            # Monitoring secrets
-            'PROMETHEUS_ADMIN_PASSWORD': self._generate_password(32),
-            'ALERTMANAGER_PASSWORD': self._generate_password(32),
-            
-            # Backup encryption
-            'BACKUP_ENCRYPTION_KEY': self._generate_password(32),
-            
-            # Session secrets
-            'SESSION_SECRET': self._generate_password(32),
-            'CSRF_SECRET': self._generate_password(32)
+            'GOOGLE_API_KEY': 'placeholder-change-me'
         }
-        
-        return secrets_dict
     
     def _generate_password(self, length: int = 32) -> str:
         """Generate cryptographically secure password"""
@@ -131,65 +176,77 @@ class SimpleSecretsManager:
         
         return secrets_dict
     
-    async def create_environment_files(self, environment: str = "production") -> List[str]:
-        """Create environment files for different deployment scenarios"""
+    async def create_environment_files(self, environment: str = "development") -> List[str]:
+        """Create environment files based on schema configuration"""
         logger.info(f"Creating environment files for {environment}")
         
         created_files = []
         
-        # Load secrets
-        secrets_dict = await self.load_secrets(environment)
+        # Generate secrets for this environment
+        secrets_dict = await self.generate_secure_secrets(environment)
         
-        # Create .env file
+        # Get environment configuration from schema
+        if not self.schema or 'environments' not in self.schema or environment not in self.schema['environments']:
+            logger.error(f"Environment '{environment}' not found in schema")
+            return []
+        
+        env_config = self.schema['environments'][environment]
+        
+        # Create .env file with all variables from schema
         env_file = self.workspace_path / f".env.{environment}"
         with open(env_file, 'w') as f:
             f.write(f"# {environment.upper()} Environment Variables\n")
             f.write(f"# Generated on: {datetime.utcnow().isoformat()}\n")
+            f.write(f"# Description: {env_config.get('description', 'No description available')}\n")
             f.write("# DO NOT COMMIT THIS FILE TO VERSION CONTROL\n\n")
             
-            for key, value in secrets_dict.items():
-                f.write(f"{key}={value}\n")
+            # Write all variables from schema
+            for var_name, var_config in env_config.get('variables', {}).items():
+                if var_config.get('type') == 'secret':
+                    # Use generated secret
+                    value = secrets_dict.get(var_name, '')
+                else:
+                    # Use configured value
+                    value = var_config.get('value', '')
+                
+                # Add comment with description
+                description = var_config.get('description', '')
+                if description:
+                    f.write(f"# {description}\n")
+                
+                f.write(f"{var_name}={value}\n")
+                f.write("\n")
         
         os.chmod(env_file, 0o600)
         created_files.append(str(env_file))
         
-        # Create Docker Compose override
-        compose_override = self.workspace_path / f"docker-compose.{environment}.override.yml"
-        with open(compose_override, 'w') as f:
-            f.write(f"# Docker Compose Override for {environment.upper()}\n")
-            f.write("services:\n")
-            
-            # Add environment variables to services
-            services = [
-                'postgres', 'minio', 'vllm', 'litellm', 'openwebui', 
-                'n8n', 'multimodal-worker', 'retrieval-proxy'
-            ]
-            
-            for service in services:
-                f.write(f"  {service}:\n")
-                f.write("    env_file:\n")
-                f.write(f"      - .env.{environment}\n")
-                f.write("    environment:\n")
-                
-                # Add relevant environment variables for each service
-                if service == 'postgres':
-                    f.write("      - POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD}\"\n")
-                elif service == 'minio':
-                    f.write("      - MINIO_ROOT_PASSWORD=\"${MINIO_ROOT_PASSWORD}\"\n")
-                elif service == 'vllm':
-                    f.write("      - VLLM_API_KEY=\"${VLLM_API_KEY}\"\n")
-                elif service == 'litellm':
-                    f.write("      - LITELLM_MASTER_KEY=\"${LITELLM_MASTER_KEY}\"\n")
-                    f.write("      - LITELLM_SALT_KEY=\"${LITELLM_SALT_KEY}\"\n")
-                elif service == 'openwebui':
-                    f.write("      - WEBUI_SECRET_KEY=\"${WEBUI_SECRET_KEY}\"\n")
-                elif service == 'n8n':
-                    f.write("      - N8N_PASSWORD=\"${N8N_PASSWORD}\"\n")
-                    f.write("      - N8N_ENCRYPTION_KEY=\"${N8N_ENCRYPTION_KEY}\"\n")
-                
-                f.write("\n")
+        # Store secrets for this environment
+        secrets_file = await self.store_secrets(secrets_dict, environment)
+        created_files.append(secrets_file)
         
-        created_files.append(str(compose_override))
+        # Create Docker Compose override if needed
+        compose_override = self.workspace_path / f"docker-compose.{environment}.override.yml"
+        if not compose_override.exists():
+            with open(compose_override, 'w') as f:
+                f.write(f"# Docker Compose Override for {environment.upper()}\n")
+                f.write("services:\n")
+                
+                # Add environment variables to services based on schema
+                services = env_config.get('services', [])
+                for service in services:
+                    f.write(f"  {service}:\n")
+                    f.write("    env_file:\n")
+                    f.write(f"      - .env.{environment}\n")
+                    f.write("    environment:\n")
+                    
+                    # Add relevant environment variables for each service
+                    service_vars = self._get_service_variables(service, env_config.get('variables', {}))
+                    for var_name in service_vars:
+                        f.write(f"      - {var_name}=\"${{{var_name}}}\"\n")
+                    
+                    f.write("\n")
+            
+            created_files.append(str(compose_override))
         
         # Create Kubernetes secrets template
         k8s_secrets = self.workspace_path / f"k8s-secrets-{environment}.yaml"
@@ -209,8 +266,37 @@ class SimpleSecretsManager:
         
         created_files.append(str(k8s_secrets))
         
-        logger.info(f"Created {len(created_files)} environment files")
+        logger.info(f"Created {len(created_files)} environment files for {environment}")
         return created_files
+    
+    def _get_service_variables(self, service: str, variables: Dict[str, Any]) -> List[str]:
+        """Get relevant environment variables for a specific service"""
+        service_var_mapping = {
+            'postgres': ['POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_PORT'],
+            'minio': ['MINIO_ROOT_USER', 'MINIO_ROOT_PASSWORD', 'MINIO_PORT', 'MINIO_CONSOLE_PORT'],
+            'vllm': ['VLLM_MODEL', 'VLLM_API_KEY', 'VLLM_HOST', 'VLLM_PORT', 'VLLM_GPU_MEMORY_UTILIZATION', 'VLLM_MAX_MODEL_LEN'],
+            'litellm': ['LITELLM_MASTER_KEY', 'LITELLM_SALT_KEY', 'LITELLM_PORT'],
+            'openwebui': ['WEBUI_SECRET_KEY', 'OPENWEBUI_PORT'],
+            'n8n': ['N8N_PASSWORD', 'N8N_ENCRYPTION_KEY', 'N8N_PORT'],
+            'multimodal-worker': ['MULTIMODAL_WORKER_PORT'],
+            'retrieval-proxy': ['RETRIEVAL_PROXY_PORT'],
+            'ai-agents': ['AI_AGENTS_PORT'],
+            'search-engine': ['SEARCH_ENGINE_PORT'],
+            'memory-system': ['MEMORY_SYSTEM_PORT'],
+            'user-management': ['USER_MANAGEMENT_PORT', 'JWT_SECRET_KEY'],
+            'redis': ['REDIS_PORT'],
+            'qdrant': ['QDRANT_HTTP_PORT', 'QDRANT_GRPC_PORT'],
+            'nginx': [],
+            'elasticsearch': ['ELASTICSEARCH_PORT'],
+            'kibana': ['KIBANA_PORT'],
+            'logstash': ['LOGSTASH_PORT'],
+            'prometheus': ['PROMETHEUS_ADMIN_PASSWORD'],
+            'grafana': ['GRAFANA_PASSWORD']
+        }
+        
+        service_vars = service_var_mapping.get(service, [])
+        # Filter to only include variables that exist in the schema
+        return [var for var in service_vars if var in variables]
     
     async def setup_secret_rotation(self) -> Dict[str, Any]:
         """Set up automated secret rotation"""

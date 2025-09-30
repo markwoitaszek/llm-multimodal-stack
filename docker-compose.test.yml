@@ -6,9 +6,9 @@ services:
     image: postgres:15-alpine
     container_name: test-postgres
     environment:
-      - POSTGRES_DB=test_db
-      - POSTGRES_USER=test
-      - POSTGRES_PASSWORD=test
+      - POSTGRES_DB=${POSTGRES_DB:-test_db}
+      - POSTGRES_USER=${POSTGRES_USER:-test}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
       - "5433:5432"
     volumes:
@@ -48,9 +48,9 @@ services:
     environment:
       - ENVIRONMENT=testing
       - LOG_LEVEL=DEBUG
-      - DATABASE_URL=postgresql://test:test@test-postgres:5432/test_db
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-test}:${POSTGRES_PASSWORD}@test-postgres:5432/${POSTGRES_DB:-test_db}
       - REDIS_URL=redis://test-redis:6379/0
-      - JWT_SECRET=test-secret-key
+      - JWT_SECRET=${JWT_SECRET_KEY}
     volumes:
       - ./services/ai-agents:/app
     networks:
@@ -141,7 +141,7 @@ services:
       - REDIS_URL=redis://test-redis:6379/0
       - AI_AGENTS_URL=http://test-ai-agents:3000
       - IDE_BRIDGE_URL=http://test-ide-bridge:3004
-      - JWT_SECRET=test-secret-key
+      - JWT_SECRET=${JWT_SECRET_KEY}
     volumes:
       - ./services/realtime-collaboration:/app
     networks:
@@ -166,8 +166,8 @@ services:
       - "5679:5678"
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=admin
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
       - N8N_HOST=localhost
       - N8N_PORT=5678
       - N8N_PROTOCOL=http

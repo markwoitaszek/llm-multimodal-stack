@@ -6,6 +6,104 @@ set -e
 echo "🚀 LLM Multimodal Stack - Environment Startup"
 echo "=============================================="
 
+# Function to validate environment prerequisites
+validate_environment() {
+    echo "🔍 Validating environment prerequisites..."
+    
+    # Check Docker
+    if ! command -v docker &> /dev/null; then
+        echo "❌ Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    # Check Docker Compose
+    if ! command -v docker-compose &> /dev/null; then
+        echo "❌ Docker Compose is not installed or not in PATH"
+        exit 1
+    fi
+    
+    # Check GPU for GPU-required environments
+    if [[ "$ENVIRONMENT" =~ ^(dev|staging|production|monitoring|optimized)$ ]]; then
+        if ! command -v nvidia-smi &> /dev/null; then
+            echo "❌ NVIDIA GPU not available for $ENVIRONMENT environment"
+            exit 1
+        fi
+    fi
+    
+    # Check available memory
+    local available_memory=$(free -m | awk 'NR==2{printf "%.0f", $7}')
+    local required_memory=8192  # 8GB minimum
+    
+    if [ "$available_memory" -lt "$required_memory" ]; then
+        echo "⚠️  Warning: Available memory ($available_memory MB) is below recommended minimum ($required_memory MB)"
+    fi
+    
+    # Check port availability
+    check_ports() {
+        local ports=("3030" "4000" "8000" "8001" "8002" "8003" "8004" "8005" "8006" "5432" "6379" "6333" "9000" "9002" "5678")
+        for port in "${ports[@]}"; do
+            if netstat -tuln 2>/dev/null | grep -q ":$port "; then
+                echo "⚠️  Warning: Port $port is already in use"
+            fi
+        done
+    }
+    
+    check_ports
+    echo "✅ Environment validation complete"
+}
+
+# Function to setup environment file
+setup_environment_file() {
+    local env_type=$1
+    local env_file=".env.$env_type"
+    
+    if [ ! -f "$env_file" ]; then
+        echo "🔐 Generating environment file: $env_file"
+        if [ -f "setup_secrets.py" ]; then
+            python3 setup_secrets.py
+        else
+            echo "❌ setup_secrets.py not found. Cannot generate environment file."
+            exit 1
+        fi
+    else
+        echo "✅ Environment file exists: $env_file"
+    fi
+}
+
+# Function to wait for services to be healthy
+wait_for_services() {
+    local compose_files=$1
+    echo "⏳ Waiting for services to be healthy..."
+    
+    # Wait for critical services
+    local critical_services=("postgres" "redis" "qdrant" "minio")
+    
+    for service in "${critical_services[@]}"; do
+        echo "   Waiting for $service..."
+        # Give services time to start
+        sleep 5
+    done
+    
+    echo "✅ Critical services startup initiated"
+}
+
+# Function to handle startup errors
+handle_startup_error() {
+    local exit_code=$1
+    local environment=$2
+    
+    if [ $exit_code -ne 0 ]; then
+        echo "❌ Failed to start $environment environment"
+        echo "🔍 Troubleshooting steps:"
+        echo "   1. Check Docker status: docker info"
+        echo "   2. Check available resources: free -h && df -h"
+        echo "   3. Check port conflicts: netstat -tulpn | grep -E '(3030|4000|8000|5432|6379|6333|9000|9002|5678)'"
+        echo "   4. Check logs: docker-compose logs"
+        echo "   5. Clean up: docker-compose down --remove-orphans"
+        exit $exit_code
+    fi
+}
+
 # Function to check and cleanup Docker system if needed
 check_docker_cleanup() {
     echo "🔍 Checking Docker system health..."
@@ -251,7 +349,11 @@ case $ENVIRONMENT in
     
     "dev"|"development")
         echo "🔧 Starting Development Environment..."
+        validate_environment
+        setup_environment_file "development"
         docker-compose -f docker-compose.yml -f docker-compose.development.override.yml up -d
+        handle_startup_error $? "development"
+        wait_for_services "-f docker-compose.yml -f docker-compose.development.override.yml"
         echo "✅ Development environment started!"
         echo "📊 Services available:"
         echo "   - OpenWebUI: http://localhost:3030"
@@ -262,7 +364,11 @@ case $ENVIRONMENT in
     
     "staging")
         echo "🏗️ Starting Staging Environment..."
+        validate_environment
+        setup_environment_file "staging"
         docker-compose -f docker-compose.staging.yml up -d
+        handle_startup_error $? "staging"
+        wait_for_services "-f docker-compose.staging.yml"
         echo "✅ Staging environment started!"
         echo "📊 Services available:"
         echo "   - OpenWebUI: http://localhost:3030"
@@ -273,7 +379,11 @@ case $ENVIRONMENT in
     
     "production")
         echo "🚀 Starting Production Environment..."
+        validate_environment
+        setup_environment_file "production"
         docker-compose -f docker-compose.production.yml up -d
+        handle_startup_error $? "production"
+        wait_for_services "-f docker-compose.production.yml"
         echo "✅ Production environment started!"
         echo "📊 Services available:"
         echo "   - OpenWebUI: http://localhost:3030"
@@ -284,7 +394,10 @@ case $ENVIRONMENT in
     
     "testing")
         echo "🧪 Starting Testing Environment..."
+        validate_environment
         docker-compose -f docker-compose.allure.yml up -d
+        handle_startup_error $? "testing"
+        wait_for_services "-f docker-compose.allure.yml"
         echo "✅ Testing environment started!"
         echo "📊 Services available:"
         echo "   - Allure Results: http://localhost:5050"
@@ -296,7 +409,10 @@ case $ENVIRONMENT in
     
     "performance")
         echo "⚡ Starting Performance Testing Environment..."
+        validate_environment
         docker-compose -f docker-compose.jmeter.yml up -d
+        handle_startup_error $? "performance"
+        wait_for_services "-f docker-compose.jmeter.yml"
         echo "✅ Performance testing environment started!"
         echo "📊 Services available:"
         echo "   - JMeter: Available for load testing"
@@ -307,7 +423,11 @@ case $ENVIRONMENT in
     
     "monitoring")
         echo "📊 Adding Monitoring (ELK Stack)..."
+        validate_environment
+        setup_environment_file "monitoring"
         docker-compose -f docker-compose.yml -f docker-compose.elk.yml up -d
+        handle_startup_error $? "monitoring"
+        wait_for_services "-f docker-compose.yml -f docker-compose.elk.yml"
         echo "✅ Monitoring environment started!"
         echo "📊 Services available:"
         echo "   - Kibana: http://localhost:5601"
@@ -317,7 +437,11 @@ case $ENVIRONMENT in
     
     "optimized")
         echo "🎯 Starting Optimized Environment..."
+        validate_environment
+        setup_environment_file "optimized"
         docker-compose -f docker-compose.optimized.yml up -d
+        handle_startup_error $? "optimized"
+        wait_for_services "-f docker-compose.optimized.yml"
         echo "✅ Optimized environment started!"
         echo "📊 Services available:"
         echo "   - OpenWebUI: http://localhost:3030"

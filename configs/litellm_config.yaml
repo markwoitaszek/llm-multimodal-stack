@@ -3,13 +3,13 @@ model_list:
     litellm_params:
       model: openai/gpt-3.5-turbo
       api_base: http://vllm:8000/v1
-      api_key: vllm-key
+      api_key: ${VLLM_API_KEY}
       
   - model_name: local-llm
     litellm_params:
       model: openai/local-model
       api_base: http://vllm:8000/v1
-      api_key: vllm-key
+      api_key: ${VLLM_API_KEY}
 
 router_settings:
   routing_strategy: simple-shuffle

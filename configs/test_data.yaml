@@ -46,17 +46,17 @@ test_data:
 # Test environment data
 test_environments:
   development:
-    database_url: "postgresql://test:test@localhost:5432/test_db"
+    database_url: "postgresql://${POSTGRES_USER:-test}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB:-test_db}"
     redis_url: "redis://localhost:6379/0"
     api_base_url: "http://localhost:8000"
   
   staging:
-    database_url: "postgresql://staging:staging@staging-db:5432/staging_db"
+    database_url: "postgresql://${POSTGRES_USER:-staging}:${POSTGRES_PASSWORD}@staging-db:5432/${POSTGRES_DB:-staging_db}"
     redis_url: "redis://staging-redis:6379/0"
     api_base_url: "http://staging-api:8000"
   
   production:
-    database_url: "postgresql://prod:prod@prod-db:5432/prod_db"
+    database_url: "postgresql://${POSTGRES_USER:-prod}:${POSTGRES_PASSWORD}@prod-db:5432/${POSTGRES_DB:-prod_db}"
     redis_url: "redis://prod-redis:6379/0"
     api_base_url: "http://prod-api:8000"
 
@@ -65,12 +65,12 @@ fixtures:
   users:
     admin:
       username: "admin"
-      password: "admin123"
+      password: "${ADMIN_PASSWORD}"
       role: "admin"
     
     user:
       username: "testuser"
-      password: "test123"
+      password: "${TEST_USER_PASSWORD}"
       role: "user"
   
   models:

@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))
     postgres_db: str = os.getenv("POSTGRES_DB", "multimodal")
     postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
-    postgres_password: str = os.getenv("POSTGRES_PASSWORD", "postgres")
+    postgres_password: str = os.getenv("POSTGRES_PASSWORD", "")
     
     @property
     def postgres_url(self) -> str:
@@ -48,8 +48,8 @@ class Settings(BaseSettings):
     
     # MinIO settings
     minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "")
+    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "")
     minio_bucket_images: str = "images"
     minio_bucket_videos: str = "videos"
     minio_bucket_documents: str = "documents"
