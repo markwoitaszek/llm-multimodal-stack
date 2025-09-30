@@ -56,27 +56,33 @@ Secrets are categorized by type with specific generation rules:
 
 ### 1. Development
 - **Purpose**: Local development with debugging enabled
-- **GPU**: Required
-- **Memory**: 8GB minimum
+- **GPU**: Required (dual RTX 3090 with NVLink optimization)
+- **Memory**: 24GB minimum
 - **Services**: All base services
 - **Debug**: Enabled
 - **Log Level**: DEBUG
+- **GPU Memory Utilization**: 0.8 (80%)
+- **Tensor Parallelism**: 2 GPUs
 
 ### 2. Staging
 - **Purpose**: Pre-production testing
-- **GPU**: Required
+- **GPU**: Required (dual RTX 3090 with NVLink optimization)
 - **Memory**: 12GB minimum
 - **Services**: All base services
 - **Debug**: Disabled
 - **Log Level**: INFO
+- **GPU Memory Utilization**: 0.85 (85%)
+- **Tensor Parallelism**: 2 GPUs
 
 ### 3. Production
 - **Purpose**: Production deployment with full monitoring
-- **GPU**: Required
+- **GPU**: Required (dual RTX 3090 with NVLink optimization)
 - **Memory**: 20GB minimum
 - **Services**: All base services + Prometheus + Grafana
 - **Debug**: Disabled
 - **Log Level**: WARNING
+- **GPU Memory Utilization**: 0.9 (90%)
+- **Tensor Parallelism**: 2 GPUs
 
 ### 4. Testing
 - **Purpose**: Automated testing with Allure reports
@@ -96,19 +102,56 @@ Secrets are categorized by type with specific generation rules:
 
 ### 6. Monitoring
 - **Purpose**: Centralized logging and monitoring
-- **GPU**: Required
+- **GPU**: Required (dual RTX 3090 with NVLink optimization)
 - **Memory**: 16GB minimum
 - **Services**: All base services + ELK stack
 - **Debug**: Disabled
 - **Log Level**: INFO
+- **GPU Memory Utilization**: 0.8 (80%)
+- **Tensor Parallelism**: 2 GPUs
 
 ### 7. Optimized
 - **Purpose**: High-performance optimized deployment
-- **GPU**: Required
+- **GPU**: Required (dual RTX 3090 with NVLink optimization)
 - **Memory**: 24GB minimum
 - **Services**: All base services with optimizations
 - **Debug**: Disabled
 - **Log Level**: WARNING
+- **GPU Memory Utilization**: 0.9 (90%)
+- **Tensor Parallelism**: 2 GPUs
+
+## GPU Configuration
+
+### Multi-GPU Support
+The system now supports dual RTX 3090 GPUs with NVLink optimization:
+
+#### GPU Variables
+- **CUDA_VISIBLE_DEVICES**: "0,1" (both GPUs)
+- **NVIDIA_VISIBLE_DEVICES**: "0,1" (both GPUs)
+- **VLLM_TENSOR_PARALLEL_SIZE**: "2" (tensor parallelism across both GPUs)
+- **VLLM_PIPELINE_PARALLEL_SIZE**: "1" (single pipeline stage)
+- **CUDA_DEVICE_ORDER**: "PCI_BUS_ID" (optimal NVLink usage)
+- **GPU_COUNT**: "2" (Docker container GPU allocation)
+
+#### GPU Configuration Script
+```bash
+# Auto-detect and configure GPU setup
+./scripts/configure-gpu.sh
+
+# Force multi-GPU configuration
+./scripts/configure-gpu.sh multi
+
+# Force single GPU configuration
+./scripts/configure-gpu.sh single
+
+# CPU-only for CI/CD
+./scripts/configure-gpu.sh cpu
+```
+
+#### Docker Compose Overrides
+- **Multi-GPU**: `docker-compose.multi-gpu.yml` - Dual GPU optimization
+- **Single GPU**: `docker-compose.single-gpu.yml` - Single GPU fallback
+- **CPU-only**: `docker-compose.test.yml` - CI/CD compatibility
 
 ## Usage
 
@@ -177,6 +220,8 @@ The schema-driven approach generates:
 - `docker-compose.performance.override.yml` - Performance overrides (if needed)
 - `docker-compose.monitoring.override.yml` - Monitoring overrides (if needed)
 - `docker-compose.optimized.override.yml` - Optimized overrides (if needed)
+- `docker-compose.multi-gpu.yml` - Multi-GPU optimization override
+- `docker-compose.single-gpu.yml` - Single GPU fallback override
 
 ## Customization
 
