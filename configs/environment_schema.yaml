@@ -63,15 +63,52 @@ environments:
         type: "string"
         description: "vLLM model to use"
       VLLM_GPU_MEMORY_UTILIZATION:
-        value: "0.6"
+        value: "0.8"
         required: true
         type: "float"
-        description: "GPU memory utilization for vLLM"
+        description: "GPU memory utilization for vLLM (optimized for dual RTX 3090)"
       VLLM_MAX_MODEL_LEN:
         value: "1024"
         required: true
         type: "integer"
         description: "Maximum model length for vLLM"
+      
+      # Multi-GPU Configuration
+      CUDA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "CUDA devices to use (comma-separated)"
+      NVIDIA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "NVIDIA devices to use (comma-separated)"
+      VLLM_TENSOR_PARALLEL_SIZE:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs for tensor parallelism"
+      VLLM_PIPELINE_PARALLEL_SIZE:
+        value: "1"
+        required: true
+        type: "integer"
+        description: "Number of pipeline parallel stages"
+      CUDA_DEVICE_ORDER:
+        value: "PCI_BUS_ID"
+        required: true
+        type: "string"
+        description: "CUDA device ordering for optimal NVLink usage"
+      GPU_COUNT:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs to allocate in Docker containers"
+      GPU_COUNT:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs to allocate in Docker containers"
       
       # LiteLLM Configuration
       LITELLM_MASTER_KEY:
@@ -288,12 +325,43 @@ environments:
         value: "0.85"
         required: true
         type: "float"
-        description: "Higher GPU utilization for staging"
+        description: "Higher GPU utilization for staging (dual RTX 3090)"
       VLLM_MAX_MODEL_LEN:
         value: "2048"
         required: true
         type: "integer"
         description: "Higher model length for staging"
+      # Multi-GPU Configuration (inherits from development)
+      CUDA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "CUDA devices to use (comma-separated)"
+      NVIDIA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "NVIDIA devices to use (comma-separated)"
+      VLLM_TENSOR_PARALLEL_SIZE:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs for tensor parallelism"
+      VLLM_PIPELINE_PARALLEL_SIZE:
+        value: "1"
+        required: true
+        type: "integer"
+        description: "Number of pipeline parallel stages"
+      CUDA_DEVICE_ORDER:
+        value: "PCI_BUS_ID"
+        required: true
+        type: "string"
+        description: "CUDA device ordering for optimal NVLink usage"
+      GPU_COUNT:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs to allocate in Docker containers"
 
   production:
     description: "Production environment with full monitoring"
@@ -333,12 +401,43 @@ environments:
         value: "0.9"
         required: true
         type: "float"
-        description: "Maximum GPU utilization for production"
+        description: "Maximum GPU utilization for production (dual RTX 3090)"
       VLLM_MAX_MODEL_LEN:
         value: "4096"
         required: true
         type: "integer"
         description: "Maximum model length for production"
+      # Multi-GPU Configuration (inherits from development)
+      CUDA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "CUDA devices to use (comma-separated)"
+      NVIDIA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "NVIDIA devices to use (comma-separated)"
+      VLLM_TENSOR_PARALLEL_SIZE:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs for tensor parallelism"
+      VLLM_PIPELINE_PARALLEL_SIZE:
+        value: "1"
+        required: true
+        type: "integer"
+        description: "Number of pipeline parallel stages"
+      CUDA_DEVICE_ORDER:
+        value: "PCI_BUS_ID"
+        required: true
+        type: "string"
+        description: "CUDA device ordering for optimal NVLink usage"
+      GPU_COUNT:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs to allocate in Docker containers"
       # Additional production secrets
       GRAFANA_PASSWORD:
         value: null
@@ -457,6 +556,37 @@ environments:
         required: true
         type: "string"
         description: "Set log level to INFO for monitoring"
+      # Multi-GPU Configuration (inherits from development)
+      CUDA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "CUDA devices to use (comma-separated)"
+      NVIDIA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "NVIDIA devices to use (comma-separated)"
+      VLLM_TENSOR_PARALLEL_SIZE:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs for tensor parallelism"
+      VLLM_PIPELINE_PARALLEL_SIZE:
+        value: "1"
+        required: true
+        type: "integer"
+        description: "Number of pipeline parallel stages"
+      CUDA_DEVICE_ORDER:
+        value: "PCI_BUS_ID"
+        required: true
+        type: "string"
+        description: "CUDA device ordering for optimal NVLink usage"
+      GPU_COUNT:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs to allocate in Docker containers"
       # ELK Stack ports
       ELASTICSEARCH_PORT:
         value: "9200"
@@ -505,15 +635,46 @@ environments:
         type: "string"
         description: "Set log level to WARNING for optimized"
       VLLM_GPU_MEMORY_UTILIZATION:
-        value: "0.95"
+        value: "0.9"
         required: true
         type: "float"
-        description: "Maximum GPU utilization for optimized"
+        description: "Maximum GPU utilization for optimized (dual RTX 3090, reduced for stability)"
       VLLM_MAX_MODEL_LEN:
         value: "8192"
         required: true
         type: "integer"
         description: "Maximum model length for optimized"
+      # Multi-GPU Configuration (inherits from development)
+      CUDA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "CUDA devices to use (comma-separated)"
+      NVIDIA_VISIBLE_DEVICES:
+        value: "0,1"
+        required: true
+        type: "string"
+        description: "NVIDIA devices to use (comma-separated)"
+      VLLM_TENSOR_PARALLEL_SIZE:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs for tensor parallelism"
+      VLLM_PIPELINE_PARALLEL_SIZE:
+        value: "1"
+        required: true
+        type: "integer"
+        description: "Number of pipeline parallel stages"
+      CUDA_DEVICE_ORDER:
+        value: "PCI_BUS_ID"
+        required: true
+        type: "string"
+        description: "CUDA device ordering for optimal NVLink usage"
+      GPU_COUNT:
+        value: "2"
+        required: true
+        type: "integer"
+        description: "Number of GPUs to allocate in Docker containers"
       # Performance optimizations
       LITELLM_WORKERS:
         value: "8"
@@ -579,4 +740,10 @@ inheritance:
     - "LOG_LEVEL"
     - "VLLM_GPU_MEMORY_UTILIZATION"
     - "VLLM_MAX_MODEL_LEN"
+    - "CUDA_VISIBLE_DEVICES"
+    - "NVIDIA_VISIBLE_DEVICES"
+    - "VLLM_TENSOR_PARALLEL_SIZE"
+    - "VLLM_PIPELINE_PARALLEL_SIZE"
+    - "CUDA_DEVICE_ORDER"
+    - "GPU_COUNT"
 

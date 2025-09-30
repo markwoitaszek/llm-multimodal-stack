@@ -1,0 +1,101 @@
+# Single GPU Fallback Docker Compose Override
+# For CI/CD pipelines and single GPU systems
+version: '3.8'
+
+services:
+  # vLLM with single GPU configuration
+  vllm:
+    environment:
+      # Single GPU Configuration
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=0
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      
+      # Override multi-GPU settings
+      - VLLM_TENSOR_PARALLEL_SIZE=1
+      - VLLM_PIPELINE_PARALLEL_SIZE=1
+    
+    command: >
+      --model ${VLLM_MODEL}
+      --host ${VLLM_HOST:-0.0.0.0}
+      --port ${VLLM_PORT:-8000}
+      --gpu-memory-utilization ${VLLM_GPU_MEMORY_UTILIZATION:-0.8}
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-1024}
+      --dtype auto
+      --max-num-seqs ${VLLM_MAX_NUM_SEQS:-8}
+      --tensor-parallel-size 1
+      --pipeline-parallel-size 1
+      --api-key ${VLLM_API_KEY}
+      --served-model-name gpt-3.5-turbo
+      --chat-template ./chat_templates/chatml.jinja
+      --disable-log-requests
+      --disable-log-stats
+    
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+          cpus: '8.0'
+        reservations:
+          memory: 8G
+          cpus: '4.0'
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Multimodal Worker with single GPU
+  multimodal-worker:
+    environment:
+      # Single GPU Configuration
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=0
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+      
+      # Reduced worker count for single GPU
+      - WORKERS=2
+      - MAX_CONCURRENT_REQUESTS=10
+    
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+          cpus: '6.0'
+        reservations:
+          memory: 6G
+          cpus: '3.0'
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # LiteLLM with reduced workers for single GPU
+  litellm:
+    environment:
+      - LITELLM_NUM_WORKERS=4
+    
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "4"]
+    
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  # Retrieval Proxy with reduced workers
+  retrieval-proxy:
+    environment:
+      - WORKERS=4
+      - MAX_CONCURRENT_REQUESTS=20
+    
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'

@@ -116,6 +116,8 @@ services:
       - "${VLLM_PORT:-8000}:8000"
     environment:
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - NVIDIA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - CUDA_DEVICE_ORDER=${CUDA_DEVICE_ORDER:-PCI_BUS_ID}
       - VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
       - VLLM_HOST=${VLLM_HOST:-0.0.0.0}
       - VLLM_PORT=${VLLM_PORT:-8000}
@@ -126,15 +128,17 @@ services:
       --model ${VLLM_MODEL:-microsoft/DialoGPT-medium}
       --host ${VLLM_HOST:-0.0.0.0}
       --port ${VLLM_PORT:-8000}
-      --gpu-memory-utilization 0.8
-      --max-model-len 1024
+      --gpu-memory-utilization ${VLLM_GPU_MEMORY_UTILIZATION:-0.8}
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-1024}
       --dtype auto
+      --tensor-parallel-size ${VLLM_TENSOR_PARALLEL_SIZE:-1}
+      --pipeline-parallel-size ${VLLM_PIPELINE_PARALLEL_SIZE:-1}
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: ${GPU_COUNT:-1}
               capabilities: [gpu]
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${VLLM_PORT:-8000}/v1/models', timeout=10)\""]
@@ -185,6 +189,8 @@ services:
       - "${MULTIMODAL_WORKER_PORT:-8001}:8001"
     environment:
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - NVIDIA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - CUDA_DEVICE_ORDER=${CUDA_DEVICE_ORDER:-PCI_BUS_ID}
       - QDRANT_HOST=${QDRANT_HOST:-qdrant}
       - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
       - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
@@ -206,7 +212,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              count: ${GPU_COUNT:-1}
               capabilities: [gpu]
     depends_on:
       qdrant:

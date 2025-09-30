@@ -28,6 +28,21 @@ validate_environment() {
             echo "❌ NVIDIA GPU not available for $ENVIRONMENT environment"
             exit 1
         fi
+        
+        # Check for dual GPU setup
+        gpu_count=$(nvidia-smi --list-gpus 2>/dev/null | wc -l)
+        if [ "$gpu_count" -lt 2 ]; then
+            echo "⚠️  Warning: Only $gpu_count GPU(s) detected. Multi-GPU configuration may not be optimal."
+            echo "   Consider setting CUDA_VISIBLE_DEVICES=0 for single GPU usage."
+        else
+            echo "✅ Dual GPU setup detected ($gpu_count GPUs available)"
+            
+            # Check NVLink topology if available
+            if nvidia-smi topo -m &> /dev/null; then
+                echo "🔗 Checking NVLink topology..."
+                nvidia-smi topo -m | grep -E "(NV[0-9]|NODE)" | head -5
+            fi
+        fi
     fi
     
     # Check available memory
