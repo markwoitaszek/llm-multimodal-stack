@@ -181,6 +181,130 @@ python3 setup_secrets.py
 ./scripts/validate-environment.sh
 ```
 
+## Workflow Diagram (Mermaid)
+
+```mermaid
+flowchart TD
+    A["🚀 start-environment.sh"] --> B{Arguments Provided?}
+    B -->|No| C["❌ Display Usage & Exit"]
+    B -->|Yes| D["🔍 validate_environment()"]
+    
+    D --> D1["🔍 Check Docker & Docker Compose"]
+    D1 --> D2["🎮 Check GPU for GPU-required environments"]
+    D2 --> D3["💾 Check available memory"]
+    D3 --> D4["🔌 Check port availability"]
+    D4 --> D5["🔗 Check NVLink topology (if dual GPU)"]
+    D5 --> E["🔍 check_docker_cleanup()"]
+    
+    E --> F{Reclaimable Space > 30%?}
+    F -->|Yes| G["🧹 docker system prune -f"]
+    F -->|No| H["✅ Docker system healthy"]
+    G --> H
+    
+    H --> I{Environment Type?}
+    
+    I -->|first-run| J["🚨 first_run_setup()"]
+    I -->|dev/development| K["🔧 Development Environment"]
+    I -->|staging| L["🏗️ Staging Environment"]
+    I -->|production| M["🚀 Production Environment"]
+    I -->|testing| N["🧪 Testing Environment"]
+    I -->|performance| O["⚡ Performance Testing"]
+    I -->|monitoring| P["📊 Monitoring (ELK)"]
+    I -->|optimized| Q["🎯 Optimized Environment"]
+    I -->|Unknown| R["❌ Unknown Environment Error"]
+    
+    J --> J1["⚠️ Require sudo privileges"]
+    J1 --> J2["🔍 Scan existing containers/volumes"]
+    J2 --> J3["🗑️ Stop & remove containers"]
+    J3 --> J4["💾 Delete volumes & networks"]
+    J4 --> J5["🔐 Generate secure secrets"]
+    J5 --> J6["📄 Create .env.development"]
+    J6 --> J7["🚀 Start dev environment"]
+    
+    K --> K1["🔧 setup_environment_file('development')"]
+    K1 --> K2["docker-compose -f docker-compose.yml<br/>-f docker-compose.development.override.yml<br/>-f docker-compose.multi-gpu.yml up -d"]
+    K2 --> K3["⏳ wait_for_services()"]
+    K3 --> K4["✅ Development environment started!"]
+    
+    L --> L1["🔧 setup_environment_file('staging')"]
+    L1 --> L2["docker-compose -f docker-compose.staging.yml<br/>-f docker-compose.multi-gpu.yml up -d"]
+    L2 --> L3["⏳ wait_for_services()"]
+    L3 --> L4["✅ Staging environment started!"]
+    
+    M --> M1["🔧 setup_environment_file('production')"]
+    M1 --> M2["docker-compose -f docker-compose.production.yml<br/>-f docker-compose.multi-gpu.yml up -d"]
+    M2 --> M3["⏳ wait_for_services()"]
+    M3 --> M4["✅ Production environment started!"]
+    
+    N --> N1["docker-compose -f docker-compose.allure.yml up -d"]
+    O --> O1["docker-compose -f docker-compose.jmeter.yml up -d"]
+    P --> P1["🔧 setup_environment_file('monitoring')"]
+    P1 --> P2["docker-compose -f docker-compose.yml<br/>-f docker-compose.elk.yml<br/>-f docker-compose.multi-gpu.yml up -d"]
+    P2 --> P3["⏳ wait_for_services()"]
+    P3 --> P4["✅ Monitoring environment started!"]
+    
+    Q --> Q1["🔧 setup_environment_file('optimized')"]
+    Q1 --> Q2["docker-compose -f docker-compose.optimized.yml<br/>-f docker-compose.multi-gpu.yml up -d"]
+    Q2 --> Q3["⏳ wait_for_services()"]
+    Q3 --> Q4["✅ Optimized environment started!"]
+    
+    K4 --> S["📊 Display Service URLs"]
+    L4 --> S
+    M4 --> S
+    N1 --> S
+    O1 --> S
+    P4 --> S
+    Q4 --> S
+    J7 --> S
+    
+    S --> T["🔍 Show Status Commands"]
+    T --> U["📋 Show Log Commands"]
+    U --> V["🛑 Show Stop Commands"]
+    
+    style A fill:#e1f5fe
+    style D fill:#fff3e0
+    style D2 fill:#e8f5e8
+    style D5 fill:#f3e5f5
+    style J fill:#ffebee
+    style K fill:#e8f5e8
+    style L fill:#fff3e0
+    style M fill:#f3e5f5
+    style N fill:#e0f2f1
+    style O fill:#fce4ec
+    style P fill:#e3f2fd
+    style Q fill:#f1f8e9
+```
+
+## Environment Execution Matrix
+
+| Configuration Dimension | Development | Staging | Production | Testing | Performance | Monitoring | Optimized |
+|------------------------|-------------|---------|------------|---------|-------------|------------|-----------|
+| **Base Compose Files** | docker-compose.yml + development.override.yml + multi-gpu.yml | docker-compose.staging.yml + multi-gpu.yml | docker-compose.production.yml + multi-gpu.yml | docker-compose.allure.yml | docker-compose.jmeter.yml | docker-compose.yml + elk.yml + multi-gpu.yml | docker-compose.optimized.yml + multi-gpu.yml |
+| **Core Services** | ✅ All base services | ✅ All base services | ✅ All base services | ❌ Only Allure services | ❌ Only JMeter services | ✅ All base + ELK | ✅ All base services |
+| **PostgreSQL** | Standard config | 2G memory limit | 4G memory limit | ❌ Not included | ❌ Not included | Standard config | Optimized config |
+| **Redis** | Standard config | 512M memory limit | 1G memory limit | ❌ Not included | ❌ Not included | Standard config | Optimized config |
+| **vLLM** | Dual GPU (RTX 3090) | Dual GPU (RTX 3090) | Dual GPU (RTX 3090) | ❌ Not included | ❌ Not included | Dual GPU (RTX 3090) | Dual GPU (RTX 3090) |
+| **Multimodal Worker** | Dual GPU instance | 2 replicas (dual GPU) | 3 replicas (dual GPU) | ❌ Not included | ❌ Not included | Dual GPU instance | 3 replicas (dual GPU) |
+| **Retrieval Proxy** | Single instance | 2 replicas | 3 replicas | ❌ Not included | ❌ Not included | Single instance | 2 replicas |
+| **LiteLLM** | Single instance | Single instance | 2 replicas | ❌ Not included | ❌ Not included | Single instance | Single instance |
+| **OpenWebUI** | Standard config | Standard config | Enhanced config | ❌ Not included | ❌ Not included | Standard config | ❌ Not included |
+| **n8n** | Standard config | Standard config | Standard config | ❌ Not included | ❌ Not included | Standard config | ❌ Not included |
+| **Nginx** | Standard config | ❌ Not included | Production config | ❌ Not included | ❌ Not included | Standard config | Optimized config |
+| **Monitoring** | ❌ None | ❌ None | Prometheus + Grafana | ❌ None | ❌ None | ELK Stack | ❌ None |
+| **Testing Tools** | ❌ None | ❌ None | ❌ None | Allure Reports | JMeter Load Tests | ❌ None | ❌ None |
+| **Environment Files** | .env.development | .env.staging | .env.production | ❌ None | ❌ None | .env.monitoring | .env.optimized |
+| **Secrets Management** | setup_secrets.py | setup_secrets.py | setup_secrets.py | ❌ None | ❌ None | setup_secrets.py | setup_secrets.py |
+| **GPU Configuration** | Dual RTX 3090 + NVLink | Dual RTX 3090 + NVLink | Dual RTX 3090 + NVLink | ❌ None | ❌ None | Dual RTX 3090 + NVLink | Dual RTX 3090 + NVLink |
+| **GPU Memory Utilization** | 0.8 (80%) | 0.85 (85%) | 0.9 (90%) | ❌ N/A | ❌ N/A | 0.8 (80%) | 0.9 (90%) |
+| **Tensor Parallelism** | 2 GPUs | 2 GPUs | 2 GPUs | ❌ N/A | ❌ N/A | 2 GPUs | 2 GPUs |
+| **Memory Requirements** | ~24GB | ~12GB | ~20GB | ~2GB | ~4GB | ~16GB | ~24GB |
+| **Network Configuration** | multimodal-net | multimodal-net | multimodal-net | test-network | multimodal-net | multimodal-net | multimodal-net |
+| **Volume Persistence** | Standard volumes | Standard volumes | Production volumes | Test volumes | Standard volumes | Standard volumes | Optimized volumes |
+| **Health Checks** | Standard intervals | Standard intervals | Standard intervals | Fast intervals | Standard intervals | Standard intervals | Standard intervals |
+| **Restart Policy** | unless-stopped | unless-stopped | unless-stopped | unless-stopped | unless-stopped | unless-stopped | unless-stopped |
+| **GPU Fallback** | single-gpu.yml | single-gpu.yml | single-gpu.yml | ❌ N/A | ❌ N/A | single-gpu.yml | single-gpu.yml |
+
+
 ## File Generation
 
 The schema-driven approach generates:
