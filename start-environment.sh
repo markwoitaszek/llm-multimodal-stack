@@ -83,6 +83,11 @@ setup_environment_file() {
     else
         echo "✅ Environment file exists: $env_file"
     fi
+    
+    # Copy environment file to .env for Docker Compose to use
+    echo "📋 Copying $env_file to .env for Docker Compose"
+    cp "$env_file" .env
+    echo "✅ Environment file ready for Docker Compose"
 }
 
 # Function to wait for services to be healthy
@@ -299,6 +304,16 @@ first_run_setup() {
             echo "❌ No setup script found. Please ensure setup_secrets.py or scripts/setup.sh exists."
             exit 1
         fi
+    fi
+    
+    # Copy the generated environment file to .env for Docker Compose
+    if [ -f ".env.development" ]; then
+        echo "   - Copying .env.development to .env for Docker Compose"
+        cp .env.development .env
+        echo "✅ Environment file ready for Docker Compose"
+    else
+        echo "❌ .env.development not found after setup"
+        exit 1
     fi
     
     echo ""
