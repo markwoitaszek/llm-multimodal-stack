@@ -276,7 +276,7 @@ class SimpleSecretsManager:
                     # Add relevant environment variables for each service
                     service_vars = self._get_service_variables(service, env_config.get('variables', {}))
                     for var_name in service_vars:
-                        f.write(f"      - {var_name}=\"${{{var_name}}}\"\n")
+                        f.write(f"      - {var_name}=${{{var_name}}}\n")
                     
                     f.write("\n")
             

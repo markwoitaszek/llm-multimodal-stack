@@ -232,19 +232,19 @@ class SecretsManager:
                 
                 # Add relevant environment variables for each service
                 if service == 'postgres':
-                    f.write("      - POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD}\"\n")
+                    f.write("      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}\n")
                 elif service == 'minio':
-                    f.write("      - MINIO_ROOT_PASSWORD=\"${MINIO_ROOT_PASSWORD}\"\n")
+                    f.write("      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}\n")
                 elif service == 'vllm':
-                    f.write("      - VLLM_API_KEY=\"${VLLM_API_KEY}\"\n")
+                    f.write("      - VLLM_API_KEY=${VLLM_API_KEY}\n")
                 elif service == 'litellm':
-                    f.write("      - LITELLM_MASTER_KEY=\"${LITELLM_MASTER_KEY}\"\n")
-                    f.write("      - LITELLM_SALT_KEY=\"${LITELLM_SALT_KEY}\"\n")
+                    f.write("      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}\n")
+                    f.write("      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}\n")
                 elif service == 'openwebui':
-                    f.write("      - WEBUI_SECRET_KEY=\"${WEBUI_SECRET_KEY}\"\n")
+                    f.write("      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}\n")
                 elif service == 'n8n':
-                    f.write("      - N8N_PASSWORD=\"${N8N_PASSWORD}\"\n")
-                    f.write("      - N8N_ENCRYPTION_KEY=\"${N8N_ENCRYPTION_KEY}\"\n")
+                    f.write("      - N8N_PASSWORD=${N8N_PASSWORD}\n")
+                    f.write("      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}\n")
                 
                 f.write("\n")
         
