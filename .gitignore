@@ -1,12 +1,7 @@
 # Environment files
 .env
-.env.local
-.env.prod
-.env.development
-.env.staging
-.env.production
-.env.*.backup*
-.env.backup*
+.env.*
+
 
 # Docker volumes and data
 data/
@@ -99,3 +94,18 @@ backups/
 *.backup
 backup_*
 llm-multimodal-stack.wiki/
+
+# Additional sensitive files that should never be committed
+*.env.local
+*.env.production
+*.env.staging
+*.env.development
+*.env.testing
+*.env.performance
+*.env.monitoring
+*.env.optimized
+.env.backup.*
+secrets/.env.*.json
+secrets/.env.*.metadata
+secrets/.master_key
+secrets/.env.*.encrypted
