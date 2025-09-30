@@ -35,7 +35,7 @@ services:
       - redis
       - postgres
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${REALTIME_COLLABORATION_PORT:-3006}/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${REALTIME_COLLABORATION_PORT:-3006}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -72,7 +72,7 @@ services:
       ai-agents:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${IDE_BRIDGE_PORT:-8007}/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${IDE_BRIDGE_PORT:-8007}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -96,7 +96,7 @@ services:
       ide-bridge:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3000/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -218,7 +218,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${MULTIMODAL_WORKER_PORT:-8001}/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${MULTIMODAL_WORKER_PORT:-8001}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -337,7 +337,7 @@ services:
       user-management:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${AI_AGENTS_PORT:-8003}/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${AI_AGENTS_PORT:-8003}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -429,7 +429,7 @@ services:
       ai-agents:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3000/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
