@@ -78,6 +78,12 @@ help:
 	@echo "  status-testing           Show status of testing stack"
 	@echo "  status-monitoring        Show status of monitoring stack"
 	@echo ""
+	@echo "Network management commands:"
+	@echo "  check-network-conflicts  Check for network conflicts before starting stacks"
+	@echo "  cleanup-networks         Clean up orphaned networks"
+	@echo "  validate-networks        Validate network configuration"
+	@echo "  check-network-health     Check network health and connectivity"
+	@echo ""
 
 # Generate all compose files from unified schema
 generate-compose:
@@ -496,3 +502,51 @@ status-testing:
 status-monitoring:
 	@echo "📊 Status of monitoring stack:"
 	@docker compose -f compose.monitoring.yml ps
+
+# =============================================================================
+# Network Management Commands
+# =============================================================================
+
+# Check for network conflicts
+check-network-conflicts:
+	@echo "🌐 Checking for network conflicts..."
+	@./scripts/check-network-conflicts.sh check
+
+# Clean up orphaned networks
+cleanup-networks:
+	@echo "🧹 Cleaning up orphaned networks..."
+	@./scripts/check-network-conflicts.sh cleanup
+
+# Validate network configuration
+validate-networks:
+	@echo "✅ Validating network configuration..."
+	@./scripts/check-network-conflicts.sh check
+
+# Check network health and connectivity
+check-network-health:
+	@echo "🏥 Checking network health and connectivity..."
+	@echo "📊 Docker network status:"
+	@docker network ls --format "table {{.Name}}\t{{.Driver}}\t{{.Scope}}\t{{.CreatedAt}}"
+	@echo ""
+	@echo "🔍 Network connectivity tests:"
+	@echo "Testing core services connectivity..."
+	@if docker ps --format "{{.Names}}" | grep -q "multimodal-postgres"; then \
+		echo "✅ PostgreSQL: $(docker exec multimodal-postgres pg_isready -U ${POSTGRES_USER:-postgres} 2>/dev/null && echo 'Ready' || echo 'Not ready')"; \
+	else \
+		echo "❌ PostgreSQL: Not running"; \
+	fi
+	@if docker ps --format "{{.Names}}" | grep -q "multimodal-redis"; then \
+		echo "✅ Redis: $(docker exec multimodal-redis redis-cli ping 2>/dev/null || echo 'Not responding')"; \
+	else \
+		echo "❌ Redis: Not running"; \
+	fi
+	@if docker ps --format "{{.Names}}" | grep -q "multimodal-qdrant"; then \
+		echo "✅ Qdrant: $(curl -s http://localhost:6333/health 2>/dev/null | grep -q 'ok' && echo 'Healthy' || echo 'Not responding')"; \
+	else \
+		echo "❌ Qdrant: Not running"; \
+	fi
+	@if docker ps --format "{{.Names}}" | grep -q "multimodal-minio"; then \
+		echo "✅ MinIO: $(curl -s http://localhost:9000/minio/health/live 2>/dev/null | grep -q 'ok' && echo 'Healthy' || echo 'Not responding')"; \
+	else \
+		echo "❌ MinIO: Not running"; \
+	fi
