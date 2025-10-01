@@ -1029,12 +1029,6 @@ environments:
     services:
       - "postgres"
       - "redis"
-      - "qdrant"
-      - "minio"
-      - "vllm"
-      - "litellm"
-      - "multimodal-worker"
-      - "retrieval-proxy"
       - "allure-results"
       - "allure-report"
       - "allure-cli"

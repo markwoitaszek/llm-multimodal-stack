@@ -265,7 +265,7 @@ setup-testing: generate-compose
 # Start Testing Environment
 start-testing: setup-testing
 	@echo "🚀 Starting testing environment with Allure and JMeter..."
-	@docker compose -f compose.yml -f compose.testing.yml up -d
+	@docker compose -f compose.testing.yml up -d
 	@echo "✅ Testing environment started"
 	@echo ""
 	@echo "Testing services available:"

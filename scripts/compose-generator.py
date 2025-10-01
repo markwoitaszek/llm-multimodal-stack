@@ -198,6 +198,35 @@ class ComposeGenerator:
         
         return yaml.dump(compose, default_flow_style=False, sort_keys=False)
     
+    def generate_standalone_testing_compose(self) -> str:
+        """Generate standalone testing compose file with only testing services"""
+        if 'testing' not in self.schema.get('environments', {}):
+            raise ValueError("Testing environment not found in schema")
+        
+        env_config = self.schema['environments']['testing']
+        services = {}
+        
+        # Only include the services specified in the testing environment
+        for service_name in env_config['services']:
+            if service_name in self.schema['services']:
+                services[service_name] = self._expand_service(service_name, self.schema['services'][service_name], 'testing')
+        
+        # Get volumes for testing services
+        volumes = self._get_volumes_for_services(env_config['services'])
+        
+        # Get networks (same as base compose)
+        networks = {
+            self.schema['config']['network_name']: self.schema['config']['network']
+        }
+        
+        compose_data = {
+            'services': services,
+            'volumes': volumes,
+            'networks': networks
+        }
+        
+        return yaml.dump(compose_data, default_flow_style=False, sort_keys=False)
+    
     def generate_all_compose_files(self):
         """Generate all compose files from the schema"""
         print("Generating Docker Compose files from unified schema...")
@@ -209,7 +238,7 @@ class ComposeGenerator:
         print("✅ Generated compose.yml")
         
         # Generate environment-specific overrides
-        environments = ['development', 'staging', 'production', 'gpu', 'monitoring', 'testing']
+        environments = ['development', 'staging', 'production', 'gpu', 'monitoring']
         for env in environments:
             if env in self.schema.get('environments', {}):
                 try:
@@ -220,6 +249,17 @@ class ComposeGenerator:
                     print(f"✅ Generated {filename}")
                 except Exception as e:
                     print(f"❌ Failed to generate compose.{env}.yml: {e}")
+        
+        # Generate standalone testing environment
+        if 'testing' in self.schema.get('environments', {}):
+            try:
+                content = self.generate_standalone_testing_compose()
+                filename = "compose.testing.yml"
+                with open(self.output_dir / filename, 'w') as f:
+                    f.write(content)
+                print(f"✅ Generated {filename}")
+            except Exception as e:
+                print(f"❌ Failed to generate {filename}: {e}")
         
         # Generate profile-specific compose files
         profiles = ['services', 'monitoring', 'elk', 'logging', 'n8n-monitoring']
