@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
     postgres_port: int = int(os.getenv("POSTGRES_PORT", "5432"))
     postgres_db: str = os.getenv("POSTGRES_DB", "multimodal")
-    postgres_user: str = os.getenv("POSTGRES_USER"
+    postgres_user: str = os.getenv("POSTGRES_USER")
     postgres_password: str = os.getenv("POSTGRES_PASSWORD")
     
     @property
@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     
     # MinIO settings
     minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY")
-    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY")
+    minio_access_key: Optional[str] = os.getenv("MINIO_ACCESS_KEY")
+    minio_secret_key: Optional[str] = os.getenv("MINIO_SECRET_KEY")
     minio_secure: bool = False
     
     # Redis settings (for caching)

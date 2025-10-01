@@ -3,8 +3,8 @@ Configuration settings for n8n Monitoring Service
 """
 
 import os
-from typing import List, Optional
-from pydantic import Field
+from typing import List, Optional, Union
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -71,10 +71,21 @@ class Settings(BaseSettings):
     
     # Security
     SECRET_KEY: str = Field(default="n8n-monitoring-secret-key", env="SECRET_KEY")
-    ALLOWED_ORIGINS: List[str] = Field(
-        default=["*"],  # Configure appropriately for production
+    ALLOWED_ORIGINS: Union[str, List[str]] = Field(
+        default="*",  # Configure appropriately for production
         env="ALLOWED_ORIGINS"
     )
+    
+    @field_validator('ALLOWED_ORIGINS', mode='before')
+    @classmethod
+    def parse_allowed_origins(cls, v):
+        """Parse ALLOWED_ORIGINS from string or list"""
+        if isinstance(v, str):
+            # Handle "*" or comma-separated values
+            if v == "*":
+                return ["*"]
+            return [origin.strip() for origin in v.split(",")]
+        return v
     
     # Logging
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
