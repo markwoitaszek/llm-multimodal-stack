@@ -111,7 +111,7 @@ first_run_setup() {
     
     # Stop and remove all containers
     echo "   - Stopping all multimodal containers..."
-    docker-compose down --remove-orphans 2>/dev/null || true
+    docker compose down --remove-orphans 2>/dev/null || true
     
     # Show what volumes will be deleted
     echo "   - Volumes to be deleted:"
@@ -182,8 +182,8 @@ first_run_setup() {
     echo ""
     echo "🚀 Step 3: Starting development environment..."
     
-    # Start the development environment
-    docker-compose -f docker-compose.yml -f docker-compose.development.override.yml up -d
+    # Start the development environment using new normalized structure
+    docker compose up -d
     
     echo ""
     echo "🎉 First run setup completed successfully!"
@@ -251,44 +251,59 @@ case $ENVIRONMENT in
     
     "dev"|"development")
         echo "🔧 Starting Development Environment..."
-        docker-compose -f docker-compose.yml -f docker-compose.development.override.yml up -d
+        docker compose up -d
         echo "✅ Development environment started!"
         echo "📊 Services available:"
-        echo "   - OpenWebUI: http://localhost:3030"
         echo "   - LiteLLM: http://localhost:4000"
         echo "   - Multimodal Worker: http://localhost:8001"
         echo "   - Retrieval Proxy: http://localhost:8002"
+        echo "   - vLLM: http://localhost:8000"
+        echo "   - Qdrant: http://localhost:6333"
+        echo "   - MinIO Console: http://localhost:9002"
         ;;
     
     "staging")
         echo "🏗️ Starting Staging Environment..."
-        docker-compose -f docker-compose.staging.yml up -d
+        docker compose -f compose.yml -f compose.production.yml --profile services --profile monitoring up -d
         echo "✅ Staging environment started!"
         echo "📊 Services available:"
         echo "   - OpenWebUI: http://localhost:3030"
         echo "   - LiteLLM: http://localhost:4000"
         echo "   - Multimodal Worker: http://localhost:8001"
         echo "   - Retrieval Proxy: http://localhost:8002"
+        echo "   - AI Agents: http://localhost:8003"
+        echo "   - Search Engine: http://localhost:8004"
+        echo "   - Memory System: http://localhost:8005"
+        echo "   - User Management: http://localhost:8006"
+        echo "   - n8n: http://localhost:5678"
         ;;
     
     "production")
         echo "🚀 Starting Production Environment..."
-        docker-compose -f docker-compose.production.yml up -d
+        docker compose -f compose.yml -f compose.production.yml --profile services --profile monitoring up -d
         echo "✅ Production environment started!"
         echo "📊 Services available:"
-        echo "   - OpenWebUI: http://localhost:3030"
         echo "   - LiteLLM: http://localhost:4000"
         echo "   - Multimodal Worker: http://localhost:8001"
         echo "   - Retrieval Proxy: http://localhost:8002"
+        echo "   - AI Agents: http://localhost:8003"
+        echo "   - Search Engine: http://localhost:8004"
+        echo "   - Memory System: http://localhost:8005"
+        echo "   - User Management: http://localhost:8006"
+        echo "   - n8n: http://localhost:5678"
+        echo "   - n8n Monitoring: http://localhost:8008"
         ;;
     
     "testing")
         echo "🧪 Starting Testing Environment..."
-        docker-compose -f docker-compose.allure.yml up -d
+        docker compose up -d
+        # Note: Allure testing would need to be added as a separate profile
         echo "✅ Testing environment started!"
         echo "📊 Services available:"
-        echo "   - Allure Results: http://localhost:5050"
-        echo "   - Allure Reports: http://localhost:8080"
+        echo "   - LiteLLM: http://localhost:4000"
+        echo "   - Multimodal Worker: http://localhost:8001"
+        echo "   - Retrieval Proxy: http://localhost:8002"
+        echo "   - vLLM: http://localhost:8000"
         echo ""
         echo "🧪 To run tests:"
         echo "   python3 scripts/run_tests_with_allure.py --type all --serve"
@@ -296,10 +311,14 @@ case $ENVIRONMENT in
     
     "performance")
         echo "⚡ Starting Performance Testing Environment..."
-        docker-compose -f docker-compose.jmeter.yml up -d
+        docker compose up -d
+        # Note: JMeter testing would need to be added as a separate profile
         echo "✅ Performance testing environment started!"
         echo "📊 Services available:"
-        echo "   - JMeter: Available for load testing"
+        echo "   - LiteLLM: http://localhost:4000"
+        echo "   - Multimodal Worker: http://localhost:8001"
+        echo "   - Retrieval Proxy: http://localhost:8002"
+        echo "   - vLLM: http://localhost:8000"
         echo ""
         echo "⚡ To run performance tests:"
         echo "   python3 scripts/run_jmeter_tests.py --test all"
@@ -307,23 +326,27 @@ case $ENVIRONMENT in
     
     "monitoring")
         echo "📊 Adding Monitoring (ELK Stack)..."
-        docker-compose -f docker-compose.yml -f docker-compose.elk.yml up -d
+        docker compose -f compose.yml -f compose.elk.yml --profile elk --profile monitoring up -d
         echo "✅ Monitoring environment started!"
         echo "📊 Services available:"
         echo "   - Kibana: http://localhost:5601"
         echo "   - Elasticsearch: http://localhost:9200"
         echo "   - Logstash: http://localhost:9600"
+        echo "   - OpenWebUI: http://localhost:3030"
+        echo "   - n8n: http://localhost:5678"
         ;;
     
     "optimized")
         echo "🎯 Starting Optimized Environment..."
-        docker-compose -f docker-compose.optimized.yml up -d
+        docker compose -f compose.yml -f compose.gpu.yml -f compose.production.yml up -d
         echo "✅ Optimized environment started!"
         echo "📊 Services available:"
-        echo "   - OpenWebUI: http://localhost:3030"
         echo "   - LiteLLM: http://localhost:4000"
         echo "   - Multimodal Worker: http://localhost:8001"
         echo "   - Retrieval Proxy: http://localhost:8002"
+        echo "   - vLLM: http://localhost:8000 (GPU optimized)"
+        echo "   - Qdrant: http://localhost:6333"
+        echo "   - MinIO Console: http://localhost:9002"
         ;;
     
     *)
@@ -335,10 +358,10 @@ esac
 
 echo ""
 echo "🔍 To check service status:"
-echo "   docker-compose ps"
+echo "   docker compose ps"
 echo ""
 echo "📋 To view logs:"
-echo "   docker-compose logs -f [service-name]"
+echo "   docker compose logs -f [service-name]"
 echo ""
 echo "🛑 To stop environment:"
-echo "   docker-compose down"
+echo "   docker compose down"

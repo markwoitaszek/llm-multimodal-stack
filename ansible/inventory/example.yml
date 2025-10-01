@@ -1,0 +1,157 @@
+---
+# Example Ansible Inventory for Multimodal LLM Stack
+# This inventory defines host groups for different deployment scenarios
+
+all:
+  children:
+    llm_servers:
+      hosts:
+        llm-dev-01:
+          ansible_host: 192.168.1.10
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          environment: dev
+          deploy_ai_agents: true
+          deploy_memory_system: true
+          deploy_search_engine: true
+          deploy_user_management: true
+          deploy_openwebui: true
+          deploy_n8n: false
+          deploy_n8n_monitoring: false
+          deploy_master_env: false
+          
+        llm-staging-01:
+          ansible_host: 192.168.1.20
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          environment: staging
+          deploy_ai_agents: true
+          deploy_memory_system: true
+          deploy_search_engine: true
+          deploy_user_management: true
+          deploy_openwebui: true
+          deploy_n8n: true
+          deploy_n8n_monitoring: true
+          deploy_master_env: false
+          
+        llm-prod-01:
+          ansible_host: 192.168.1.30
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          environment: prod
+          deploy_ai_agents: true
+          deploy_memory_system: true
+          deploy_search_engine: true
+          deploy_user_management: true
+          deploy_openwebui: false
+          deploy_n8n: true
+          deploy_n8n_monitoring: true
+          deploy_master_env: true
+          
+        llm-prod-02:
+          ansible_host: 192.168.1.31
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+          environment: prod
+          deploy_ai_agents: true
+          deploy_memory_system: true
+          deploy_search_engine: true
+          deploy_user_management: true
+          deploy_openwebui: false
+          deploy_n8n: true
+          deploy_n8n_monitoring: true
+          deploy_master_env: true
+
+    development:
+      hosts:
+        llm-dev-01:
+      vars:
+        debug: true
+        log_level: DEBUG
+        restart_services: false
+        verify_env_files: true
+
+    staging:
+      hosts:
+        llm-staging-01:
+      vars:
+        debug: false
+        log_level: INFO
+        restart_services: false
+        verify_env_files: true
+
+    production:
+      hosts:
+        llm-prod-01:
+        llm-prod-02:
+      vars:
+        debug: false
+        log_level: WARN
+        restart_services: true
+        verify_env_files: true
+
+  vars:
+    # Global variables for all hosts
+    vault_addr: "https://vault.example.com"
+    vault_role_id: "{{ vault_role_id_env }}"
+    vault_secret_id: "{{ vault_secret_id_env }}"
+    vault_mount_point: "secret"
+    vault_path: "multimodal-llm"
+    
+    # Default service configuration
+    postgres_host: postgres
+    postgres_port: 5432
+    postgres_db: multimodal
+    postgres_user: postgres
+    
+    redis_host: redis
+    redis_port: 6379
+    
+    qdrant_host: qdrant
+    qdrant_http_port: 6333
+    qdrant_grpc_port: 6334
+    
+    minio_endpoint: minio:9000
+    minio_root_user: minioadmin
+    
+    vllm_host: 0.0.0.0
+    vllm_port: 8000
+    vllm_model: microsoft/DialoGPT-medium
+    vllm_gpu_memory_utilization: 0.8
+    vllm_max_model_len: 1024
+    
+    litellm_port: 4000
+    litellm_num_workers: 1
+    
+    multimodal_worker_port: 8001
+    retrieval_proxy_port: 8002
+    ai_agents_port: 8003
+    search_engine_port: 8004
+    memory_system_port: 8005
+    user_management_port: 8006
+    openwebui_port: 3030
+    n8n_port: 5678
+    n8n_monitoring_port: 8008
+    
+    # Service URLs
+    multimodal_worker_url: "http://multimodal-worker:8001"
+    retrieval_proxy_url: "http://multimodal-retrieval-proxy:8002"
+    search_engine_url: "http://search-engine:8004"
+    memory_system_url: "http://memory-system:8005"
+    user_management_url: "http://user-management:8006"
+    llm_base_url: "http://vllm:8000/v1"
+    openai_api_base_url: "http://vllm:8000/v1"
+    ai_agents_url: "http://ai-agents:8003"
+    n8n_url: "http://n8n:5678"
+    
+    # Cache configuration
+    cache_ttl_search_results: 3600
+    cache_ttl_model_metadata: 86400
+    cache_ttl_embeddings: 86400
+    cache_ttl_agent_memory: 2592000
+    
+    # Health check configuration
+    health_check_interval: 30s
+    health_check_timeout: 10s
+    health_check_retries: 3
+    health_check_start_period: 30s
