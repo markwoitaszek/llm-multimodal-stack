@@ -83,7 +83,8 @@ class SimpleSecretsManager:
     
     def _generate_password(self, length: int = 32) -> str:
         """Generate cryptographically secure password"""
-        alphabet = string.ascii_letters + string.digits + "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        # Exclude $, {, }, `, and \ to avoid shell/Docker Compose variable expansion issues
+        alphabet = string.ascii_letters + string.digits + "!@#%^&*()_+-=[];:,.<>?"
         return ''.join(secrets.choice(alphabet) for _ in range(length))
     
     def _generate_api_key(self, length: int = 64) -> str:
