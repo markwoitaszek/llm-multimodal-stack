@@ -20,7 +20,7 @@ services:
       - CMD-SHELL
       - pg_isready -U ${POSTGRES_USER:-postgres}
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -41,7 +41,7 @@ services:
       - redis-cli
       - ping
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -65,7 +65,7 @@ services:
       - CMD-SHELL
       - pidof qdrant || exit 1
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -92,7 +92,7 @@ services:
       retries: 5
       start_period: 60s
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -132,7 +132,7 @@ services:
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${VLLM_PORT:-8000}/v1/models',
         timeout=10)"
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -170,7 +170,7 @@ services:
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${LITELLM_PORT:-4000}/',
         timeout=5)"
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -221,7 +221,7 @@ services:
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${MULTIMODAL_WORKER_PORT:-8001}/health',
         timeout=5)"
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -261,7 +261,7 @@ services:
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${RETRIEVAL_PROXY_PORT:-8002}/health',
         timeout=5)"
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -310,7 +310,7 @@ services:
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${AI_AGENTS_PORT:-8003}/health',
         timeout=5)"
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -343,7 +343,7 @@ services:
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${MEMORY_SYSTEM_PORT:-8005}/health',
         timeout=5)"
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -381,7 +381,7 @@ services:
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${SEARCH_ENGINE_PORT:-8004}/health',
         timeout=5)"
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -416,7 +416,35 @@ services:
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${USER_MANAGEMENT_PORT:-8006}/health',
         timeout=5)"
     debug: false
-    log_level: WARN
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: multimodal-openwebui
+    ports:
+    - ${OPENWEBUI_PORT:-3030}:8080
+    environment:
+    - OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL:-http://vllm:8000/v1}
+    - OPENAI_API_KEY=${VLLM_API_KEY}
+    - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
+    volumes:
+    - openwebui_data:/app/backend/data
+    depends_on:
+    - vllm
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8080/health
+    debug: false
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -459,7 +487,7 @@ services:
       - --spider
       - http://localhost:${N8N_PORT:-5678}/healthz
     debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -528,36 +556,7 @@ services:
       - -f
       - http://localhost:${N8N_MONITORING_PORT:-8008}/health
     debug: false
-    log_level: WARN
-    restart: unless-stopped
-    networks:
-    - multimodal-net
-  nginx:
-    image: nginx:alpine
-    container_name: multimodal-nginx
-    ports:
-    - 80:80
-    - 443:443
-    volumes:
-    - ./configs/nginx.conf:/etc/nginx/nginx.conf:ro
-    - ./configs/ssl:/etc/nginx/certs:ro
-    depends_on:
-    - litellm
-    - multimodal-worker
-    - retrieval-proxy
-    healthcheck:
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      test:
-      - CMD
-      - wget
-      - --quiet
-      - --tries=1
-      - --spider
-      - http://127.0.0.1/health
-    debug: false
-    log_level: WARN
+    log_level: INFO
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -573,6 +572,8 @@ volumes:
   vllm_cache:
     driver: local
   multimodal_cache:
+    driver: local
+  openwebui_data:
     driver: local
   n8n_data:
     driver: local

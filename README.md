@@ -40,8 +40,31 @@ python3 setup_secrets.py
 
 ## 🏗️ **Deployment Options**
 
-### **Normalized Compose Structure (Recommended)**
-The stack now uses a normalized Docker Compose structure with profiles for flexible deployments:
+### **Unified Schema Structure (Recommended)**
+The stack now uses a **unified schema approach** where all Docker Compose files are generated from a single source of truth (`schemas/compose-schema.yaml`):
+
+```bash
+# Generate all compose files from schema
+make generate-compose
+
+# Core services only
+make start-dev
+
+# Full staging environment
+make start-staging
+
+# Production deployment with resource limits
+make start-prod
+
+# GPU-optimized deployment
+make start-gpu
+
+# Monitoring environment with ELK stack
+make start-monitoring
+```
+
+### **Normalized Compose Structure**
+The generated compose files use a normalized structure with profiles for flexible deployments:
 
 ```bash
 # Core services only
@@ -70,7 +93,33 @@ docker compose -f compose.yml -f compose.gpu.yml up -d
 | **Performance** | `./start-environment.sh performance` | JMeter load testing |
 | **Monitoring** | `./start-environment.sh monitoring` | ELK stack for observability |
 
-> **📋 See [Compose Deployment Guide](docs/COMPOSE_DEPLOYMENT_GUIDE.md) for detailed information about the new normalized structure and control plane integration.**
+> **📋 See [Compose Deployment Guide](docs/COMPOSE_DEPLOYMENT_GUIDE.md) and [Unified Schema Guide](docs/UNIFIED_SCHEMA_GUIDE.md) for detailed information about the unified schema approach and control plane integration.**
+
+## 🏗️ **Unified Schema Architecture**
+
+### **Single Source of Truth**
+All Docker Compose configurations are generated from a unified schema:
+
+- **Schema File**: `schemas/compose-schema.yaml` - Single source of truth for all services
+- **Generator Script**: `scripts/compose-generator.py` - Converts schema to compose files
+- **Makefile**: Easy commands for schema management and deployment
+
+### **Generated Files**
+The schema automatically generates:
+- `compose.yml` - Base compose file with core services
+- `compose.development.yml` - Development environment
+- `compose.staging.yml` - Staging environment  
+- `compose.production.yml` - Production environment
+- `compose.gpu.yml` - GPU-optimized environment
+- `compose.monitoring.yml` - Monitoring environment
+- Profile-specific compose files (services, elk, n8n-monitoring)
+
+### **Benefits**
+- ✅ **No Duplication**: Single definition for each service
+- ✅ **Consistency**: Same services across all environments
+- ✅ **Maintainability**: Change once, apply everywhere
+- ✅ **Validation**: Schema validation prevents configuration errors
+- ✅ **Flexibility**: Environment-specific overrides and profiles
 
 ## 🔐 **Control Plane Integration**
 

@@ -1,202 +1,173 @@
-# Additional services override
-# Use with: docker compose --profile services up
-
 version: '3.8'
-
 services:
-  # AI Agents Service (LangChain)
   ai-agents:
     build:
       context: ./services/ai-agents
       dockerfile: Dockerfile
     container_name: multimodal-ai-agents
     ports:
-      - "${AI_AGENTS_PORT:-8003}:8003"
+    - ${AI_AGENTS_PORT:-8003}:8003
     environment:
-      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
-      - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
-      - LLM_BASE_URL=${LLM_BASE_URL:-http://vllm:8000/v1}
-      - LLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
-      - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
-      - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://multimodal-retrieval-proxy:8002}
-      - SEARCH_ENGINE_URL=${SEARCH_ENGINE_URL:-http://search-engine:8004}
-      - MEMORY_SYSTEM_URL=${MEMORY_SYSTEM_URL:-http://memory-system:8005}
-      - USER_MANAGEMENT_URL=${USER_MANAGEMENT_URL:-http://user-management:8006}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_DB=2
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+    - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+    - LLM_BASE_URL=${LLM_BASE_URL:-http://vllm:8000/v1}
+    - LLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
+    - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
+    - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://multimodal-retrieval-proxy:8002}
+    - SEARCH_ENGINE_URL=${SEARCH_ENGINE_URL:-http://search-engine:8004}
+    - MEMORY_SYSTEM_URL=${MEMORY_SYSTEM_URL:-http://memory-system:8005}
+    - USER_MANAGEMENT_URL=${USER_MANAGEMENT_URL:-http://user-management:8006}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=2
     depends_on:
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      vllm:
-        condition: service_healthy
-      multimodal-worker:
-        condition: service_healthy
-      retrieval-proxy:
-        condition: service_healthy
-      search-engine:
-        condition: service_healthy
-      memory-system:
-        condition: service_healthy
-      user-management:
-        condition: service_healthy
+    - postgres
+    - qdrant
+    - redis
+    - vllm
+    - multimodal-worker
+    - retrieval-proxy
+    - search-engine
+    - memory-system
+    - user-management
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${AI_AGENTS_PORT:-8003}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${AI_AGENTS_PORT:-8003}/health',
+        timeout=5)"
     restart: unless-stopped
     networks:
-      - multimodal-net
-    profiles:
-      - services
-      - agents
-
-  # Memory System Service
+    - multimodal-net
   memory-system:
     build:
       context: ./services/memory-system
       dockerfile: Dockerfile
     container_name: multimodal-memory-system
     ports:
-      - "${MEMORY_SYSTEM_PORT:-8005}:8005"
+    - ${MEMORY_SYSTEM_PORT:-8005}:8005
     environment:
-      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_DB=4
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=4
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    - postgres
+    - redis
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${MEMORY_SYSTEM_PORT:-8005}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${MEMORY_SYSTEM_PORT:-8005}/health',
+        timeout=5)"
     restart: unless-stopped
     networks:
-      - multimodal-net
-    profiles:
-      - services
-      - memory
-
-  # Search Engine Service
+    - multimodal-net
   search-engine:
     build:
       context: ./services/search-engine
       dockerfile: Dockerfile
     container_name: multimodal-search-engine
     ports:
-      - "${SEARCH_ENGINE_PORT:-8004}:8004"
+    - ${SEARCH_ENGINE_PORT:-8004}:8004
     environment:
-      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
-      - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_DB=3
-      - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
-      - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://multimodal-retrieval-proxy:8002}
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+    - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=3
+    - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
+    - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://multimodal-retrieval-proxy:8002}
     depends_on:
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    - postgres
+    - qdrant
+    - redis
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${SEARCH_ENGINE_PORT:-8004}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${SEARCH_ENGINE_PORT:-8004}/health',
+        timeout=5)"
     restart: unless-stopped
     networks:
-      - multimodal-net
-    profiles:
-      - services
-      - search
-
-  # User Management Service
+    - multimodal-net
   user-management:
     build:
       context: ./services/user-management
       dockerfile: Dockerfile
     container_name: multimodal-user-management
     ports:
-      - "${USER_MANAGEMENT_PORT:-8006}:8006"
+    - ${USER_MANAGEMENT_PORT:-8006}:8006
     environment:
-      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - POSTGRES_DB=${POSTGRES_DB:-multimodal}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_DB=5
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - DEBUG=${DEBUG:-false}
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=5
+    - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    - DEBUG=${DEBUG:-false}
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    - postgres
+    - redis
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${USER_MANAGEMENT_PORT:-8006}/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${USER_MANAGEMENT_PORT:-8006}/health',
+        timeout=5)"
     restart: unless-stopped
     networks:
-      - multimodal-net
-    profiles:
-      - services
-      - auth
-
-  # AI Agents Web Interface
+    - multimodal-net
   ai-agents-web:
     build:
       context: .
       dockerfile: ./services/ai-agents/web/Dockerfile
     container_name: multimodal-ai-agents-web
     ports:
-      - "3001:3000"
+    - 3001:3000
     volumes:
-      - ./docs:/usr/share/nginx/html/docs:ro
+    - ./docs:/usr/share/nginx/html/docs:ro
     depends_on:
-      ai-agents:
-        condition: service_healthy
+    - ai-agents
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3000/health', timeout=5)\""]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:3000/health',
+        timeout=5)"
     restart: unless-stopped
     networks:
-      - multimodal-net
-    profiles:
-      - services
-      - web
+    - multimodal-net
+volumes: {}

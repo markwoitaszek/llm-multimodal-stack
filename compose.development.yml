@@ -19,6 +19,8 @@ services:
       test:
       - CMD-SHELL
       - pg_isready -U ${POSTGRES_USER:-postgres}
+    debug: true
+    log_level: DEBUG
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -38,6 +40,8 @@ services:
       - CMD
       - redis-cli
       - ping
+    debug: true
+    log_level: DEBUG
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -60,6 +64,8 @@ services:
       test:
       - CMD-SHELL
       - pidof qdrant || exit 1
+    debug: true
+    log_level: DEBUG
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -85,41 +91,35 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    debug: true
+    log_level: DEBUG
     restart: unless-stopped
     networks:
     - multimodal-net
   vllm:
-    image: vllm/vllm-openai:v0.6.3
+    image: vllm/vllm-openai:latest
     container_name: multimodal-vllm
     ports:
     - ${VLLM_PORT:-8000}:8000
     environment:
-    - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}
-    - NVIDIA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}
+    - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+    - VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
+    - VLLM_HOST=${VLLM_HOST:-0.0.0.0}
+    - VLLM_PORT=${VLLM_PORT:-8000}
     volumes:
     - vllm_cache:/root/.cache
     - ./models:/models
-    command:
-    - --model
-    - microsoft/DialoGPT-small
-    - --host
-    - 0.0.0.0
-    - --port
-    - '8000'
-    - --gpu-memory-utilization
-    - '0.8'
-    - --max-model-len
-    - '512'
-    - --dtype
-    - auto
-    - --tensor-parallel-size
-    - '2'
+    command: '--model ${VLLM_MODEL:-microsoft/DialoGPT-medium} --host ${VLLM_HOST:-0.0.0.0}
+      --port ${VLLM_PORT:-8000} --gpu-memory-utilization 0.8 --max-model-len 1024
+      --dtype auto
+
+      '
     deploy:
       resources:
         reservations:
           devices:
           - driver: nvidia
-            count: 2
+            count: 1
             capabilities:
             - gpu
     healthcheck:
@@ -131,6 +131,8 @@ services:
       - CMD-SHELL
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${VLLM_PORT:-8000}/v1/models',
         timeout=10)"
+    debug: true
+    log_level: DEBUG
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -167,6 +169,8 @@ services:
       - CMD-SHELL
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${LITELLM_PORT:-4000}/',
         timeout=5)"
+    debug: true
+    log_level: DEBUG
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -178,8 +182,20 @@ services:
     ports:
     - ${MULTIMODAL_WORKER_PORT:-8001}:8001
     environment:
-    - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-1}
-    - NVIDIA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-1}
+    - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+    - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+    - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+    - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+    - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=0
     volumes:
     - multimodal_cache:/app/cache
     - /tmp:/tmp
@@ -204,6 +220,8 @@ services:
       - CMD-SHELL
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${MULTIMODAL_WORKER_PORT:-8001}/health',
         timeout=5)"
+    debug: true
+    log_level: DEBUG
     restart: unless-stopped
     networks:
     - multimodal-net
@@ -242,6 +260,8 @@ services:
       - CMD-SHELL
       - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${RETRIEVAL_PROXY_PORT:-8002}/health',
         timeout=5)"
+    debug: true
+    log_level: DEBUG
     restart: unless-stopped
     networks:
     - multimodal-net
