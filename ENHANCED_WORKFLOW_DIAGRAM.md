@@ -1,8 +1,8 @@
-# Enhanced Workflow Diagram - LLM Multimodal Stack (Post PR 130 + Enhancements)
+# Enhanced Workflow Diagram - LLM Multimodal Stack
 
 ## 🎯 Overview
 
-This diagram shows the complete workflow for the enhanced LLM Multimodal Stack, including the unified schema system from PR 130 and the new GPU optimization, environment wipe, and security hardening features.
+This diagram shows the complete workflow for the enhanced LLM Multimodal Stack, including the unified schema system from PR 130 and all major enhancements: GPU optimization, stack-based architecture, network management, granular wipe/reset operations, data retention policies, and multi-tier backup system.
 
 ## 🏗️ Enhanced System Architecture
 
@@ -19,7 +19,11 @@ graph TB
     subgraph CommandLayer[Enhanced Command Layer]
         CoreCommands["Core Commands<br/>make setup, start-dev, start-prod"]
         GPUCommands["🎮 GPU Commands<br/>make detect-gpu, configure-gpu<br/>make start-gpu-auto"]
-        WipeCommands["🧹 Wipe Commands<br/>make wipe, make reset"]
+        StackCommands["🏗️ Stack Commands<br/>make start-{core,inference,ai,ui,testing,monitoring}<br/>make stop-{core,inference,ai,ui,testing,monitoring}<br/>make restart-{core,inference,ai,ui,testing,monitoring}"]
+        NetworkCommands["🌐 Network Commands<br/>make check-network-conflicts<br/>make validate-networks, check-network-health<br/>make cleanup-networks"]
+        WipeCommands["🧹 Wipe Commands<br/>make wipe-{core,inference,ai,ui,testing,monitoring}<br/>make wipe-{db,cache,models,logs,test-results}<br/>make wipe-{dev,staging,prod,testing}"]
+        RetentionCommands["📊 Retention Commands<br/>make retention-{status,cleanup,test}<br/>make retention-cleanup-service<br/>make retention-schedule"]
+        BackupCommands["💾 Backup Commands<br/>make backup-{status,full,list,verify}<br/>make backup-service, backup-schedule<br/>make backup-restore"]
         SecurityCommands["🔒 Security Commands<br/>make validate-security"]
         CredentialCommands["🔐 Credential Commands<br/>make validate-credentials<br/>make validate-credentials-dev/staging/prod"]
         TestingCommands["🧪 Testing Commands<br/>make start-testing, test-allure<br/>make test-jmeter, test-unit/integration"]
@@ -47,6 +51,33 @@ graph TB
         NVLinkDetection["🔗 NVLink Topology Detection"]
         RTX3090Config["🎮 RTX 3090 Optimization<br/>Tensor Parallelism: 2<br/>GPU Memory: 0.8-0.9"]
         CUDAConfig["⚡ CUDA Configuration<br/>CUDA_VISIBLE_DEVICES=0,1<br/>VLLM_TENSOR_PARALLEL_SIZE=2"]
+    end
+
+    %% Stack-Based Architecture System
+    subgraph StackSystem[Stack-Based Architecture System]
+        CoreStack["🏗️ Core Stack<br/>postgres, redis, qdrant, minio<br/>multimodal-core-net (172.30.0.0/24)"]
+        InferenceStack["⚡ Inference Stack<br/>vllm, litellm<br/>multimodal-inference-net (172.31.0.0/24)"]
+        AIStack["🤖 AI Stack<br/>multimodal-worker, retrieval-proxy<br/>ai-agents, memory-system, search-engine<br/>multimodal-ai-net (172.32.0.0/24)"]
+        UIStack["🖥️ UI Stack<br/>openwebui, n8n, n8n-monitoring, nginx<br/>multimodal-ui-net (172.33.0.0/24)"]
+        TestingStack["🧪 Testing Stack<br/>allure-results, allure-report, allure-cli, jmeter<br/>multimodal-testing-net (172.34.0.0/24)"]
+        MonitoringStack["📊 Monitoring Stack<br/>prometheus, grafana, elasticsearch, kibana<br/>multimodal-monitoring-net (172.35.0.0/24)"]
+    end
+
+    %% Network Management System
+    subgraph NetworkSystem[Network Management System]
+        NetworkConflictDetection["🔍 scripts/check-network-conflicts.sh<br/>Subnet Overlap Detection"]
+        NetworkValidation["✅ scripts/validate-networks.sh<br/>Network Health & Connectivity"]
+        NetworkCleanup["🧹 Network Cleanup<br/>Orphaned Network Removal"]
+        IPAM["🌐 IP Address Management<br/>Subnet Allocation & Conflict Prevention"]
+    end
+
+    %% Data Management System
+    subgraph DataSystem[Data Management System]
+        RetentionPolicies["📊 configs/retention-policies.yaml<br/>Environment & Service-Specific Policies"]
+        RetentionManagement["🧹 scripts/manage-retention.sh<br/>Automated Cleanup & Scheduling"]
+        BackupStrategies["💾 configs/backup-strategies.yaml<br/>Multi-Tier Backup Strategies"]
+        BackupManagement["💾 scripts/manage-backups.sh<br/>Comprehensive Backup Operations"]
+        CronScheduling["⏰ scripts/setup-retention-cron.sh<br/>scripts/setup-backup-cron.sh<br/>Automated Scheduling"]
     end
 
     %% Environment Wipe System
@@ -112,7 +143,11 @@ graph TB
     Developer --> Makefile
     Makefile --> CoreCommands
     Makefile --> GPUCommands
+    Makefile --> StackCommands
+    Makefile --> NetworkCommands
     Makefile --> WipeCommands
+    Makefile --> RetentionCommands
+    Makefile --> BackupCommands
     Makefile --> SecurityCommands
     Makefile --> CredentialCommands
     Makefile --> TestingCommands
@@ -151,6 +186,29 @@ graph TB
     %% Credential Validation Flow
     CredentialCommands --> SecurityValidation
     CredentialCommands --> EnvTemplates
+
+    %% Stack System Flow
+    StackCommands --> CoreStack
+    StackCommands --> InferenceStack
+    StackCommands --> AIStack
+    StackCommands --> UIStack
+    StackCommands --> TestingStack
+    StackCommands --> MonitoringStack
+
+    %% Network System Flow
+    NetworkCommands --> NetworkConflictDetection
+    NetworkCommands --> NetworkValidation
+    NetworkCommands --> NetworkCleanup
+    NetworkConflictDetection --> IPAM
+    NetworkValidation --> IPAM
+
+    %% Data Management Flow
+    RetentionCommands --> RetentionPolicies
+    RetentionCommands --> RetentionManagement
+    BackupCommands --> BackupStrategies
+    BackupCommands --> BackupManagement
+    RetentionManagement --> CronScheduling
+    BackupManagement --> CronScheduling
 
     %% Testing Enhancement Flow
     TestingCommands --> GeneratedFiles
@@ -350,49 +408,60 @@ flowchart TD
 
 ### Core Function Matrix
 
-| Command | Schema Validation | Security Validation | Credential Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Environment Wipe | Complete Reset | Testing Setup | Test Execution |
-|---------|:-----------------:|:------------------:|:--------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|:-------------:|:-------------:|
-| `make setup` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-dev` | ❌ | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-staging` | ❌ | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-prod` | ❌ | ❌ | ✅ (prod) | ✅ | ✅ (prod) | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-gpu` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-monitoring` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (monitoring) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-testing` | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ (testing) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `make start-gpu-auto` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `make reset` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| `make validate-schema` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-security` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials` | ❌ | ❌ | ✅ (custom) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials-dev` | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials-staging` | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials-prod` | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make generate-compose` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets-dev` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets-staging` | ❌ | ❌ | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets-prod` | ❌ | ❌ | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-testing` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `make test-allure` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (allure) |
-| `make test-jmeter` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (jmeter) |
-| `make test-unit` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (unit) |
-| `make test-integration` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (integration) |
-| `make test-performance` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (performance) |
-| `make test-api` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (api) |
-| `make generate-allure-report` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make serve-allure-report` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Command | Schema Validation | Security Validation | Credential Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Environment Wipe | Complete Reset | Testing Setup | Test Execution | Stack Management | Network Management | Data Retention | Backup Management |
+|---------|:-----------------:|:------------------:|:--------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|:-------------:|:-------------:|:---------------:|:-----------------:|:---------------:|:----------------:|
+| `make setup` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-dev` | ❌ | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-staging` | ❌ | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-prod` | ❌ | ❌ | ✅ (prod) | ✅ | ✅ (prod) | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-{core,inference,ai,ui,testing,monitoring}` | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ (stack) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `make stop-{core,inference,ai,ui,testing,monitoring}` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `make restart-{core,inference,ai,ui,testing,monitoring}` | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ (stack) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `make check-network-conflicts` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `make validate-networks` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `make wipe-{core,inference,ai,ui,testing,monitoring}` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (stack) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make wipe-{db,cache,models,logs,test-results}` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (data) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make retention-status` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make retention-cleanup` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make backup-status` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `make backup-full` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `make backup-service` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-gpu-auto` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make reset` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-schema` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-security` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials` | ❌ | ❌ | ✅ (custom) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials-dev` | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials-staging` | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials-prod` | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make generate-compose` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets-dev` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets-staging` | ❌ | ❌ | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets-prod` | ❌ | ❌ | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-testing` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make test-allure` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (allure) | ❌ | ❌ | ❌ | ❌ |
+| `make test-jmeter` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (jmeter) | ❌ | ❌ | ❌ | ❌ |
+| `make test-unit` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (unit) | ❌ | ❌ | ❌ | ❌ |
+| `make test-integration` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (integration) | ❌ | ❌ | ❌ | ❌ |
+| `make test-performance` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (performance) | ❌ | ❌ | ❌ | ❌ |
+| `make test-api` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (api) | ❌ | ❌ | ❌ | ❌ |
+| `make generate-allure-report` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make serve-allure-report` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### Service Matrix
 
-**Core Infrastructure:** PostgreSQL, Redis, Qdrant, MinIO  
-**Inference:** vLLM, LiteLLM  
-**AI Services:** Multimodal Worker, Retrieval Proxy, AI Agents, Memory System, Search Engine, User Management  
-**UI/Workflow:** OpenWebUI, n8n, n8n Monitoring  
-**Monitoring:** Prometheus, Grafana, Elasticsearch, Kibana, Logstash, Filebeat  
-**Testing:** Allure Results, Allure Report, Allure CLI, JMeter
+| Stack | Services | Network | Dependencies | Management Commands |
+|-------|----------|---------|--------------|-------------------|
+| **Core** | PostgreSQL, Redis, Qdrant, MinIO | multimodal-core-net (172.30.0.0/24) | None | `make start-core`, `make stop-core`, `make restart-core` |
+| **Inference** | vLLM, LiteLLM | multimodal-inference-net (172.31.0.0/24) | Core | `make start-inference`, `make stop-inference`, `make restart-inference` |
+| **AI** | Multimodal Worker, Retrieval Proxy, AI Agents, Memory System, Search Engine, User Management | multimodal-ai-net (172.32.0.0/24) | Core, Inference | `make start-ai`, `make stop-ai`, `make restart-ai` |
+| **UI** | OpenWebUI, n8n, n8n Monitoring, nginx | multimodal-ui-net (172.33.0.0/24) | Core, AI | `make start-ui`, `make stop-ui`, `make restart-ui` |
+| **Testing** | Allure Results, Allure Report, Allure CLI, JMeter | multimodal-testing-net (172.34.0.0/24) | Core | `make start-testing`, `make stop-testing`, `make restart-testing` |
+| **Monitoring** | Prometheus, Grafana, Elasticsearch, Kibana, Logstash, Filebeat | multimodal-monitoring-net (172.35.0.0/24) | Core | `make start-monitoring`, `make stop-monitoring`, `make restart-monitoring` |
 
 | Command | PostgreSQL | Redis | Qdrant | MinIO | vLLM | LiteLLM | Multimodal Worker | Retrieval Proxy | AI Agents | Memory System | Search Engine | User Management | OpenWebUI | n8n | n8n Monitoring | Nginx | Elasticsearch | Kibana | Logstash | Filebeat | Allure Results | Allure Report | Allure CLI | JMeter |
 |---------|:----------:|:-----:|:------:|:-----:|:----:|:-------:|:----------------:|:---------------:|:---------:|:-------------:|:-------------:|:---------------:|:---------:|:---:|:-------------:|:-----:|:-------------:|:-----:|:-------:|:--------:|:-------------:|:-------------:|:----------:|:------:|
@@ -581,6 +650,10 @@ make serve-allure-report     # Serve report on localhost:8080
 
 ---
 
-**Diagram Version**: 2.2 (Post PR 130 + Credential Validation + Testing Framework)  
+**Diagram Version**: 3.0 (Post PR 130 + Major Enhancements: Stack Architecture, Network Management, Data Retention, Multi-Tier Backup)  
 **Last Updated**: October 1, 2025  
-**Compatible With**: Enhanced LLM Multimodal Stack
+**Compatible With**: Enhanced LLM Multimodal Stack  
+**Total Commands**: 100+  
+**Total Stacks**: 6 (core, inference, ai, ui, testing, monitoring)  
+**Total Networks**: 6 (isolated stack networks + external)  
+**Total Management Systems**: 5 (stack, network, retention, backup, testing)

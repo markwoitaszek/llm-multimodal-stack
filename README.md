@@ -1,16 +1,20 @@
-# LLM Multimodal Stack - Phase-6A Production Ready
+# LLM Multimodal Stack - Enterprise-Grade Infrastructure Management
 
-A comprehensive, production-ready multimodal LLM stack with advanced features including secrets management, monitoring, testing, and performance optimization.
+A comprehensive, enterprise-grade multimodal LLM stack with advanced infrastructure management capabilities including stack-based architecture, network management, data retention policies, multi-tier backup systems, and automated operations.
 
-## 🎯 **What's New in Phase-6A**
+## 🎯 **What's New in v3.0**
 
-Phase-6A represents a complete production transformation with:
+Version 3.0 represents a complete enterprise transformation with:
+- ✅ **Stack-Based Architecture** - Modular service management with 6 independent stacks
+- ✅ **Network Management** - Isolated networks with conflict detection and health monitoring
+- ✅ **Data Retention Policies** - Automated cleanup with environment-specific policies
+- ✅ **Multi-Tier Backup System** - Comprehensive backup strategies with multiple storage tiers
+- ✅ **Granular Operations** - Fine-tuned wipe/reset operations for precise control
 - ✅ **Production Secrets Management** - Encrypted secrets with rotation
 - ✅ **Comprehensive Monitoring** - ELK stack, Prometheus, Grafana
 - ✅ **Professional Testing** - Allure reporting, JMeter performance testing
-- ✅ **Kubernetes Ready** - Helm charts and K8s manifests
-- ✅ **Auto-scaling** - Production-grade scaling and optimization
 - ✅ **Security Hardened** - Role-based access, audit logging
+- ✅ **100+ Management Commands** - Complete operational control
 
 ## 🚀 **Quick Start**
 
@@ -37,6 +41,82 @@ python3 setup_secrets.py
 - **LiteLLM API**: http://localhost:4000
 - **Multimodal Worker**: http://localhost:8001
 - **Retrieval Proxy**: http://localhost:8002
+
+## 🏗️ **Stack-Based Architecture**
+
+The system is organized into 6 independent stacks for modular management:
+
+### **Core Stack** - Foundation Infrastructure
+```bash
+# Start core services (PostgreSQL, Redis, Qdrant, MinIO)
+make start-core
+
+# Check core status
+make status-core
+
+# Stop core services
+make stop-core
+```
+
+### **Inference Stack** - Model Serving
+```bash
+# Start inference services (vLLM, LiteLLM)
+make start-inference
+
+# Check inference status
+make status-inference
+
+# Stop inference services
+make stop-inference
+```
+
+### **AI Stack** - AI Processing
+```bash
+# Start AI services (Multimodal Worker, Retrieval Proxy, AI Agents, etc.)
+make start-ai
+
+# Check AI status
+make status-ai
+
+# Stop AI services
+make stop-ai
+```
+
+### **UI Stack** - User Interfaces
+```bash
+# Start UI services (OpenWebUI, n8n, n8n Monitoring, nginx)
+make start-ui
+
+# Check UI status
+make status-ui
+
+# Stop UI services
+make stop-ui
+```
+
+### **Testing Stack** - Quality Assurance
+```bash
+# Start testing services (Allure, JMeter)
+make start-testing
+
+# Check testing status
+make status-testing
+
+# Stop testing services
+make stop-testing
+```
+
+### **Monitoring Stack** - Observability
+```bash
+# Start monitoring services (Prometheus, Grafana, ELK)
+make start-monitoring
+
+# Check monitoring status
+make status-monitoring
+
+# Stop monitoring services
+make stop-monitoring
+```
 
 ## 🏗️ **Deployment Options**
 
@@ -161,6 +241,112 @@ The stack now includes Jinja2 environment templates for seamless integration wit
 
 > **📋 See [Environment Templates README](env-templates/README.md) and [Secrets Mapping](env-templates/secrets-mapping.md) for detailed integration information.**
 
+## 🔧 **Advanced Management Features**
+
+### **Network Management**
+```bash
+# Check for network conflicts
+make check-network-conflicts
+
+# Validate network configuration
+make validate-networks
+
+# Check network health
+make check-network-health
+
+# Cleanup orphaned networks
+make cleanup-networks
+```
+
+### **Data Management**
+```bash
+# Check retention status
+make retention-status ENVIRONMENT=development
+
+# Run retention cleanup
+make retention-cleanup ENVIRONMENT=development
+
+# Test retention cleanup (dry run)
+make retention-test ENVIRONMENT=development
+
+# Check backup status
+make backup-status ENVIRONMENT=production
+
+# Run full backup
+make backup-full ENVIRONMENT=production
+
+# Backup specific service
+make backup-service SERVICE=postgres ENVIRONMENT=production
+```
+
+### **Granular Operations**
+```bash
+# Wipe specific stacks
+make wipe-core
+make wipe-inference
+make wipe-ai
+make wipe-ui
+make wipe-testing
+make wipe-monitoring
+
+# Wipe specific data types
+make wipe-db
+make wipe-cache
+make wipe-models
+make wipe-logs
+make wipe-test-results
+
+# Wipe entire environments
+make wipe-dev
+make wipe-staging
+make wipe-prod
+make wipe-testing
+```
+
+### **Testing Framework**
+```bash
+# Start testing stack
+make start-testing
+
+# Run test suites
+make test-allure
+make test-jmeter
+make test-unit
+make test-integration
+make test-performance
+make test-api
+
+# Generate test reports
+make generate-allure-report
+make serve-allure-report
+```
+
+### **GPU Acceleration**
+```bash
+# Auto-detect and configure GPU
+make detect-gpu
+make configure-gpu
+
+# Start with GPU optimization
+make start-gpu-auto
+```
+
+### **Environment Management**
+```bash
+# Wipe and reset environment
+make wipe
+make reset
+
+# Validate configuration
+make validate-schema
+make validate-security
+
+# Validate credentials
+make validate-credentials-dev
+make validate-credentials-staging
+make validate-credentials-prod
+```
+
 ## 🔐 **Secrets Management**
 
 Phase-6A includes a production-grade secrets management system:
@@ -249,11 +435,21 @@ The system includes automatic Docker cleanup to prevent disk space issues:
 
 ## 📚 **Documentation**
 
-- [Configuration Guide](./docs/configuration.md)
-- [Quick Start Guide](./docs/quick-start.md)
-- [Deployment Strategy](./DEPLOYMENT_TESTING_STRATEGY.md)
-- [API Reference](./docs/api-reference.md)
-- [Troubleshooting](./docs/troubleshooting.md)
+### **Core Documentation**
+- [Architecture Guide](docs/ARCHITECTURE.md) - Complete system architecture
+- [Operations Guide](docs/OPERATIONS.md) - Daily operations and maintenance
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Debugging and issue resolution
+
+### **Configuration Documentation**
+- [Environment Templates](env-templates/README.md) - Jinja2 template system
+- [Secrets Mapping](env-templates/secrets-mapping.md) - OpenBao integration
+- [Enhanced Workflow Diagram](ENHANCED_WORKFLOW_DIAGRAM.md) - Complete system overview
+
+### **Feature Documentation**
+- [GPU Configuration](GPU_CONFIGURATION_SUCCESS.md) - GPU optimization guide
+- [Container Logs Audit](container-logs-audit-report.md) - System health report
+- [Data Retention Policies](configs/retention-policies.yaml) - Retention configuration
+- [Backup Strategies](configs/backup-strategies.yaml) - Backup configuration
 
 ## 🎯 **GitHub Issues**
 
