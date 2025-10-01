@@ -128,8 +128,11 @@ configure_cpu_only() {
 # Main configuration logic
 case "${1:-auto}" in
     "auto"|"detect")
+        # Temporarily disable exit on error to capture return codes
+        set +e
         detect_gpu_config
         gpu_status=$?
+        set -e
         
         case $gpu_status in
             2)

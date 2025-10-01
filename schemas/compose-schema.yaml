@@ -161,12 +161,13 @@ services:
     environment:
       - "LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}"
       - "LITELLM_SALT_KEY=${LITELLM_SALT_KEY}"
+      - "DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
       - "POSTGRES_USER=${POSTGRES_USER}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
     volumes:
       - "./configs/litellm_simple.yaml:/app/config.yaml"
-    command: ["--config", "/app/config.yaml", "--port", "${LITELLM_PORT}", "--num_workers", "1", "--database-url", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"]
+    command: ["--config", "/app/config.yaml", "--port", "${LITELLM_PORT}", "--num_workers", "1"]
     depends_on:
       - "vllm"
       - "postgres"
@@ -768,16 +769,17 @@ environments:
     overrides:
       vllm:
         image: "vllm/vllm-openai:v0.6.3"
+        shm_size: "10gb"
         deploy:
           resources:
             reservations:
               devices:
                 - driver: nvidia
-                  count: 2
+                  device_ids: ['0', '1']
                   capabilities: [gpu]
         environment:
-          - "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}"
-          - "NVIDIA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}"
+          - "CUDA_VISIBLE_DEVICES=0,1"
+          - "NVIDIA_VISIBLE_DEVICES=0,1"
         command: [
           "--model", "microsoft/DialoGPT-small",
           "--host", "0.0.0.0",
