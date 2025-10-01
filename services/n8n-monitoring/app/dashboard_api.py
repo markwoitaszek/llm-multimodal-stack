@@ -30,3 +30,4 @@ class DashboardAPI:
             "avg_execution_time": 0
         }
 
+

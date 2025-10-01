@@ -83,8 +83,12 @@ class SimpleSecretsManager:
     
     def _generate_password(self, length: int = 32) -> str:
         """Generate cryptographically secure password"""
-        # Exclude $, {, }, `, and \ to avoid shell/Docker Compose variable expansion issues
-        alphabet = string.ascii_letters + string.digits + "!@#%^&*()_+-=[];:,.<>?"
+        # Exclude characters that cause issues in URLs, shell, or Docker Compose:
+        # $, {, }, `, \ - shell/Docker variable expansion
+        # @, #, /, ?, :, &, = - URL parsing issues
+        # < > - shell redirection
+        # [ ] - IPv6 URL brackets (confuses URL parsers)
+        alphabet = string.ascii_letters + string.digits + "!%^*()_+-"
         return ''.join(secrets.choice(alphabet) for _ in range(length))
     
     def _generate_api_key(self, length: int = 64) -> str:

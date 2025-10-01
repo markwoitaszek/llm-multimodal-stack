@@ -38,3 +38,4 @@ class WebSocketManager:
         """Process incoming WebSocket message"""
         return '{"status": "ok"}'
 
+

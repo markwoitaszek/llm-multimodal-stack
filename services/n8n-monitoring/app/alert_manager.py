@@ -22,3 +22,4 @@ class AlertManager:
         """Acknowledge an alert"""
         logger.info(f"Alert {alert_id} acknowledged")
 
+
