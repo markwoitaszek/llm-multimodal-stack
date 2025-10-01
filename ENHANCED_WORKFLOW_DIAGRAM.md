@@ -261,17 +261,97 @@ flowchart TD
 
 ## 🔄 Enhanced Command Matrix
 
-| Command | Purpose | Enhanced Features |
-|---------|---------|-------------------|
-| `make setup` | Complete setup | ✅ Security validation added |
-| `make start-dev` | Development | ✅ GPU auto-detection |
-| `make start-gpu` | GPU environment | ✅ NVLink optimization |
-| `make start-gpu-auto` | **NEW** | ✅ Auto-detect + configure + start |
-| `make detect-gpu` | **NEW** | ✅ RTX 3090 + NVLink detection |
-| `make configure-gpu` | **NEW** | ✅ Optimal GPU configuration |
-| `make wipe` | **NEW** | ✅ Complete environment reset |
-| `make reset` | **NEW** | ✅ Wipe + regenerate from scratch |
-| `make validate-security` | **NEW** | ✅ No hardcoded defaults check |
+### Core Function Matrix
+
+| Command | Schema Validation | Security Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Environment Wipe | Complete Reset |
+|---------|:-----------------:|:------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|
+| `make setup` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-dev` | ❌ | ❌ | ✅ | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ |
+| `make start-staging` | ❌ | ❌ | ✅ | ✅ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ |
+| `make start-prod` | ❌ | ❌ | ✅ | ✅ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ |
+| `make start-gpu` | ❌ | ❌ | ✅ | ✅ | ✅ (gpu) | ❌ | ❌ | ❌ | ❌ |
+| `make start-monitoring` | ❌ | ❌ | ✅ | ✅ | ✅ (monitoring) | ❌ | ❌ | ❌ | ❌ |
+| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `make start-gpu-auto` | ❌ | ❌ | ✅ | ✅ | ✅ (gpu) | ✅ | ✅ | ❌ | ❌ |
+| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make reset` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| `make validate-schema` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-security` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make generate-compose` | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### Function Legend
+
+| Function | Description |
+|----------|-------------|
+| **Schema Validation** | Validates `schemas/compose-schema.yaml` syntax and structure |
+| **Security Validation** | Checks for hardcoded defaults in schema and service configs |
+| **Generate Compose** | Generates all Docker Compose files from unified schema |
+| **Setup Secrets** | Creates environment files and generates secure secrets |
+| **Start Services** | Starts the specified environment (dev/staging/prod/gpu/monitoring) |
+| **GPU Detection** | Detects GPU hardware and NVLink topology |
+| **GPU Configuration** | Configures optimal GPU settings and environment variables |
+| **Environment Wipe** | Removes all containers, volumes, and networks |
+| **Complete Reset** | Wipes environment and regenerates everything from scratch |
+
+## 🎯 **Command Relationships & Overlaps**
+
+### **No Overlap - Each Command Has Unique Purpose**
+- ✅ **`detect-gpu`**: Only detects GPU (doesn't configure or start)
+- ✅ **`configure-gpu`**: Only configures GPU (doesn't detect or start)
+- ✅ **`start-gpu`**: Only starts GPU environment (doesn't detect or configure)
+- ✅ **`start-gpu-auto`**: Complete workflow (detect + configure + start)
+
+### **Dependency Chains**
+```
+make start-gpu-auto
+├── detect-gpu (runs first)
+├── configure-gpu (runs second)
+└── start-gpu (runs third)
+
+make reset
+├── wipe (runs first)
+└── setup (runs second)
+
+make setup
+├── validate-schema
+├── validate-security
+├── generate-compose
+└── setup-secrets
+```
+
+### **Recommended Usage Patterns**
+
+#### **For GPU Development:**
+```bash
+# Option 1: Complete automated workflow
+make start-gpu-auto
+
+# Option 2: Step-by-step control
+make detect-gpu          # Check what GPUs are available
+make configure-gpu       # Configure optimal settings
+make start-gpu          # Start the environment
+```
+
+#### **For Environment Reset:**
+```bash
+# Option 1: Nuclear reset (recommended)
+make reset              # Wipes everything + regenerates
+
+# Option 2: Just wipe (manual setup after)
+make wipe               # Only wipes, you setup manually after
+```
+
+#### **For Development:**
+```bash
+# Option 1: Complete setup from scratch
+make setup              # Validates + generates + configures
+make start-dev          # Start development environment
+
+# Option 2: Quick development (if already set up)
+make start-dev          # Just start (auto-generates if needed)
+```
 
 ## 🎯 Key Enhancements Over Previous System
 
