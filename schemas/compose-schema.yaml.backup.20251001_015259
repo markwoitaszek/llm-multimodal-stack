@@ -48,16 +48,16 @@ services:
     image: "postgres:16-alpine"
     container_name: "multimodal-postgres"
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
-      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_USER=${POSTGRES_USER:-postgres}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
     volumes:
       - "postgres_data:/var/lib/postgresql/data"
       - "./sql/init.sql:/docker-entrypoint-initdb.d/init.sql"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       template: "standard"
     volumes_required:
       - "postgres_data"
@@ -103,7 +103,7 @@ services:
       - "${MINIO_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9002}:9001"
     environment:
-      - "MINIO_ROOT_USER=${MINIO_ROOT_USER}"
+      - "MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}"
       - "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}"
     volumes:
       - "minio_data:/data"
@@ -157,21 +157,21 @@ services:
     image: "ghcr.io/berriai/litellm:main-latest"
     container_name: "multimodal-litellm"
     ports:
-      - "${LITELLM_PORT}:4000"
+      - "${LITELLM_PORT:-4000}:4000"
     environment:
       - "LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}"
       - "LITELLM_SALT_KEY=${LITELLM_SALT_KEY}"
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
-      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_USER=${POSTGRES_USER:-postgres}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
     volumes:
       - "./configs/litellm_simple.yaml:/app/config.yaml"
-    command: ["--config", "/app/config.yaml", "--port", "${LITELLM_PORT}", "--num_workers", "1", "--database-url", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"]
+    command: ["--config", "/app/config.yaml", "--port", "${LITELLM_PORT:-4000}", "--num_workers", "1", "--database-url", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB}"]
     depends_on:
       - "vllm"
       - "postgres"
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${LITELLM_PORT}/', timeout=5)\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:${LITELLM_PORT:-4000}/', timeout=5)\""]
       template: "standard"
 
   # Multimodal Services
@@ -187,13 +187,13 @@ services:
       - "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}"
       - "QDRANT_HOST=${QDRANT_HOST:-qdrant}"
       - "QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}"
-      - "POSTGRES_HOST=${POSTGRES_HOST}"
-      - "POSTGRES_PORT=${POSTGRES_PORT}"
+      - "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
+      - "POSTGRES_PORT=${POSTGRES_PORT:-5432}"
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
-      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_USER=${POSTGRES_USER:-postgres}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
       - "MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}"
-      - "MINIO_ACCESS_KEY=${MINIO_ROOT_USER}"
+      - "MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}"
       - "MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}"
       - "REDIS_HOST=${REDIS_HOST:-redis}"
       - "REDIS_PORT=${REDIS_PORT:-6379}"
@@ -230,13 +230,13 @@ services:
     environment:
       - "QDRANT_HOST=${QDRANT_HOST:-qdrant}"
       - "QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}"
-      - "POSTGRES_HOST=${POSTGRES_HOST}"
-      - "POSTGRES_PORT=${POSTGRES_PORT}"
+      - "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
+      - "POSTGRES_PORT=${POSTGRES_PORT:-5432}"
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
-      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_USER=${POSTGRES_USER:-postgres}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
       - "MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}"
-      - "MINIO_ACCESS_KEY=${MINIO_ROOT_USER}"
+      - "MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}"
       - "MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}"
       - "MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}"
       - "REDIS_HOST=${REDIS_HOST:-redis}"
@@ -261,10 +261,10 @@ services:
     ports:
       - "${AI_AGENTS_PORT:-8003}:8003"
     environment:
-      - "POSTGRES_HOST=${POSTGRES_HOST}"
-      - "POSTGRES_PORT=${POSTGRES_PORT}"
+      - "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
+      - "POSTGRES_PORT=${POSTGRES_PORT:-5432}"
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
-      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_USER=${POSTGRES_USER:-postgres}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
       - "QDRANT_HOST=${QDRANT_HOST:-qdrant}"
       - "QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}"
@@ -304,10 +304,10 @@ services:
     ports:
       - "${MEMORY_SYSTEM_PORT:-8005}:8005"
     environment:
-      - "POSTGRES_HOST=${POSTGRES_HOST}"
-      - "POSTGRES_PORT=${POSTGRES_PORT}"
+      - "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
+      - "POSTGRES_PORT=${POSTGRES_PORT:-5432}"
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
-      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_USER=${POSTGRES_USER:-postgres}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
       - "REDIS_HOST=${REDIS_HOST:-redis}"
       - "REDIS_PORT=${REDIS_PORT:-6379}"
@@ -331,10 +331,10 @@ services:
     ports:
       - "${SEARCH_ENGINE_PORT:-8004}:8004"
     environment:
-      - "POSTGRES_HOST=${POSTGRES_HOST}"
-      - "POSTGRES_PORT=${POSTGRES_PORT}"
+      - "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
+      - "POSTGRES_PORT=${POSTGRES_PORT:-5432}"
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
-      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_USER=${POSTGRES_USER:-postgres}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
       - "QDRANT_HOST=${QDRANT_HOST:-qdrant}"
       - "QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}"
@@ -363,10 +363,10 @@ services:
     ports:
       - "${USER_MANAGEMENT_PORT:-8006}:8006"
     environment:
-      - "POSTGRES_HOST=${POSTGRES_HOST}"
-      - "POSTGRES_PORT=${POSTGRES_PORT}"
+      - "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
+      - "POSTGRES_PORT=${POSTGRES_PORT:-5432}"
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
-      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_USER=${POSTGRES_USER:-postgres}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
       - "REDIS_HOST=${REDIS_HOST:-redis}"
       - "REDIS_PORT=${REDIS_PORT:-6379}"
@@ -479,10 +479,10 @@ services:
       - "N8N_API_KEY=${N8N_API_KEY:-}"
       - "N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://n8n-monitoring:8008/webhooks/n8n}"
       - "AI_AGENTS_URL=${AI_AGENTS_URL:-http://ai-agents:8003}"
-      - "POSTGRES_HOST=${POSTGRES_HOST}"
-      - "POSTGRES_PORT=${POSTGRES_PORT}"
+      - "POSTGRES_HOST=${POSTGRES_HOST:-postgres}"
+      - "POSTGRES_PORT=${POSTGRES_PORT:-5432}"
       - "POSTGRES_DB=${POSTGRES_DB:-multimodal}"
-      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_USER=${POSTGRES_USER:-postgres}"
       - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
       - "REDIS_HOST=${REDIS_HOST:-redis}"
       - "REDIS_PORT=${REDIS_PORT:-6379}"

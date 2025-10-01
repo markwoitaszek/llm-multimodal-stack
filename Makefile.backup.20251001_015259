@@ -123,56 +123,10 @@ clean:
 	@echo "✅ Cleanup completed"
 
 # Full setup from scratch
+setup: validate-schema generate-compose setup-secrets
+	@echo "🎉 Full setup completed successfully!"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  make start-dev     # Start development environment"
 	@echo "  make start-staging # Start staging environment"
 	@echo "  make start-prod    # Start production environment"
-# Enhanced GPU Detection and Configuration
-detect-gpu:
-	@echo "🔍 Detecting GPU configuration..."
-	@scripts/configure-gpu.sh detect
-
-configure-gpu:
-	@echo "🎮 Configuring GPU for optimal performance..."
-	@scripts/configure-gpu.sh auto
-
-# Enhanced GPU start with auto-detection
-start-gpu-auto: detect-gpu configure-gpu start-gpu
-	@echo "✅ GPU environment started with auto-configuration"
-
-# Comprehensive Environment Management
-wipe:
-	@echo "⚠️  WARNING: This will DELETE all data and containers!"
-	@echo "This includes PostgreSQL databases, MinIO data, and all volumes."
-	@read -p "Are you sure? Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ]
-	@echo "🧹 Wiping environment..."
-	@scripts/wipe-environment.sh
-	@echo "✅ Environment wiped completely"
-
-# Nuclear reset option
-reset: wipe setup
-	@echo "🎉 Environment reset and regenerated from scratch"
-
-# Security validation
-validate-security:
-	@echo "🔒 Validating security configuration..."
-	@if grep -q ":-postgres\|:-minioadmin" schemas/compose-schema.yaml; then \
-		echo "❌ Hardcoded defaults found in schema"; \
-		exit 1; \
-	fi
-	@if find services/ -name "config.py" -exec grep -l ', "postgres")\|, "minioadmin")' {} \; | grep -q .; then \
-		echo "❌ Hardcoded defaults found in service configs"; \
-		exit 1; \
-	fi
-	@echo "✅ Security validation passed"
-
-# Enhanced setup with security validation
-setup: validate-schema validate-security generate-compose setup-secrets
-	@echo "🎉 Full setup completed successfully!"
-	@echo ""
-	@echo "Next steps:"
-	@echo "  make start-dev        # Start development environment"
-	@echo "  make start-gpu-auto   # Start GPU environment with auto-detection"
-	@echo "  make wipe             # Wipe environment (DESTRUCTIVE)"
-	@echo "  make reset            # Reset and regenerate from scratch"
