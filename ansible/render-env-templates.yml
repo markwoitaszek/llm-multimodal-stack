@@ -1,0 +1,181 @@
+---
+# Ansible Playbook: Render Environment Templates
+# This playbook renders Jinja2 environment templates for the Multimodal LLM Stack
+# Designed for integration with OpenBao secrets management
+
+- name: Render Environment Templates for Multimodal LLM Stack
+  hosts: llm_servers
+  become: yes
+  vars:
+    env_dir: /etc/llm-ms/.env.d
+    template_dir: env-templates
+    
+  pre_tasks:
+    - name: Create environment directory
+      file:
+        path: "{{ env_dir }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+  tasks:
+    - name: Render core services environment template
+      template:
+        src: "{{ template_dir }}/core.env.j2"
+        dest: "{{ env_dir }}/core.env"
+        mode: '0600'
+        owner: root
+        group: root
+      tags: [core, env]
+
+    - name: Render vLLM environment template
+      template:
+        src: "{{ template_dir }}/vllm.env.j2"
+        dest: "{{ env_dir }}/vllm.env"
+        mode: '0600'
+        owner: root
+        group: root
+      tags: [vllm, env]
+
+    - name: Render LiteLLM environment template
+      template:
+        src: "{{ template_dir }}/litellm.env.j2"
+        dest: "{{ env_dir }}/litellm.env"
+        mode: '0600'
+        owner: root
+        group: root
+      tags: [litellm, env]
+
+    - name: Render multimodal worker environment template
+      template:
+        src: "{{ template_dir }}/multimodal-worker.env.j2"
+        dest: "{{ env_dir }}/multimodal-worker.env"
+        mode: '0600'
+        owner: root
+        group: root
+      tags: [multimodal-worker, env]
+
+    - name: Render retrieval proxy environment template
+      template:
+        src: "{{ template_dir }}/retrieval-proxy.env.j2"
+        dest: "{{ env_dir }}/retrieval-proxy.env"
+        mode: '0600'
+        owner: root
+        group: root
+      tags: [retrieval-proxy, env]
+
+    - name: Render AI agents environment template
+      template:
+        src: "{{ template_dir }}/ai-agents.env.j2"
+        dest: "{{ env_dir }}/ai-agents.env"
+        mode: '0600'
+        owner: root
+        group: root
+      when: deploy_ai_agents | default(false)
+      tags: [ai-agents, env]
+
+    - name: Render memory system environment template
+      template:
+        src: "{{ template_dir }}/memory-system.env.j2"
+        dest: "{{ env_dir }}/memory-system.env"
+        mode: '0600'
+        owner: root
+        group: root
+      when: deploy_memory_system | default(false)
+      tags: [memory-system, env]
+
+    - name: Render search engine environment template
+      template:
+        src: "{{ template_dir }}/search-engine.env.j2"
+        dest: "{{ env_dir }}/search-engine.env"
+        mode: '0600'
+        owner: root
+        group: root
+      when: deploy_search_engine | default(false)
+      tags: [search-engine, env]
+
+    - name: Render user management environment template
+      template:
+        src: "{{ template_dir }}/user-management.env.j2"
+        dest: "{{ env_dir }}/user-management.env"
+        mode: '0600'
+        owner: root
+        group: root
+      when: deploy_user_management | default(false)
+      tags: [user-management, env]
+
+    - name: Render OpenWebUI environment template
+      template:
+        src: "{{ template_dir }}/openwebui.env.j2"
+        dest: "{{ env_dir }}/openwebui.env"
+        mode: '0600'
+        owner: root
+        group: root
+      when: deploy_openwebui | default(false)
+      tags: [openwebui, env]
+
+    - name: Render n8n environment template
+      template:
+        src: "{{ template_dir }}/n8n.env.j2"
+        dest: "{{ env_dir }}/n8n.env"
+        mode: '0600'
+        owner: root
+        group: root
+      when: deploy_n8n | default(false)
+      tags: [n8n, env]
+
+    - name: Render n8n monitoring environment template
+      template:
+        src: "{{ template_dir }}/n8n-monitoring.env.j2"
+        dest: "{{ env_dir }}/n8n-monitoring.env"
+        mode: '0600'
+        owner: root
+        group: root
+      when: deploy_n8n_monitoring | default(false)
+      tags: [n8n-monitoring, env]
+
+    - name: Render master environment template (optional)
+      template:
+        src: "{{ template_dir }}/master.env.j2"
+        dest: "{{ env_dir }}/master.env"
+        mode: '0600'
+        owner: root
+        group: root
+      when: deploy_master_env | default(false)
+      tags: [master, env]
+
+    - name: Verify rendered environment files
+      stat:
+        path: "{{ env_dir }}/{{ item }}.env"
+      register: env_files
+      loop:
+        - core
+        - vllm
+        - litellm
+        - multimodal-worker
+        - retrieval-proxy
+      when: verify_env_files | default(true)
+
+    - name: Display rendered environment files
+      debug:
+        msg: "Rendered environment file: {{ item.stat.path }}"
+      loop: "{{ env_files.results }}"
+      when: 
+        - verify_env_files | default(true)
+        - item.stat.exists
+
+    - name: Set environment directory permissions
+      file:
+        path: "{{ env_dir }}"
+        mode: '0755'
+        owner: root
+        group: root
+      tags: [permissions]
+
+  handlers:
+    - name: restart docker compose services
+      systemd:
+        name: docker
+        state: restarted
+      when: restart_services | default(false)

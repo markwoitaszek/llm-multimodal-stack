@@ -10,7 +10,7 @@ import torch
 from PIL import Image
 import cv2
 import whisper
-from moviepy import VideoFileClip
+from moviepy.editor import VideoFileClip
 import librosa
 
 from .config import settings

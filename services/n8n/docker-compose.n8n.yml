@@ -5,21 +5,21 @@ services:
     image: n8nio/n8n:latest
     container_name: multimodal-n8n
     ports:
-      - "5678:5678"
+      - "${N8N_PORT:-5678}:5678"
     environment:
       - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=${N8N_PORT:-5678}
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678}
       - GENERIC_TIMEZONE=UTC
       - N8N_METRICS=true
       - N8N_LOG_LEVEL=info
       - N8N_LOG_OUTPUT=console
       - N8N_USER_FOLDER=/home/node/.n8n
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-multimodal-n8n-key}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/home/node/.n8n/workflows
@@ -30,7 +30,7 @@ services:
       - multimodal-worker
       - retrieval-proxy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:${N8N_PORT:-5678}/healthz || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

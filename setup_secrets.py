@@ -1,0 +1,339 @@
+#!/usr/bin/env python3
+"""
+Setup Production Secrets Management System - Updated for Normalized Structure
+Properly named script for setting up environment variables and secrets using the new template system
+"""
+import asyncio
+import sys
+import logging
+import json
+from pathlib import Path
+
+# Try to import Jinja2, but don't fail if it's not available
+try:
+    from jinja2 import Environment, FileSystemLoader
+    JINJA2_AVAILABLE = True
+except ImportError:
+    JINJA2_AVAILABLE = False
+
+# Add workspace to path
+sys.path.append(str(Path(__file__).parent))
+
+from security.secrets_manager_simple import SimpleSecretsManager
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+class TemplateBasedSecretsManager(SimpleSecretsManager):
+    """Extended secrets manager that works with Jinja2 templates"""
+    
+    def __init__(self, workspace_path: str = "/workspace"):
+        super().__init__(workspace_path)
+        self.template_dir = self.workspace_path / "env-templates"
+        self.output_dir = self.workspace_path / ".env.d"
+        self.output_dir.mkdir(exist_ok=True)
+        
+        # Initialize Jinja2 environment
+        if JINJA2_AVAILABLE:
+            try:
+                self.jinja_env = Environment(
+                    loader=FileSystemLoader(str(self.template_dir)),
+                    autoescape=False
+                )
+                logger.info("Jinja2 environment initialized successfully")
+            except Exception as e:
+                logger.warning(f"Could not initialize Jinja2 environment: {e}")
+                logger.warning("Falling back to legacy environment file generation")
+                self.jinja_env = None
+        else:
+            logger.warning("Jinja2 not available, using legacy environment file generation only")
+            self.jinja_env = None
+    
+    async def render_environment_templates(self, environment: str = "development") -> list:
+        """Render all environment templates with generated secrets"""
+        if not self.jinja_env:
+            logger.warning("Jinja2 not available, skipping template rendering")
+            return []
+            
+        logger.info(f"Rendering environment templates for {environment}")
+        
+        # Load secrets from stored file (already generated)
+        secrets_dict = await self.load_secrets(environment)
+        
+        # Convert secrets to template variables (add vault_ prefix)
+        template_vars = {}
+        for key, value in secrets_dict.items():
+            template_vars[f"vault_{key.lower()}"] = value
+        
+        # Add environment-specific variables
+        template_vars.update({
+            'environment': environment,
+            'debug': environment == 'development',
+            'log_level': 'DEBUG' if environment == 'development' else 'INFO'
+        })
+        
+        rendered_files = []
+        
+        # List of templates to render
+        templates = [
+            'core.env.j2',
+            'vllm.env.j2', 
+            'litellm.env.j2',
+            'multimodal-worker.env.j2',
+            'retrieval-proxy.env.j2',
+            'ai-agents.env.j2',
+            'memory-system.env.j2',
+            'search-engine.env.j2',
+            'user-management.env.j2',
+            'openwebui.env.j2',
+            'n8n.env.j2',
+            'n8n-monitoring.env.j2'
+        ]
+        
+        for template_name in templates:
+            try:
+                template = self.jinja_env.get_template(template_name)
+                rendered_content = template.render(**template_vars)
+                
+                # Output file name (remove .j2 extension)
+                output_file = template_name.replace('.env.j2', '.env')
+                output_path = self.output_dir / output_file
+                
+                # Write rendered content
+                with open(output_path, 'w') as f:
+                    f.write(rendered_content)
+                
+                # Set proper permissions (600)
+                output_path.chmod(0o600)
+                
+                rendered_files.append(str(output_path))
+                logger.info(f"Rendered {template_name} -> {output_path}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to render {template_name}: {e}")
+        
+        return rendered_files
+    
+    async def create_legacy_env_file(self, environment: str = "development") -> str:
+        """Create a legacy .env file for backward compatibility"""
+        logger.info(f"Creating legacy .env file for {environment}")
+        
+        # Load secrets from stored file (already generated)
+        secrets_dict = await self.load_secrets(environment)
+        
+        # Create a combined .env file
+        env_content = f"""# =============================================================================
+# Multimodal LLM Stack - Environment Configuration
+# Generated by setup_secrets.py for {environment} environment
+# =============================================================================
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+POSTGRES_DB=multimodal
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD={secrets_dict.get('POSTGRES_PASSWORD', 'changeme_in_production')}
+
+# =============================================================================
+# STORAGE CONFIGURATION
+# =============================================================================
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD={secrets_dict.get('MINIO_ROOT_PASSWORD', 'changeme_in_production')}
+
+# =============================================================================
+# MODEL CONFIGURATION
+# =============================================================================
+VLLM_MODEL=microsoft/DialoGPT-medium
+VLLM_GPU_MEMORY_UTILIZATION=0.8
+VLLM_MAX_MODEL_LEN=1024
+VLLM_MAX_NUM_SEQS=8
+
+# =============================================================================
+# API CONFIGURATION
+# =============================================================================
+LITELLM_MASTER_KEY={secrets_dict.get('LITELLM_MASTER_KEY', 'changeme_in_production')}
+LITELLM_SALT_KEY={secrets_dict.get('LITELLM_SALT_KEY', 'changeme_in_production')}
+VLLM_API_KEY={secrets_dict.get('VLLM_API_KEY', 'changeme_in_production')}
+
+# =============================================================================
+# GPU CONFIGURATION
+# =============================================================================
+CUDA_VISIBLE_DEVICES=0
+
+# =============================================================================
+# REDIS CONFIGURATION
+# =============================================================================
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+JWT_SECRET_KEY={secrets_dict.get('JWT_SECRET_KEY', 'changeme_in_production')}
+WEBUI_SECRET_KEY={secrets_dict.get('WEBUI_SECRET_KEY', 'changeme_in_production')}
+N8N_PASSWORD={secrets_dict.get('N8N_PASSWORD', 'changeme_in_production')}
+N8N_ENCRYPTION_KEY={secrets_dict.get('N8N_ENCRYPTION_KEY', 'changeme_in_production')}
+N8N_MONITORING_SECRET_KEY={secrets_dict.get('N8N_MONITORING_SECRET_KEY', 'changeme_in_production')}
+
+# =============================================================================
+# DEBUG AND DEVELOPMENT
+# =============================================================================
+DEBUG={'true' if environment == 'development' else 'false'}
+LOG_LEVEL={'DEBUG' if environment == 'development' else 'INFO'}
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+MULTIMODAL_WORKER_URL=http://multimodal-worker:8001
+RETRIEVAL_PROXY_URL=http://multimodal-retrieval-proxy:8002
+SEARCH_ENGINE_URL=http://search-engine:8004
+MEMORY_SYSTEM_URL=http://memory-system:8005
+USER_MANAGEMENT_URL=http://user-management:8006
+LLM_BASE_URL=http://vllm:8000/v1
+OPENAI_API_BASE_URL=http://vllm:8000/v1
+AI_AGENTS_URL=http://ai-agents:8003
+N8N_URL=http://n8n:5678
+
+# =============================================================================
+# SERVICE PORTS
+# =============================================================================
+VLLM_PORT=8000
+LITELLM_PORT=4000
+MULTIMODAL_WORKER_PORT=8001
+RETRIEVAL_PROXY_PORT=8002
+AI_AGENTS_PORT=8003
+SEARCH_ENGINE_PORT=8004
+MEMORY_SYSTEM_PORT=8005
+USER_MANAGEMENT_PORT=8006
+OPENWEBUI_PORT=3030
+QDRANT_HTTP_PORT=6333
+QDRANT_GRPC_PORT=6334
+POSTGRES_PORT=5432
+REDIS_PORT=6379
+MINIO_PORT=9000
+MINIO_CONSOLE_PORT=9002
+N8N_PORT=5678
+N8N_MONITORING_PORT=8008
+
+# =============================================================================
+# SERVICE HOSTS
+# =============================================================================
+VLLM_HOST=0.0.0.0
+QDRANT_HOST=qdrant
+POSTGRES_HOST=postgres
+REDIS_HOST=redis
+MINIO_ENDPOINT=minio:9000
+
+# =============================================================================
+# HEALTH CHECK CONFIGURATION
+# =============================================================================
+HEALTH_CHECK_INTERVAL=30s
+HEALTH_CHECK_TIMEOUT=10s
+HEALTH_CHECK_RETRIES=3
+HEALTH_CHECK_START_PERIOD=30s
+"""
+        
+        # Write the legacy .env file
+        env_file_path = self.workspace_path / f".env.{environment}"
+        with open(env_file_path, 'w') as f:
+            f.write(env_content)
+        
+        # Set proper permissions
+        env_file_path.chmod(0o600)
+        
+        logger.info(f"Created legacy .env file: {env_file_path}")
+        return str(env_file_path)
+
+async def main(environment: str = "development"):
+    """Main function to setup production secrets management with new structure"""
+    logger.info(f"Setting up Production Secrets Management System for {environment} (Updated)")
+    
+    # Get current directory as workspace path
+    workspace_path = str(Path(__file__).parent)
+    logger.info(f"Using workspace path: {workspace_path}")
+    
+    # Initialize the updated secrets manager
+    secrets_manager = TemplateBasedSecretsManager(workspace_path)
+    
+    try:
+        # Step 1: Generate secure secrets
+        logger.info("Step 1: Generating secure secrets...")
+        secrets_dict = await secrets_manager.generate_secure_secrets()
+        logger.info(f"Generated {len(secrets_dict)} secure secrets")
+        
+        # Step 2: Store secrets securely (legacy method)
+        logger.info("Step 2: Storing secrets securely...")
+        secrets_file = await secrets_manager.store_secrets(secrets_dict, environment)
+        logger.info(f"Secrets stored in: {secrets_file}")
+        
+        # Step 3: Render environment templates (new method)
+        logger.info("Step 3: Rendering environment templates...")
+        template_files = await secrets_manager.render_environment_templates(environment)
+        if template_files:
+            logger.info(f"Rendered {len(template_files)} environment template files:")
+            for file in template_files:
+                logger.info(f"  - {file}")
+        else:
+            logger.info("Template rendering skipped (Jinja2 not available)")
+        
+        # Step 4: Create legacy .env file for backward compatibility
+        logger.info("Step 4: Creating legacy .env file for backward compatibility...")
+        legacy_env_file = await secrets_manager.create_legacy_env_file(environment)
+        logger.info(f"Created legacy .env file: {legacy_env_file}")
+        
+        # Step 5: Setup secret rotation
+        logger.info("Step 5: Setting up secret rotation...")
+        rotation_config = await secrets_manager.setup_secret_rotation()
+        logger.info("Secret rotation configured")
+        
+        # Summary
+        logger.info("=" * 80)
+        logger.info("SECRETS MANAGEMENT SETUP COMPLETED SUCCESSFULLY (UPDATED)")
+        logger.info("=" * 80)
+        logger.info("✅ Generated secure secrets")
+        logger.info("✅ Stored secrets securely")
+        if template_files:
+            logger.info("✅ Rendered environment templates")
+        logger.info("✅ Created legacy .env file for backward compatibility")
+        logger.info("✅ Set up secret rotation")
+        logger.info("=" * 80)
+        if template_files:
+            logger.info("New normalized structure files:")
+            for file in template_files:
+                logger.info(f"  - {file}")
+        logger.info("Legacy compatibility files:")
+        logger.info(f"  - {legacy_env_file}")
+        logger.info("=" * 80)
+        logger.info("Next steps:")
+        logger.info("1. Review the generated environment files")
+        logger.info("2. Start your development environment:")
+        logger.info("   ./start-environment.sh dev")
+        logger.info("3. Test the services")
+        if template_files:
+            logger.info("4. For production, use Ansible with the templates:")
+            logger.info("   ./scripts/deploy-with-ansible.sh prod")
+        logger.info("=" * 80)
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error setting up secrets management: {e}")
+        return False
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description='Setup secrets for environment')
+    parser.add_argument(
+        '--environment', '-e',
+        default='development',
+        choices=['development', 'staging', 'production'],
+        help='Environment to setup secrets for (default: development)'
+    )
+    args = parser.parse_args()
+    
+    success = asyncio.run(main(args.environment))
+    sys.exit(0 if success else 1)

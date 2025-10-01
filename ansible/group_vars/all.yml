@@ -1,0 +1,234 @@
+---
+# Global variables for Multimodal LLM Stack deployment
+# These variables apply to all hosts in the inventory
+
+# =============================================================================
+# OPENBAO CONFIGURATION
+# =============================================================================
+vault_addr: "{{ vault_addr_env | default('https://vault.example.com') }}"
+vault_role_id: "{{ vault_role_id_env | default('') }}"
+vault_secret_id: "{{ vault_secret_id_env | default('') }}"
+vault_mount_point: "secret"
+vault_path: "multimodal-llm"
+vault_auth_method: "approle"
+
+# =============================================================================
+# ENVIRONMENT CONFIGURATION
+# =============================================================================
+environment: "{{ env | default('dev') }}"
+debug: "{{ debug_env | default('false') }}"
+log_level: "{{ log_level_env | default('INFO') }}"
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+postgres_host: postgres
+postgres_port: 5432
+postgres_db: multimodal
+postgres_user: postgres
+
+# =============================================================================
+# REDIS CONFIGURATION
+# =============================================================================
+redis_host: redis
+redis_port: 6379
+
+# Redis database assignments
+redis_db_multimodal_worker: 0
+redis_db_retrieval_proxy: 1
+redis_db_ai_agents: 2
+redis_db_search_engine: 3
+redis_db_memory_system: 4
+redis_db_user_management: 5
+redis_db_n8n_monitoring: 7
+
+# =============================================================================
+# VECTOR DATABASE CONFIGURATION
+# =============================================================================
+qdrant_host: qdrant
+qdrant_http_port: 6333
+qdrant_grpc_port: 6334
+
+# =============================================================================
+# STORAGE CONFIGURATION
+# =============================================================================
+minio_endpoint: minio:9000
+minio_root_user: minioadmin
+minio_port: 9000
+minio_console_port: 9002
+
+# =============================================================================
+# vLLM CONFIGURATION
+# =============================================================================
+vllm_host: 0.0.0.0
+vllm_port: 8000
+vllm_model: microsoft/DialoGPT-medium
+vllm_gpu_memory_utilization: 0.8
+vllm_max_model_len: 1024
+vllm_max_num_seqs: 8
+cuda_visible_devices: "0"
+nvidia_visible_devices: "0"
+
+# =============================================================================
+# LITELLM CONFIGURATION
+# =============================================================================
+litellm_port: 4000
+litellm_num_workers: 1
+litellm_max_requests_per_minute: 60
+litellm_max_tokens_per_minute: 10000
+litellm_request_timeout: 30
+litellm_log_level: INFO
+litellm_enable_metrics: true
+litellm_metrics_port: 4001
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+multimodal_worker_port: 8001
+retrieval_proxy_port: 8002
+ai_agents_port: 8003
+search_engine_port: 8004
+memory_system_port: 8005
+user_management_port: 8006
+openwebui_port: 3030
+n8n_port: 5678
+n8n_monitoring_port: 8008
+n8n_monitoring_dashboard_port: 3003
+
+# =============================================================================
+# SERVICE URLs
+# =============================================================================
+multimodal_worker_url: "http://multimodal-worker:8001"
+retrieval_proxy_url: "http://multimodal-retrieval-proxy:8002"
+search_engine_url: "http://search-engine:8004"
+memory_system_url: "http://memory-system:8005"
+user_management_url: "http://user-management:8006"
+llm_base_url: "http://vllm:8000/v1"
+openai_api_base_url: "http://vllm:8000/v1"
+ai_agents_url: "http://ai-agents:8003"
+n8n_url: "http://n8n:5678"
+n8n_webhook_url: "http://localhost:5678"
+n8n_monitoring_dashboard_url: "http://localhost:8008"
+n8n_monitoring_ws_url: "ws://localhost:8008/ws"
+
+# =============================================================================
+# CACHE CONFIGURATION
+# =============================================================================
+cache_ttl_search_results: 3600
+cache_ttl_model_metadata: 86400
+cache_ttl_embeddings: 86400
+cache_ttl_agent_memory: 2592000
+cache_ttl_retrieval_results: 1800
+cache_ttl_memory_search: 3600
+cache_ttl_search_index: 86400
+cache_ttl_agent_responses: 3600
+
+# =============================================================================
+# PERFORMANCE CONFIGURATION
+# =============================================================================
+worker_max_concurrent_requests: 10
+worker_batch_size: 32
+worker_timeout: 300
+retrieval_max_results: 10
+retrieval_timeout: 30
+retrieval_batch_size: 5
+search_max_results: 50
+search_timeout: 30
+search_batch_size: 10
+agent_max_concurrent_tasks: 5
+agent_task_timeout: 300
+agent_memory_retention_days: 30
+
+# =============================================================================
+# HEALTH CHECK CONFIGURATION
+# =============================================================================
+health_check_interval: 30s
+health_check_timeout: 10s
+health_check_retries: 3
+health_check_start_period: 30s
+
+# =============================================================================
+# n8n CONFIGURATION
+# =============================================================================
+n8n_host: localhost
+n8n_protocol: https
+n8n_basic_auth_active: true
+n8n_basic_auth_user: admin
+n8n_metrics: true
+n8n_log_level: info
+n8n_runners_enabled: true
+n8n_block_env_access_in_node: false
+n8n_enforce_settings_file_permissions: true
+db_sqlite_pool_size: 5
+generic_timezone: UTC
+
+# =============================================================================
+# n8n MONITORING CONFIGURATION
+# =============================================================================
+n8n_monitoring_host: 0.0.0.0
+monitoring_interval: 30
+metrics_retention_days: 90
+max_execution_history: 1000
+alert_email_enabled: true
+alert_slack_enabled: true
+alert_webhook_enabled: false
+alert_threshold_error_rate: 5.0
+alert_threshold_response_time: 30000
+alert_threshold_failure_count: 5
+smtp_port: 587
+slack_channel: "#n8n-monitoring"
+ws_max_connections: 100
+ws_heartbeat_interval: 30
+max_concurrent_monitors: 10
+request_timeout: 30
+allowed_origins: "*"
+
+# =============================================================================
+# USER MANAGEMENT CONFIGURATION
+# =============================================================================
+jwt_algorithm: HS256
+jwt_expiration_hours: 24
+jwt_refresh_expiration_days: 30
+auth_max_login_attempts: 5
+auth_lockout_duration_minutes: 15
+auth_password_min_length: 8
+auth_require_email_verification: false
+session_timeout_minutes: 60
+session_max_concurrent: 3
+
+# =============================================================================
+# MEMORY SYSTEM CONFIGURATION
+# =============================================================================
+memory_max_entries_per_user: 10000
+memory_compression_enabled: true
+memory_encryption_enabled: true
+memory_batch_size: 100
+memory_index_interval: 3600
+memory_cleanup_interval: 86400
+
+# =============================================================================
+# OPENWEBUI CONFIGURATION
+# =============================================================================
+webui_title: "Multimodal LLM Stack"
+webui_description: "Advanced AI Assistant Platform"
+webui_enable_registration: true
+webui_enable_sharing: false
+webui_max_upload_size: 100
+webui_max_conversations: 1000
+webui_cleanup_interval: 86400
+
+# =============================================================================
+# SEARCH ENGINE CONFIGURATION
+# =============================================================================
+search_index_interval: 3600
+
+# =============================================================================
+# MODELS CONFIGURATION
+# =============================================================================
+models_path: "./models"
+
+# =============================================================================
+# DEPLOYMENT CONFIGURATION
+# =============================================================================
+restart_services: false
+verify_env_files: true

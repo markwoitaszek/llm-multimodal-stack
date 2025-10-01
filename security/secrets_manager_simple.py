@@ -59,6 +59,7 @@ class SimpleSecretsManager:
             'WEBUI_SECRET_KEY': self._generate_password(32),
             'N8N_PASSWORD': self._generate_password(32),
             'N8N_ENCRYPTION_KEY': self._generate_password(32),
+            'N8N_MONITORING_SECRET_KEY': self._generate_password(32),
             'GRAFANA_PASSWORD': self._generate_password(32),
             
             # External API keys (placeholders)
@@ -82,7 +83,13 @@ class SimpleSecretsManager:
     
     def _generate_password(self, length: int = 32) -> str:
         """Generate cryptographically secure password"""
-        alphabet = string.ascii_letters + string.digits + "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        # Exclude characters that cause issues in URLs, shell, or Docker Compose:
+        # $, {, }, `, \ - shell/Docker variable expansion
+        # @, #, /, ?, :, &, = - URL parsing issues
+        # < > - shell redirection
+        # [ ] - IPv6 URL brackets (confuses URL parsers)
+        # %, (, ) - URL encoding issues (% is encoding prefix, parens can cause issues)
+        alphabet = string.ascii_letters + string.digits + "!^*_+-"
         return ''.join(secrets.choice(alphabet) for _ in range(length))
     
     def _generate_api_key(self, length: int = 64) -> str:
@@ -157,13 +164,12 @@ class SimpleSecretsManager:
         compose_override = self.workspace_path / f"docker-compose.{environment}.override.yml"
         with open(compose_override, 'w') as f:
             f.write(f"# Docker Compose Override for {environment.upper()}\n")
-            f.write("version: '3.8'\n\n")
             f.write("services:\n")
             
             # Add environment variables to services
             services = [
                 'postgres', 'minio', 'vllm', 'litellm', 'openwebui', 
-                'n8n', 'grafana', 'multimodal-worker', 'retrieval-proxy'
+                'n8n', 'multimodal-worker', 'retrieval-proxy'
             ]
             
             for service in services:
@@ -174,21 +180,19 @@ class SimpleSecretsManager:
                 
                 # Add relevant environment variables for each service
                 if service == 'postgres':
-                    f.write("      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}\n")
+                    f.write("      - POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD}\"\n")
                 elif service == 'minio':
-                    f.write("      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}\n")
+                    f.write("      - MINIO_ROOT_PASSWORD=\"${MINIO_ROOT_PASSWORD}\"\n")
                 elif service == 'vllm':
-                    f.write("      - VLLM_API_KEY=${VLLM_API_KEY}\n")
+                    f.write("      - VLLM_API_KEY=\"${VLLM_API_KEY}\"\n")
                 elif service == 'litellm':
-                    f.write("      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}\n")
-                    f.write("      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}\n")
+                    f.write("      - LITELLM_MASTER_KEY=\"${LITELLM_MASTER_KEY}\"\n")
+                    f.write("      - LITELLM_SALT_KEY=\"${LITELLM_SALT_KEY}\"\n")
                 elif service == 'openwebui':
-                    f.write("      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}\n")
+                    f.write("      - WEBUI_SECRET_KEY=\"${WEBUI_SECRET_KEY}\"\n")
                 elif service == 'n8n':
-                    f.write("      - N8N_PASSWORD=${N8N_PASSWORD}\n")
-                    f.write("      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}\n")
-                elif service == 'grafana':
-                    f.write("      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}\n")
+                    f.write("      - N8N_PASSWORD=\"${N8N_PASSWORD}\"\n")
+                    f.write("      - N8N_ENCRYPTION_KEY=\"${N8N_ENCRYPTION_KEY}\"\n")
                 
                 f.write("\n")
         
@@ -493,5 +497,5 @@ if __name__ == "__main__":
         logger.info(f"Compliance report generated: {compliance_score:.1f}% compliance")
         return report
 
-# Global secrets manager instance
-secrets_manager = SimpleSecretsManager()
+# Global secrets manager instance - will be initialized when needed
+# secrets_manager = SimpleSecretsManager()
