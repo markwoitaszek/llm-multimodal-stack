@@ -59,6 +59,7 @@ class SimpleSecretsManager:
             'WEBUI_SECRET_KEY': self._generate_password(32),
             'N8N_PASSWORD': self._generate_password(32),
             'N8N_ENCRYPTION_KEY': self._generate_password(32),
+            'N8N_MONITORING_SECRET_KEY': self._generate_password(32),
             'GRAFANA_PASSWORD': self._generate_password(32),
             
             # External API keys (placeholders)

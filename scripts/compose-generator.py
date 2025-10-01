@@ -74,7 +74,7 @@ class ComposeGenerator:
             service['networks'] = [self.schema['config']['network_name']]
         
         # Remove metadata fields that shouldn't be in final compose file
-        metadata_fields = ['category', 'volumes_required', 'profiles']
+        metadata_fields = ['category', 'volumes_required', 'profiles', 'debug', 'log_level']
         for field in metadata_fields:
             if field in service:
                 del service[field]
@@ -144,7 +144,6 @@ class ComposeGenerator:
         volumes = self._get_volumes_for_services(core_services)
         
         compose = {
-            'version': self.schema['version'],
             'services': services,
             'volumes': volumes,
             'networks': {
@@ -173,7 +172,6 @@ class ComposeGenerator:
         volumes = self._get_volumes_for_services(env_config['services'])
         
         compose = {
-            'version': self.schema['version'],
             'services': services,
             'volumes': volumes
         }
@@ -194,7 +192,6 @@ class ComposeGenerator:
                             profile_volumes[volume_name] = self.schema['volumes'][volume_name]
         
         compose = {
-            'version': self.schema['version'],
             'services': profile_services,
             'volumes': profile_volumes
         }
@@ -241,7 +238,8 @@ class ComposeGenerator:
         errors = []
         
         # Check required top-level keys
-        required_keys = ['version', 'config', 'services', 'environments']
+        # Note: 'version' is no longer required (obsolete in Docker Compose v2)
+        required_keys = ['config', 'services', 'environments']
         for key in required_keys:
             if key not in self.schema:
                 errors.append(f"Missing required key: {key}")

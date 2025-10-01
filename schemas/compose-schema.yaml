@@ -2,7 +2,7 @@
 # This schema defines all services, configurations, and environments in one place
 # Compose files are generated from this schema using the compose-generator.py script
 
-version: "3.8"
+# version: "3.8"  # Version attribute is obsolete in Docker Compose v2
 
 # Global configuration
 config:

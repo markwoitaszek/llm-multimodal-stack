@@ -56,6 +56,10 @@ test-compose: generate-compose
 setup-secrets:
 	@echo "Setting up secrets and environment files..."
 	python3 setup_secrets.py
+	@if [ -f .env.development ]; then \
+		cp .env.development .env; \
+		echo "✅ Copied .env.development to .env for Docker Compose"; \
+	fi
 	@echo "✅ Secrets and environment files generated"
 
 # Development environment
@@ -86,7 +90,7 @@ start-prod: generate-compose setup-secrets
 # GPU-optimized environment
 start-gpu: generate-compose setup-secrets
 	@echo "Starting GPU-optimized environment..."
-	docker compose -f compose.yml -f compose.gpu.yml -f compose.production.yml up -d
+	docker compose -f compose.yml -f compose.gpu.yml up -d
 	@echo "✅ GPU-optimized environment started"
 
 # Monitoring environment with ELK stack
