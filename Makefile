@@ -1,7 +1,7 @@
 # Makefile for Multimodal LLM Stack
 # Unified schema-based Docker Compose management
 
-.PHONY: help generate-compose validate-schema clean-compose test-compose
+.PHONY: help generate-compose validate-schema clean-compose test-compose test-stack-operations test-network-operations test-data-operations test-granular-operations test-comprehensive test-quick test-performance test-report test-monitoring test-documentation
 
 # Default target
 help:
@@ -40,6 +40,18 @@ help:
 	@echo "  test-api                 Run API tests only"
 	@echo "  generate-allure-report   Generate Allure test report"
 	@echo "  serve-allure-report      Serve Allure report on localhost:8080"
+	@echo ""
+	@echo "Enterprise Testing Commands:"
+	@echo "  test-stack-operations    Test stack-based operations (start, stop, restart, status)"
+	@echo "  test-network-operations  Test network management and isolation"
+	@echo "  test-data-operations     Test data retention and backup operations"
+	@echo "  test-granular-operations Test granular wipe/reset operations"
+	@echo "  test-comprehensive       Run comprehensive test suite for all enterprise features"
+	@echo "  test-quick               Run quick tests (non-destructive)"
+	@echo "  test-performance         Run performance-focused tests"
+	@echo "  test-report              Generate comprehensive test report"
+	@echo "  test-monitoring          Test monitoring and alerting system"
+	@echo "  test-documentation       Test documentation completeness and accuracy"
 	@echo "  stop                     Stop all services"
 	@echo "  logs                     View logs for all services"
 	@echo "  status                   Show status of all services"
@@ -362,8 +374,8 @@ test-integration: setup-testing
 	@python3 -m pytest tests/ -m integration --alluredir=allure-results --allure-clean -v
 	@echo "✅ Integration tests completed"
 
-# Run Performance Tests
-test-performance: setup-testing
+# Run Performance Tests (Legacy - use test-performance for enterprise features)
+test-performance-legacy: setup-testing
 	@echo "⚡ Running performance tests..."
 	@python3 -m pytest tests/ -m performance --alluredir=allure-results --allure-clean -v
 	@echo "✅ Performance tests completed"
@@ -389,6 +401,60 @@ generate-allure-report:
 serve-allure-report: generate-allure-report
 	@echo "🌐 Serving Allure report on http://localhost:8080..."
 	@allure open allure-report --port 8080 --host 0.0.0.0
+
+# =============================================================================
+# Enterprise Testing Commands
+
+# Test stack operations
+test-stack-operations:
+	@echo "🧪 Testing stack operations..."
+	@./scripts/test-stack-operations.sh
+
+# Test network operations
+test-network-operations:
+	@echo "🌐 Testing network operations..."
+	@./scripts/test-network-operations.sh
+
+# Test data operations
+test-data-operations:
+	@echo "💾 Testing data operations..."
+	@./scripts/test-data-operations.sh
+
+# Test granular operations
+test-granular-operations:
+	@echo "🔧 Testing granular operations..."
+	@./scripts/test-granular-operations.sh
+
+# Run comprehensive test suite
+test-comprehensive:
+	@echo "🧪 Running comprehensive test suite..."
+	@./scripts/test-comprehensive.sh
+
+# Run quick tests (non-destructive)
+test-quick:
+	@echo "🚀 Running quick tests (non-destructive)..."
+	@./scripts/test-comprehensive.sh --quick
+
+# Run performance tests
+test-performance:
+	@echo "⚡ Running performance tests..."
+	@./scripts/test-comprehensive.sh --performance
+
+# Generate comprehensive test report
+test-report:
+	@echo "📊 Generating comprehensive test report..."
+	@./scripts/test-comprehensive.sh --report
+
+# Test monitoring and alerting system
+test-monitoring:
+	@echo "📊 Testing monitoring and alerting system..."
+	@./scripts/test-monitoring.sh init
+	@./scripts/test-monitoring.sh status
+
+# Test documentation
+test-documentation:
+	@echo "📚 Testing documentation..."
+	@./scripts/test-documentation.sh
 
 # =============================================================================
 # Stack-based Commands

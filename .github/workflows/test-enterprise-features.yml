@@ -1,0 +1,400 @@
+name: Enterprise Features Testing
+
+on:
+  push:
+    branches: [ main, development, 'phase-*' ]
+    paths: 
+      - 'scripts/test-*.sh'
+      - 'Makefile'
+      - 'schemas/**'
+      - 'configs/**'
+      - 'scripts/manage-*.sh'
+      - 'scripts/wipe-*.sh'
+      - 'scripts/check-*.sh'
+      - 'scripts/validate-*.sh'
+      - 'scripts/setup-*.sh'
+  pull_request:
+    branches: [ main, development ]
+    paths:
+      - 'scripts/test-*.sh'
+      - 'Makefile'
+      - 'schemas/**'
+      - 'configs/**'
+      - 'scripts/manage-*.sh'
+      - 'scripts/wipe-*.sh'
+      - 'scripts/check-*.sh'
+      - 'scripts/validate-*.sh'
+      - 'scripts/setup-*.sh'
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - quick
+          - performance
+          - stack-operations
+          - network-operations
+          - data-operations
+          - granular-operations
+      environment:
+        description: 'Environment to test'
+        required: false
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+          - testing
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  # Job 1: Quick Tests (Non-destructive)
+  quick-tests:
+    name: Quick Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_suite == 'quick' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make docker-compose-plugin
+          
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          
+      - name: Run quick tests
+        run: |
+          make test-quick
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quick-test-results
+          path: test-results/
+          retention-days: 7
+
+  # Job 2: Stack Operations Tests
+  stack-operations-tests:
+    name: Stack Operations Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_suite == 'stack-operations' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make docker-compose-plugin
+          
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          
+      - name: Setup test environment
+        run: |
+          make setup-secrets-dev
+          make generate-compose
+          
+      - name: Run stack operations tests
+        run: |
+          make test-stack-operations
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stack-operations-test-results
+          path: test-results/
+          retention-days: 7
+
+  # Job 3: Network Operations Tests
+  network-operations-tests:
+    name: Network Operations Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_suite == 'network-operations' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make docker-compose-plugin
+          
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          
+      - name: Setup test environment
+        run: |
+          make setup-secrets-dev
+          make generate-compose
+          
+      - name: Run network operations tests
+        run: |
+          make test-network-operations
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: network-operations-test-results
+          path: test-results/
+          retention-days: 7
+
+  # Job 4: Data Operations Tests
+  data-operations-tests:
+    name: Data Operations Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_suite == 'data-operations' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make docker-compose-plugin
+          
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          
+      - name: Setup test environment
+        run: |
+          make setup-secrets-dev
+          make generate-compose
+          
+      - name: Run data operations tests
+        run: |
+          make test-data-operations
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-operations-test-results
+          path: test-results/
+          retention-days: 7
+
+  # Job 5: Granular Operations Tests
+  granular-operations-tests:
+    name: Granular Operations Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_suite == 'granular-operations' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make docker-compose-plugin
+          
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          
+      - name: Setup test environment
+        run: |
+          make setup-secrets-dev
+          make generate-compose
+          
+      - name: Run granular operations tests
+        run: |
+          make test-granular-operations
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: granular-operations-test-results
+          path: test-results/
+          retention-days: 7
+
+  # Job 6: Performance Tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_suite == 'performance' || github.event.inputs.test_suite == 'all' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make docker-compose-plugin
+          
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          
+      - name: Setup test environment
+        run: |
+          make setup-secrets-dev
+          make generate-compose
+          
+      - name: Run performance tests
+        run: |
+          make test-performance
+          
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-test-results
+          path: test-results/
+          retention-days: 7
+
+  # Job 7: Comprehensive Test Suite
+  comprehensive-tests:
+    name: Comprehensive Test Suite
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == '' || github.event_name == 'schedule'
+    needs: [quick-tests, stack-operations-tests, network-operations-tests, data-operations-tests, granular-operations-tests]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make docker-compose-plugin
+          
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          
+      - name: Setup test environment
+        run: |
+          make setup-secrets-dev
+          make generate-compose
+          
+      - name: Run comprehensive test suite
+        run: |
+          make test-comprehensive
+          
+      - name: Generate test report
+        run: |
+          make test-report
+          
+      - name: Upload comprehensive test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: comprehensive-test-results
+          path: test-results/
+          retention-days: 30
+
+  # Job 8: Test Report Generation
+  test-report:
+    name: Generate Test Report
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [comprehensive-tests]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results/
+          
+      - name: Generate consolidated test report
+        run: |
+          mkdir -p test-results/consolidated
+          echo "# Test Results Summary" > test-results/consolidated/summary.md
+          echo "" >> test-results/consolidated/summary.md
+          echo "**Generated:** $(date)" >> test-results/consolidated/summary.md
+          echo "**Workflow:** ${{ github.workflow }}" >> test-results/consolidated/summary.md
+          echo "**Run ID:** ${{ github.run_id }}" >> test-results/consolidated/summary.md
+          echo "" >> test-results/consolidated/summary.md
+          
+          # Add job results
+          echo "## Job Results" >> test-results/consolidated/summary.md
+          echo "" >> test-results/consolidated/summary.md
+          echo "| Job | Status |" >> test-results/consolidated/summary.md
+          echo "|-----|--------|" >> test-results/consolidated/summary.md
+          echo "| Quick Tests | ${{ needs.quick-tests.result }} |" >> test-results/consolidated/summary.md
+          echo "| Stack Operations | ${{ needs.stack-operations-tests.result }} |" >> test-results/consolidated/summary.md
+          echo "| Network Operations | ${{ needs.network-operations-tests.result }} |" >> test-results/consolidated/summary.md
+          echo "| Data Operations | ${{ needs.data-operations-tests.result }} |" >> test-results/consolidated/summary.md
+          echo "| Granular Operations | ${{ needs.granular-operations-tests.result }} |" >> test-results/consolidated/summary.md
+          echo "| Performance Tests | ${{ needs.performance-tests.result }} |" >> test-results/consolidated/summary.md
+          echo "| Comprehensive Tests | ${{ needs.comprehensive-tests.result }} |" >> test-results/consolidated/summary.md
+          
+      - name: Upload consolidated test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidated-test-report
+          path: test-results/consolidated/
+          retention-days: 30
+
+  # Job 9: Notification
+  notify:
+    name: Notify Test Results
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [test-report]
+    
+    steps:
+      - name: Notify success
+        if: needs.test-report.result == 'success'
+        run: |
+          echo "✅ All enterprise feature tests passed!"
+          echo "Test results are available in the artifacts."
+          
+      - name: Notify failure
+        if: needs.test-report.result == 'failure'
+        run: |
+          echo "❌ Some enterprise feature tests failed!"
+          echo "Check the test results in the artifacts for details."
+          exit 1
