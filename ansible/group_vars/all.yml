@@ -232,3 +232,357 @@ models_path: "./models"
 # =============================================================================
 restart_services: false
 verify_env_files: true
+
+# =============================================================================
+# STACK CONFIGURATION
+# =============================================================================
+# Stack definitions and configurations
+stacks:
+  core:
+    name: "multimodal-core"
+    services: ["postgres", "redis", "qdrant", "minio"]
+    networks: ["multimodal-core-net"]
+    volumes: ["postgres_data", "redis_data", "qdrant_data", "minio_data"]
+    dependencies: []
+    
+  inference:
+    name: "multimodal-inference"
+    services: ["vllm", "litellm"]
+    networks: ["multimodal-inference-net"]
+    volumes: ["vllm_models", "litellm_cache"]
+    dependencies: ["core"]
+    
+  ai:
+    name: "multimodal-ai"
+    services: ["multimodal-worker", "retrieval-proxy", "ai-agents", "search-engine", "memory-system"]
+    networks: ["multimodal-ai-net"]
+    volumes: ["worker_cache", "retrieval_cache", "agents_data", "search_index", "memory_data"]
+    dependencies: ["core", "inference"]
+    
+  ui:
+    name: "multimodal-ui"
+    services: ["user-management", "openwebui", "n8n", "n8n-monitoring"]
+    networks: ["multimodal-ui-net"]
+    volumes: ["user_data", "webui_data", "n8n_data", "monitoring_data"]
+    dependencies: ["core", "ai"]
+    
+  testing:
+    name: "multimodal-testing"
+    services: ["allure-results", "allure-report", "allure-cli", "jmeter"]
+    networks: ["multimodal-testing-net"]
+    volumes: ["allure_results", "allure_report", "jmeter_results"]
+    dependencies: ["core"]
+    
+  monitoring:
+    name: "multimodal-monitoring"
+    services: ["prometheus", "grafana", "jaeger"]
+    networks: ["multimodal-monitoring-net"]
+    volumes: ["prometheus_data", "grafana_data", "jaeger_data"]
+    dependencies: ["core"]
+
+# Stack network configurations
+stack_networks:
+  multimodal-core-net:
+    subnet: "172.30.0.0/24"
+    gateway: "172.30.0.1"
+    
+  multimodal-inference-net:
+    subnet: "172.31.0.0/24"
+    gateway: "172.31.0.1"
+    
+  multimodal-ai-net:
+    subnet: "172.32.0.0/24"
+    gateway: "172.32.0.1"
+    
+  multimodal-ui-net:
+    subnet: "172.33.0.0/24"
+    gateway: "172.33.0.1"
+    
+  multimodal-testing-net:
+    subnet: "172.34.0.0/24"
+    gateway: "172.34.0.1"
+    
+  multimodal-monitoring-net:
+    subnet: "172.35.0.0/24"
+    gateway: "172.35.0.1"
+
+# =============================================================================
+# NETWORK MANAGEMENT CONFIGURATION
+# =============================================================================
+# Network conflict detection settings
+network_conflict_check: true
+network_conflict_auto_resolve: false
+network_conflict_cleanup_orphaned: false
+
+# Network validation settings
+network_validation_enabled: true
+network_connectivity_test: true
+network_port_availability_check: true
+network_dependency_validation: true
+
+# =============================================================================
+# DATA RETENTION CONFIGURATION
+# =============================================================================
+# Data retention policies
+retention_policies:
+  dev:
+    postgres: 7
+    redis: 3
+    qdrant: 7
+    minio: 14
+    vllm: 3
+    logs: 3
+    test_results: 1
+    
+  staging:
+    postgres: 30
+    redis: 7
+    qdrant: 30
+    minio: 60
+    vllm: 7
+    logs: 14
+    test_results: 7
+    
+  prod:
+    postgres: 365
+    redis: 30
+    qdrant: 365
+    minio: 1095
+    vllm: 30
+    logs: 90
+    test_results: 30
+
+# Retention cleanup settings
+retention_cleanup_enabled: true
+retention_cleanup_dry_run: false
+retention_cleanup_backup_before: true
+retention_cleanup_schedule: "0 2 * * *"  # Daily at 2 AM
+
+# =============================================================================
+# BACKUP CONFIGURATION
+# =============================================================================
+# Backup strategies
+backup_strategies:
+  dev:
+    postgres: "daily"
+    redis: "daily"
+    qdrant: "daily"
+    minio: "daily"
+    vllm: "weekly"
+    
+  staging:
+    postgres: "daily"
+    redis: "daily"
+    qdrant: "daily"
+    minio: "daily"
+    vllm: "weekly"
+    
+  prod:
+    postgres: "hourly"
+    redis: "daily"
+    qdrant: "daily"
+    minio: "daily"
+    vllm: "weekly"
+
+# Backup storage settings
+backup_local_path: "/opt/backups"
+backup_remote_enabled: false
+backup_remote_path: ""
+backup_retention_days: 30
+backup_compression: true
+backup_encryption: false
+
+# Backup schedule settings
+backup_schedule_enabled: true
+backup_schedule_postgres: "0 */6 * * *"  # Every 6 hours
+backup_schedule_redis: "0 2 * * *"      # Daily at 2 AM
+backup_schedule_qdrant: "0 3 * * *"     # Daily at 3 AM
+backup_schedule_minio: "0 4 * * *"      # Daily at 4 AM
+backup_schedule_vllm: "0 5 * * 0"       # Weekly on Sunday at 5 AM
+
+# =============================================================================
+# GRANULAR OPERATIONS CONFIGURATION
+# =============================================================================
+# Granular wipe/reset settings
+granular_operations_enabled: true
+granular_operations_confirmation: true
+granular_operations_backup_before: true
+granular_operations_log_level: "INFO"
+
+# Granular operation types
+granular_operation_types:
+  - "stack"
+  - "data"
+  - "environment"
+  - "service"
+  - "volume"
+  - "network"
+
+# =============================================================================
+# TESTING CONFIGURATION
+# =============================================================================
+# Testing framework settings
+testing_enabled: true
+testing_parallel: true
+testing_timeout: 300
+testing_retries: 3
+testing_cleanup: true
+
+# Test categories
+test_categories:
+  - "stack-operations"
+  - "network-operations"
+  - "data-operations"
+  - "granular-operations"
+  - "comprehensive"
+  - "monitoring"
+  - "documentation"
+
+# Test result settings
+test_results_path: "/opt/test-results"
+test_results_retention_days: 30
+test_results_compression: true
+test_results_reporting: true
+
+# =============================================================================
+# MONITORING CONFIGURATION
+# =============================================================================
+# Monitoring settings
+monitoring_enabled: true
+monitoring_interval: 30
+monitoring_timeout: 10
+monitoring_retries: 3
+
+# Monitoring metrics
+monitoring_metrics:
+  - "cpu"
+  - "memory"
+  - "disk"
+  - "network"
+  - "docker"
+  - "services"
+
+# Alert settings
+alert_enabled: true
+alert_email: ""
+alert_slack_webhook: ""
+alert_webhook_url: ""
+alert_threshold_cpu: 80
+alert_threshold_memory: 80
+alert_threshold_disk: 90
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+# Security settings
+security_enabled: true
+security_validation: true
+security_audit: true
+security_scan: true
+
+# Security policies
+security_policies:
+  - "credential_validation"
+  - "network_isolation"
+  - "data_encryption"
+  - "access_control"
+  - "audit_logging"
+
+# =============================================================================
+# PERFORMANCE CONFIGURATION
+# =============================================================================
+# Performance settings
+performance_monitoring: true
+performance_optimization: true
+performance_benchmarking: true
+
+# Performance thresholds
+performance_thresholds:
+  startup_time: 300
+  response_time: 1000
+  throughput: 100
+  error_rate: 5
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+# Logging settings
+logging_enabled: true
+logging_level: "INFO"
+logging_format: "json"
+logging_rotation: true
+logging_retention_days: 30
+
+# Log destinations
+log_destinations:
+  - "file"
+  - "stdout"
+  - "syslog"
+
+# =============================================================================
+# ENTERPRISE FEATURES CONFIGURATION
+# =============================================================================
+# Enterprise features
+enterprise_features:
+  - "stack_management"
+  - "network_isolation"
+  - "data_retention"
+  - "backup_management"
+  - "granular_operations"
+  - "testing_framework"
+  - "monitoring_alerting"
+  - "security_validation"
+  - "performance_optimization"
+  - "documentation_testing"
+
+# Enterprise feature settings
+enterprise_feature_settings:
+  stack_management:
+    enabled: true
+    auto_start: false
+    dependency_check: true
+    
+  network_isolation:
+    enabled: true
+    conflict_detection: true
+    auto_resolve: false
+    
+  data_retention:
+    enabled: true
+    auto_cleanup: true
+    backup_before_cleanup: true
+    
+  backup_management:
+    enabled: true
+    auto_backup: true
+    remote_backup: false
+    
+  granular_operations:
+    enabled: true
+    confirmation_required: true
+    backup_before_operation: true
+    
+  testing_framework:
+    enabled: true
+    parallel_execution: true
+    auto_cleanup: true
+    
+  monitoring_alerting:
+    enabled: true
+    real_time_monitoring: true
+    alert_on_failure: true
+    
+  security_validation:
+    enabled: true
+    credential_validation: true
+    network_security: true
+    
+  performance_optimization:
+    enabled: true
+    auto_optimization: true
+    benchmarking: true
+    
+  documentation_testing:
+    enabled: true
+    completeness_check: true
+    accuracy_validation: true
