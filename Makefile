@@ -109,6 +109,14 @@ help:
 	@echo "  wipe-testing             Wipe testing environment"
 	@echo "  system-status            Show current system status"
 	@echo ""
+	@echo "Data retention management commands:"
+	@echo "  retention-status [env]    Show retention status for environment"
+	@echo "  retention-cleanup [env]   Run retention cleanup for environment"
+	@echo "  retention-test [env]      Test retention cleanup (dry run)"
+	@echo "  retention-cleanup-service <service> [env]  Cleanup specific service"
+	@echo "  retention-schedule        Show retention schedules"
+	@echo "  retention-backup [env]    Create backups before cleanup"
+	@echo ""
 
 # Generate all compose files from unified schema
 generate-compose:
@@ -640,3 +648,41 @@ wipe-testing:
 system-status:
 	@echo "📊 Showing system status..."
 	@./scripts/wipe-environment.sh status
+
+# =============================================================================
+# Data Retention Management Commands
+# =============================================================================
+
+# Show retention status for environment
+retention-status:
+	@echo "📊 Showing retention status..."
+	@./scripts/manage-retention.sh status $(ENVIRONMENT)
+
+# Run retention cleanup for environment
+retention-cleanup:
+	@echo "🧹 Running retention cleanup..."
+	@./scripts/manage-retention.sh cleanup $(ENVIRONMENT)
+
+# Test retention cleanup (dry run)
+retention-test:
+	@echo "🔍 Testing retention cleanup (dry run)..."
+	@./scripts/manage-retention.sh test $(ENVIRONMENT)
+
+# Cleanup specific service
+retention-cleanup-service:
+	@echo "🧹 Cleaning up specific service..."
+	@./scripts/manage-retention.sh cleanup-service $(SERVICE) $(ENVIRONMENT)
+
+# Show retention schedules
+retention-schedule:
+	@echo "📅 Showing retention schedules..."
+	@echo "Development: Daily at 1 AM"
+	@echo "Staging: Daily at 2 AM"
+	@echo "Production: Weekly on Sunday at 3 AM"
+	@echo "Testing: Daily at midnight"
+
+# Create backups before cleanup
+retention-backup:
+	@echo "💾 Creating backups before cleanup..."
+	@echo "This would create backups of all data before running cleanup"
+	@echo "Implementation depends on backup strategy configuration"

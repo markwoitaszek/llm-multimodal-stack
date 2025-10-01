@@ -1,0 +1,361 @@
+# Data Retention Policies Configuration
+# Defines retention periods and cleanup strategies for different data types
+
+# Global retention settings
+global:
+  # Default retention period for data without specific policies
+  default_retention_days: 30
+  
+  # Cleanup schedule (cron format)
+  cleanup_schedule: "0 2 * * *"  # Daily at 2 AM
+  
+  # Dry run mode (set to true to preview cleanup without executing)
+  dry_run: false
+  
+  # Backup before cleanup (set to true to create backups before deletion)
+  backup_before_cleanup: true
+  
+  # Notification settings
+  notifications:
+    enabled: true
+    email: "admin@example.com"
+    webhook_url: ""
+
+# Environment-specific retention policies
+environments:
+  development:
+    # Development environment - shorter retention for high churn
+    default_retention_days: 7
+    cleanup_schedule: "0 1 * * *"  # Daily at 1 AM
+    
+  staging:
+    # Staging environment - medium retention
+    default_retention_days: 14
+    cleanup_schedule: "0 2 * * *"  # Daily at 2 AM
+    
+  production:
+    # Production environment - longer retention
+    default_retention_days: 90
+    cleanup_schedule: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+    
+  testing:
+    # Testing environment - short retention for test data
+    default_retention_days: 3
+    cleanup_schedule: "0 0 * * *"  # Daily at midnight
+
+# Service-specific retention policies
+services:
+  # Database retention policies
+  postgres:
+    retention_days: 30
+    cleanup_strategy: "archive_then_delete"
+    backup_retention_days: 90
+    tables:
+      logs:
+        retention_days: 7
+        cleanup_strategy: "delete_old_rows"
+      sessions:
+        retention_days: 1
+        cleanup_strategy: "delete_old_rows"
+      audit_logs:
+        retention_days: 90
+        cleanup_strategy: "archive_then_delete"
+    
+  # Cache retention policies
+  redis:
+    retention_days: 1
+    cleanup_strategy: "expire_keys"
+    backup_retention_days: 7
+    keys:
+      session_cache:
+        retention_days: 1
+        cleanup_strategy: "expire_keys"
+      api_cache:
+        retention_days: 7
+        cleanup_strategy: "expire_keys"
+      model_cache:
+        retention_days: 30
+        cleanup_strategy: "expire_keys"
+    
+  # Vector database retention policies
+  qdrant:
+    retention_days: 60
+    cleanup_strategy: "delete_old_collections"
+    backup_retention_days: 180
+    collections:
+      embeddings:
+        retention_days: 60
+        cleanup_strategy: "delete_old_collections"
+      search_history:
+        retention_days: 30
+        cleanup_strategy: "delete_old_collections"
+    
+  # Object storage retention policies
+  minio:
+    retention_days: 90
+    cleanup_strategy: "delete_old_objects"
+    backup_retention_days: 365
+    buckets:
+      models:
+        retention_days: 180
+        cleanup_strategy: "delete_old_objects"
+      logs:
+        retention_days: 30
+        cleanup_strategy: "delete_old_objects"
+      backups:
+        retention_days: 365
+        cleanup_strategy: "delete_old_objects"
+      temp:
+        retention_days: 1
+        cleanup_strategy: "delete_old_objects"
+    
+  # Model cache retention policies
+  vllm:
+    retention_days: 30
+    cleanup_strategy: "delete_old_models"
+    backup_retention_days: 90
+    cache_types:
+      model_cache:
+        retention_days: 30
+        cleanup_strategy: "delete_old_models"
+      token_cache:
+        retention_days: 7
+        cleanup_strategy: "delete_old_models"
+    
+  # Application logs retention policies
+  multimodal-worker:
+    retention_days: 14
+    cleanup_strategy: "rotate_logs"
+    backup_retention_days: 30
+    log_types:
+      application_logs:
+        retention_days: 14
+        cleanup_strategy: "rotate_logs"
+      error_logs:
+        retention_days: 30
+        cleanup_strategy: "rotate_logs"
+      debug_logs:
+        retention_days: 7
+        cleanup_strategy: "rotate_logs"
+    
+  # Testing data retention policies
+  allure:
+    retention_days: 30
+    cleanup_strategy: "delete_old_reports"
+    backup_retention_days: 90
+    report_types:
+      test_results:
+        retention_days: 30
+        cleanup_strategy: "delete_old_reports"
+      screenshots:
+        retention_days: 14
+        cleanup_strategy: "delete_old_reports"
+      videos:
+        retention_days: 7
+        cleanup_strategy: "delete_old_reports"
+    
+  jmeter:
+    retention_days: 14
+    cleanup_strategy: "delete_old_results"
+    backup_retention_days: 30
+    result_types:
+      performance_results:
+        retention_days: 14
+        cleanup_strategy: "delete_old_results"
+      load_test_results:
+        retention_days: 7
+        cleanup_strategy: "delete_old_results"
+    
+  # Monitoring data retention policies
+  elasticsearch:
+    retention_days: 30
+    cleanup_strategy: "delete_old_indices"
+    backup_retention_days: 90
+    indices:
+      logs:
+        retention_days: 30
+        cleanup_strategy: "delete_old_indices"
+      metrics:
+        retention_days: 14
+        cleanup_strategy: "delete_old_indices"
+      traces:
+        retention_days: 7
+        cleanup_strategy: "delete_old_indices"
+    
+  prometheus:
+    retention_days: 15
+    cleanup_strategy: "delete_old_metrics"
+    backup_retention_days: 30
+    metric_types:
+      system_metrics:
+        retention_days: 15
+        cleanup_strategy: "delete_old_metrics"
+      application_metrics:
+        retention_days: 30
+        cleanup_strategy: "delete_old_metrics"
+      custom_metrics:
+        retention_days: 7
+        cleanup_strategy: "delete_old_metrics"
+
+# Volume-specific retention policies
+volumes:
+  postgres_data:
+    retention_days: 30
+    cleanup_strategy: "vacuum_and_analyze"
+    backup_retention_days: 90
+    
+  redis_data:
+    retention_days: 1
+    cleanup_strategy: "expire_keys"
+    backup_retention_days: 7
+    
+  qdrant_data:
+    retention_days: 60
+    cleanup_strategy: "delete_old_collections"
+    backup_retention_days: 180
+    
+  minio_data:
+    retention_days: 90
+    cleanup_strategy: "delete_old_objects"
+    backup_retention_days: 365
+    
+  vllm_cache:
+    retention_days: 30
+    cleanup_strategy: "delete_old_models"
+    backup_retention_days: 90
+    
+  multimodal_cache:
+    retention_days: 14
+    cleanup_strategy: "delete_old_cache"
+    backup_retention_days: 30
+    
+  allure_results:
+    retention_days: 30
+    cleanup_strategy: "delete_old_reports"
+    backup_retention_days: 90
+    
+  allure_history:
+    retention_days: 90
+    cleanup_strategy: "delete_old_reports"
+    backup_retention_days: 180
+    
+  elasticsearch_data:
+    retention_days: 30
+    cleanup_strategy: "delete_old_indices"
+    backup_retention_days: 90
+
+# Cleanup strategies
+cleanup_strategies:
+  delete_old_rows:
+    description: "Delete old rows from database tables"
+    command: "DELETE FROM {table} WHERE {date_column} < NOW() - INTERVAL '{retention_days} days'"
+    
+  expire_keys:
+    description: "Set expiration on Redis keys"
+    command: "EXPIRE {key} {retention_seconds}"
+    
+  delete_old_collections:
+    description: "Delete old collections from Qdrant"
+    command: "DELETE COLLECTION {collection_name}"
+    
+  delete_old_objects:
+    description: "Delete old objects from MinIO"
+    command: "mc rm --recursive --force {bucket}/{path}"
+    
+  delete_old_models:
+    description: "Delete old model cache files"
+    command: "find {cache_path} -type f -mtime +{retention_days} -delete"
+    
+  rotate_logs:
+    description: "Rotate and compress old log files"
+    command: "logrotate -f {logrotate_config}"
+    
+  delete_old_reports:
+    description: "Delete old test reports"
+    command: "find {report_path} -type f -mtime +{retention_days} -delete"
+    
+  delete_old_results:
+    description: "Delete old test results"
+    command: "find {result_path} -type f -mtime +{retention_days} -delete"
+    
+  delete_old_indices:
+    description: "Delete old Elasticsearch indices"
+    command: "curl -X DELETE {elasticsearch_url}/{index_name}"
+    
+  delete_old_metrics:
+    description: "Delete old Prometheus metrics"
+    command: "promtool tsdb clean --retention.time={retention_days}d"
+    
+  vacuum_and_analyze:
+    description: "Vacuum and analyze PostgreSQL tables"
+    command: "VACUUM ANALYZE {table_name}"
+    
+  delete_old_cache:
+    description: "Delete old cache files"
+    command: "find {cache_path} -type f -mtime +{retention_days} -delete"
+
+# Backup strategies
+backup_strategies:
+  postgres:
+    command: "pg_dump -h {host} -U {user} -d {database} > {backup_file}"
+    compression: "gzip"
+    encryption: false
+    
+  redis:
+    command: "redis-cli --rdb {backup_file}"
+    compression: "gzip"
+    encryption: false
+    
+  qdrant:
+    command: "qdrant-backup --collection {collection} --output {backup_file}"
+    compression: "gzip"
+    encryption: false
+    
+  minio:
+    command: "mc mirror {bucket} {backup_path}"
+    compression: "gzip"
+    encryption: false
+    
+  filesystem:
+    command: "tar -czf {backup_file} {source_path}"
+    compression: "gzip"
+    encryption: false
+
+# Notification templates
+notifications:
+  cleanup_started:
+    subject: "Data Cleanup Started - {environment}"
+    template: |
+      Data cleanup has started for {environment} environment.
+      
+      Services to be cleaned:
+      {services_list}
+      
+      Estimated cleanup time: {estimated_time}
+      
+      This is an automated message from the retention policy system.
+  
+  cleanup_completed:
+    subject: "Data Cleanup Completed - {environment}"
+    template: |
+      Data cleanup has completed for {environment} environment.
+      
+      Cleanup summary:
+      - Services processed: {services_processed}
+      - Data cleaned: {data_cleaned}
+      - Space freed: {space_freed}
+      - Duration: {duration}
+      
+      This is an automated message from the retention policy system.
+  
+  cleanup_failed:
+    subject: "Data Cleanup Failed - {environment}"
+    template: |
+      Data cleanup failed for {environment} environment.
+      
+      Error details:
+      {error_details}
+      
+      Please check the logs and retry the cleanup operation.
+      
+      This is an automated message from the retention policy system.
