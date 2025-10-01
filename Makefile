@@ -117,6 +117,15 @@ help:
 	@echo "  retention-schedule        Show retention schedules"
 	@echo "  retention-backup [env]    Create backups before cleanup"
 	@echo ""
+	@echo "Multi-tier backup system commands:"
+	@echo "  backup-status [env]        Show backup status for environment"
+	@echo "  backup-full [env]          Run full backup for environment"
+	@echo "  backup-service <service> [env] [type]  Backup specific service"
+	@echo "  backup-list [env]          List available backups for environment"
+	@echo "  backup-verify [env]        Verify backup integrity"
+	@echo "  backup-schedule            Show backup schedules"
+	@echo "  backup-restore <service> [env] <file>  Restore from backup"
+	@echo ""
 
 # Generate all compose files from unified schema
 generate-compose:
@@ -686,3 +695,47 @@ retention-backup:
 	@echo "💾 Creating backups before cleanup..."
 	@echo "This would create backups of all data before running cleanup"
 	@echo "Implementation depends on backup strategy configuration"
+
+# =============================================================================
+# Multi-Tier Backup System Commands
+# =============================================================================
+
+# Show backup status for environment
+backup-status:
+	@echo "📊 Showing backup status..."
+	@./scripts/manage-backups.sh status $(ENVIRONMENT)
+
+# Run full backup for environment
+backup-full:
+	@echo "💾 Running full backup..."
+	@./scripts/manage-backups.sh backup $(ENVIRONMENT)
+
+# Backup specific service
+backup-service:
+	@echo "💾 Backing up specific service..."
+	@./scripts/manage-backups.sh backup-service $(SERVICE) $(ENVIRONMENT) $(BACKUP_TYPE)
+
+# List available backups for environment
+backup-list:
+	@echo "📋 Listing available backups..."
+	@./scripts/manage-backups.sh list $(ENVIRONMENT)
+
+# Verify backup integrity
+backup-verify:
+	@echo "🔍 Verifying backup integrity..."
+	@echo "This would verify the integrity of all backups"
+	@echo "Implementation depends on backup verification strategy"
+
+# Show backup schedules
+backup-schedule:
+	@echo "📅 Showing backup schedules..."
+	@echo "Development: Daily at 2 AM"
+	@echo "Staging: Daily at 3 AM"
+	@echo "Production: Daily at 1 AM"
+	@echo "Testing: Daily at 4 AM"
+
+# Restore from backup
+backup-restore:
+	@echo "🔄 Restoring from backup..."
+	@echo "This would restore from a specific backup file"
+	@echo "Implementation depends on restore strategy configuration"

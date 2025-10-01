@@ -1,0 +1,443 @@
+# Multi-Tier Backup System Configuration
+# Defines backup strategies for different data types and environments
+
+# Global backup settings
+global:
+  # Default backup retention period
+  default_retention_days: 30
+  
+  # Backup schedule (cron format)
+  backup_schedule: "0 3 * * *"  # Daily at 3 AM
+  
+  # Compression settings
+  compression:
+    enabled: true
+    algorithm: "gzip"
+    level: 6
+  
+  # Encryption settings
+  encryption:
+    enabled: false
+    algorithm: "aes256"
+    key_file: "/etc/backup/backup.key"
+  
+  # Notification settings
+  notifications:
+    enabled: true
+    email: "admin@example.com"
+    webhook_url: ""
+  
+  # Backup verification
+  verification:
+    enabled: true
+    checksum_verification: true
+    restore_test_frequency: "weekly"
+
+# Environment-specific backup policies
+environments:
+  development:
+    # Development environment - frequent backups, short retention
+    backup_schedule: "0 2 * * *"  # Daily at 2 AM
+    retention_days: 7
+    backup_types: ["incremental", "differential"]
+    storage_tiers: ["local", "remote"]
+    
+  staging:
+    # Staging environment - regular backups, medium retention
+    backup_schedule: "0 3 * * *"  # Daily at 3 AM
+    retention_days: 14
+    backup_types: ["full", "incremental"]
+    storage_tiers: ["local", "remote", "cloud"]
+    
+  production:
+    # Production environment - comprehensive backups, long retention
+    backup_schedule: "0 1 * * *"  # Daily at 1 AM
+    retention_days: 90
+    backup_types: ["full", "incremental", "differential"]
+    storage_tiers: ["local", "remote", "cloud", "tape"]
+    
+  testing:
+    # Testing environment - minimal backups, short retention
+    backup_schedule: "0 4 * * *"  # Daily at 4 AM
+    retention_days: 3
+    backup_types: ["incremental"]
+    storage_tiers: ["local"]
+
+# Service-specific backup strategies
+services:
+  # Database backup strategies
+  postgres:
+    backup_type: "database"
+    retention_days: 30
+    backup_frequency: "daily"
+    backup_method: "pg_dump"
+    compression: true
+    encryption: false
+    verification: true
+    
+    # Database-specific settings
+    database_settings:
+      format: "custom"
+      verbose: true
+      no_owner: true
+      no_privileges: true
+      schema_only: false
+      data_only: false
+    
+    # Backup locations
+    backup_locations:
+      local: "/backups/postgres/local"
+      remote: "/backups/postgres/remote"
+      cloud: "s3://backup-bucket/postgres"
+    
+    # Backup commands
+    backup_commands:
+      full: "pg_dump -h {host} -U {user} -d {database} --format=custom --verbose --no-owner --no-privileges > {backup_file}"
+      schema: "pg_dump -h {host} -U {user} -d {database} --schema-only --format=custom > {backup_file}"
+      data: "pg_dump -h {host} -U {user} -d {database} --data-only --format=custom > {backup_file}"
+    
+    # Restore commands
+    restore_commands:
+      full: "pg_restore -h {host} -U {user} -d {database} --clean --if-exists {backup_file}"
+      schema: "pg_restore -h {host} -U {user} -d {database} --schema-only {backup_file}"
+      data: "pg_restore -h {host} -U {user} -d {database} --data-only {backup_file}"
+  
+  # Cache backup strategies
+  redis:
+    backup_type: "cache"
+    retention_days: 7
+    backup_frequency: "daily"
+    backup_method: "rdb"
+    compression: true
+    encryption: false
+    verification: true
+    
+    # Redis-specific settings
+    redis_settings:
+      save_before_backup: true
+      rdb_compression: true
+      rdb_checksum: true
+    
+    # Backup locations
+    backup_locations:
+      local: "/backups/redis/local"
+      remote: "/backups/redis/remote"
+    
+    # Backup commands
+    backup_commands:
+      rdb: "redis-cli --rdb {backup_file}"
+      aof: "redis-cli --aof {backup_file}"
+      snapshot: "redis-cli BGSAVE && cp {rdb_file} {backup_file}"
+    
+    # Restore commands
+    restore_commands:
+      rdb: "cp {backup_file} {rdb_file} && redis-cli SHUTDOWN && redis-server"
+      aof: "cp {backup_file} {aof_file} && redis-cli SHUTDOWN && redis-server"
+  
+  # Vector database backup strategies
+  qdrant:
+    backup_type: "vector_database"
+    retention_days: 60
+    backup_frequency: "daily"
+    backup_method: "collection_backup"
+    compression: true
+    encryption: false
+    verification: true
+    
+    # Qdrant-specific settings
+    qdrant_settings:
+      backup_collections: true
+      backup_config: true
+      backup_snapshots: true
+    
+    # Backup locations
+    backup_locations:
+      local: "/backups/qdrant/local"
+      remote: "/backups/qdrant/remote"
+      cloud: "s3://backup-bucket/qdrant"
+    
+    # Backup commands
+    backup_commands:
+      collection: "curl -X POST 'http://{host}:{port}/collections/{collection}/snapshots'"
+      full: "qdrant-backup --collection {collection} --output {backup_file}"
+      config: "cp {config_file} {backup_file}"
+    
+    # Restore commands
+    restore_commands:
+      collection: "curl -X POST 'http://{host}:{port}/collections/{collection}/snapshots/{snapshot}'"
+      full: "qdrant-restore --collection {collection} --input {backup_file}"
+  
+  # Object storage backup strategies
+  minio:
+    backup_type: "object_storage"
+    retention_days: 90
+    backup_frequency: "daily"
+    backup_method: "mc_mirror"
+    compression: true
+    encryption: false
+    verification: true
+    
+    # MinIO-specific settings
+    minio_settings:
+      backup_all_buckets: true
+      backup_metadata: true
+      backup_policies: true
+    
+    # Backup locations
+    backup_locations:
+      local: "/backups/minio/local"
+      remote: "/backups/minio/remote"
+      cloud: "s3://backup-bucket/minio"
+    
+    # Backup commands
+    backup_commands:
+      bucket: "mc mirror {source_bucket} {backup_bucket}"
+      all: "mc mirror {source_alias} {backup_alias}"
+      metadata: "mc admin config export {alias} > {backup_file}"
+    
+    # Restore commands
+    restore_commands:
+      bucket: "mc mirror {backup_bucket} {source_bucket}"
+      all: "mc mirror {backup_alias} {source_alias}"
+      metadata: "mc admin config import {alias} {backup_file}"
+  
+  # Model cache backup strategies
+  vllm:
+    backup_type: "model_cache"
+    retention_days: 30
+    backup_frequency: "weekly"
+    backup_method: "filesystem"
+    compression: true
+    encryption: false
+    verification: true
+    
+    # vLLM-specific settings
+    vllm_settings:
+      backup_models: true
+      backup_cache: true
+      backup_config: true
+    
+    # Backup locations
+    backup_locations:
+      local: "/backups/vllm/local"
+      remote: "/backups/vllm/remote"
+      cloud: "s3://backup-bucket/vllm"
+    
+    # Backup commands
+    backup_commands:
+      models: "tar -czf {backup_file} {model_path}"
+      cache: "tar -czf {backup_file} {cache_path}"
+      config: "cp {config_file} {backup_file}"
+    
+    # Restore commands
+    restore_commands:
+      models: "tar -xzf {backup_file} -C {model_path}"
+      cache: "tar -xzf {backup_file} -C {cache_path}"
+      config: "cp {backup_file} {config_file}"
+  
+  # Application data backup strategies
+  multimodal-worker:
+    backup_type: "application_data"
+    retention_days: 14
+    backup_frequency: "daily"
+    backup_method: "filesystem"
+    compression: true
+    encryption: false
+    verification: true
+    
+    # Application-specific settings
+    app_settings:
+      backup_logs: true
+      backup_config: true
+      backup_data: true
+    
+    # Backup locations
+    backup_locations:
+      local: "/backups/multimodal-worker/local"
+      remote: "/backups/multimodal-worker/remote"
+    
+    # Backup commands
+    backup_commands:
+      logs: "tar -czf {backup_file} {log_path}"
+      config: "cp {config_file} {backup_file}"
+      data: "tar -czf {backup_file} {data_path}"
+    
+    # Restore commands
+    restore_commands:
+      logs: "tar -xzf {backup_file} -C {log_path}"
+      config: "cp {backup_file} {config_file}"
+      data: "tar -xzf {backup_file} -C {data_path}"
+  
+  # Test results backup strategies
+  allure:
+    backup_type: "test_results"
+    retention_days: 30
+    backup_frequency: "daily"
+    backup_method: "filesystem"
+    compression: true
+    encryption: false
+    verification: true
+    
+    # Allure-specific settings
+    allure_settings:
+      backup_reports: true
+      backup_results: true
+      backup_history: true
+    
+    # Backup locations
+    backup_locations:
+      local: "/backups/allure/local"
+      remote: "/backups/allure/remote"
+      cloud: "s3://backup-bucket/allure"
+    
+    # Backup commands
+    backup_commands:
+      reports: "tar -czf {backup_file} {report_path}"
+      results: "tar -czf {backup_file} {result_path}"
+      history: "tar -czf {backup_file} {history_path}"
+    
+    # Restore commands
+    restore_commands:
+      reports: "tar -xzf {backup_file} -C {report_path}"
+      results: "tar -xzf {backup_file} -C {result_path}"
+      history: "tar -xzf {backup_file} -C {history_path}"
+  
+  # Monitoring data backup strategies
+  elasticsearch:
+    backup_type: "monitoring_data"
+    retention_days: 30
+    backup_frequency: "daily"
+    backup_method: "snapshot"
+    compression: true
+    encryption: false
+    verification: true
+    
+    # Elasticsearch-specific settings
+    elasticsearch_settings:
+      backup_indices: true
+      backup_templates: true
+      backup_policies: true
+    
+    # Backup locations
+    backup_locations:
+      local: "/backups/elasticsearch/local"
+      remote: "/backups/elasticsearch/remote"
+      cloud: "s3://backup-bucket/elasticsearch"
+    
+    # Backup commands
+    backup_commands:
+      snapshot: "curl -X PUT 'http://{host}:{port}/_snapshot/{repository}/{snapshot}'"
+      indices: "curl -X POST 'http://{host}:{port}/_snapshot/{repository}/{snapshot}' -d '{\"indices\": \"*\"}'"
+    
+    # Restore commands
+    restore_commands:
+      snapshot: "curl -X POST 'http://{host}:{port}/_snapshot/{repository}/{snapshot}/_restore'"
+      indices: "curl -X POST 'http://{host}:{port}/_snapshot/{repository}/{snapshot}/_restore' -d '{\"indices\": \"{indices}\"}'"
+
+# Storage tier configurations
+storage_tiers:
+  local:
+    type: "filesystem"
+    path: "/backups"
+    max_size: "100GB"
+    retention_days: 7
+    compression: true
+    encryption: false
+    
+  remote:
+    type: "nfs"
+    path: "/mnt/backup-server/backups"
+    max_size: "1TB"
+    retention_days: 30
+    compression: true
+    encryption: true
+    
+  cloud:
+    type: "s3"
+    bucket: "backup-bucket"
+    region: "us-west-2"
+    max_size: "10TB"
+    retention_days: 90
+    compression: true
+    encryption: true
+    
+  tape:
+    type: "tape"
+    device: "/dev/st0"
+    max_size: "unlimited"
+    retention_days: 365
+    compression: true
+    encryption: true
+
+# Backup verification strategies
+verification:
+  # Checksum verification
+  checksum:
+    enabled: true
+    algorithm: "sha256"
+    verify_on_backup: true
+    verify_on_restore: true
+  
+  # Restore testing
+  restore_test:
+    enabled: true
+    frequency: "weekly"
+    test_environment: "testing"
+    test_services: ["postgres", "redis"]
+  
+  # Backup integrity
+  integrity:
+    enabled: true
+    check_frequency: "daily"
+    repair_on_error: false
+
+# Notification templates
+notifications:
+  backup_started:
+    subject: "Backup Started - {environment}"
+    template: |
+      Backup has started for {environment} environment.
+      
+      Services to be backed up:
+      {services_list}
+      
+      Estimated backup time: {estimated_time}
+      
+      This is an automated message from the backup system.
+  
+  backup_completed:
+    subject: "Backup Completed - {environment}"
+    template: |
+      Backup has completed for {environment} environment.
+      
+      Backup summary:
+      - Services backed up: {services_backed_up}
+      - Data backed up: {data_backed_up}
+      - Backup size: {backup_size}
+      - Duration: {duration}
+      
+      This is an automated message from the backup system.
+  
+  backup_failed:
+    subject: "Backup Failed - {environment}"
+    template: |
+      Backup failed for {environment} environment.
+      
+      Error details:
+      {error_details}
+      
+      Please check the logs and retry the backup operation.
+      
+      This is an automated message from the backup system.
+  
+  restore_completed:
+    subject: "Restore Completed - {environment}"
+    template: |
+      Restore has completed for {environment} environment.
+      
+      Restore summary:
+      - Services restored: {services_restored}
+      - Data restored: {data_restored}
+      - Duration: {duration}
+      
+      This is an automated message from the backup system.
