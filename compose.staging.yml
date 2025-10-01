@@ -1,0 +1,581 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: multimodal-postgres
+    ports:
+    - ${POSTGRES_PORT:-5432}:5432
+    environment:
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+    - postgres_data:/var/lib/postgresql/data
+    - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      test:
+      - CMD-SHELL
+      - pg_isready -U ${POSTGRES_USER:-postgres}
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  redis:
+    image: redis:7-alpine
+    container_name: multimodal-redis
+    ports:
+    - ${REDIS_PORT:-6379}:6379
+    volumes:
+    - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      test:
+      - CMD
+      - redis-cli
+      - ping
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: multimodal-qdrant
+    ports:
+    - ${QDRANT_HTTP_PORT:-6333}:${QDRANT_HTTP_PORT:-6333}
+    - ${QDRANT_GRPC_PORT:-6334}:${QDRANT_GRPC_PORT:-6334}
+    volumes:
+    - qdrant_data:/qdrant/storage
+    environment:
+    - QDRANT__SERVICE__HTTP_PORT=${QDRANT_HTTP_PORT:-6333}
+    - QDRANT__SERVICE__GRPC_PORT=${QDRANT_GRPC_PORT:-6334}
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - pidof qdrant || exit 1
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  minio:
+    image: minio/minio:latest
+    container_name: multimodal-minio
+    ports:
+    - ${MINIO_PORT:-9000}:9000
+    - ${MINIO_CONSOLE_PORT:-9002}:9001
+    environment:
+    - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+    - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+    - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:${MINIO_PORT:-9000}/minio/health/live
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: multimodal-vllm
+    ports:
+    - ${VLLM_PORT:-8000}:8000
+    environment:
+    - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+    - VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
+    - VLLM_HOST=${VLLM_HOST:-0.0.0.0}
+    - VLLM_PORT=${VLLM_PORT:-8000}
+    volumes:
+    - vllm_cache:/root/.cache
+    - ./models:/models
+    command: '--model ${VLLM_MODEL:-microsoft/DialoGPT-medium} --host ${VLLM_HOST:-0.0.0.0}
+      --port ${VLLM_PORT:-8000} --gpu-memory-utilization 0.8 --max-model-len 1024
+      --dtype auto
+
+      '
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities:
+            - gpu
+    healthcheck:
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 180s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${VLLM_PORT:-8000}/v1/models',
+        timeout=10)"
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: multimodal-litellm
+    ports:
+    - ${LITELLM_PORT:-4000}:4000
+    environment:
+    - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+    - LITELLM_SALT_KEY=${LITELLM_SALT_KEY}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+    - ./configs/litellm_simple.yaml:/app/config.yaml
+    command:
+    - --config
+    - /app/config.yaml
+    - --port
+    - ${LITELLM_PORT:-4000}
+    - --num_workers
+    - '1'
+    - --database-url
+    - postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB}
+    depends_on:
+    - vllm
+    - postgres
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${LITELLM_PORT:-4000}/',
+        timeout=5)"
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  multimodal-worker:
+    build:
+      context: ./services/multimodal-worker
+      dockerfile: Dockerfile
+    container_name: multimodal-worker
+    ports:
+    - ${MULTIMODAL_WORKER_PORT:-8001}:8001
+    environment:
+    - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+    - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+    - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+    - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+    - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=0
+    volumes:
+    - multimodal_cache:/app/cache
+    - /tmp:/tmp
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities:
+            - gpu
+    depends_on:
+    - qdrant
+    - postgres
+    - minio
+    - redis
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${MULTIMODAL_WORKER_PORT:-8001}/health',
+        timeout=5)"
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  retrieval-proxy:
+    build:
+      context: ./services/retrieval-proxy
+      dockerfile: Dockerfile
+    container_name: multimodal-retrieval-proxy
+    ports:
+    - ${RETRIEVAL_PROXY_PORT:-8002}:8002
+    environment:
+    - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+    - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+    - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+    - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+    - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=1
+    depends_on:
+    - multimodal-worker
+    - qdrant
+    - postgres
+    - redis
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${RETRIEVAL_PROXY_PORT:-8002}/health',
+        timeout=5)"
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  ai-agents:
+    build:
+      context: ./services/ai-agents
+      dockerfile: Dockerfile
+    container_name: multimodal-ai-agents
+    ports:
+    - ${AI_AGENTS_PORT:-8003}:8003
+    environment:
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+    - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+    - LLM_BASE_URL=${LLM_BASE_URL:-http://vllm:8000/v1}
+    - LLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}
+    - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
+    - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://multimodal-retrieval-proxy:8002}
+    - SEARCH_ENGINE_URL=${SEARCH_ENGINE_URL:-http://search-engine:8004}
+    - MEMORY_SYSTEM_URL=${MEMORY_SYSTEM_URL:-http://memory-system:8005}
+    - USER_MANAGEMENT_URL=${USER_MANAGEMENT_URL:-http://user-management:8006}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=2
+    depends_on:
+    - postgres
+    - qdrant
+    - redis
+    - vllm
+    - multimodal-worker
+    - retrieval-proxy
+    - search-engine
+    - memory-system
+    - user-management
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${AI_AGENTS_PORT:-8003}/health',
+        timeout=5)"
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  memory-system:
+    build:
+      context: ./services/memory-system
+      dockerfile: Dockerfile
+    container_name: multimodal-memory-system
+    ports:
+    - ${MEMORY_SYSTEM_PORT:-8005}:8005
+    environment:
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=4
+    depends_on:
+    - postgres
+    - redis
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${MEMORY_SYSTEM_PORT:-8005}/health',
+        timeout=5)"
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  search-engine:
+    build:
+      context: ./services/search-engine
+      dockerfile: Dockerfile
+    container_name: multimodal-search-engine
+    ports:
+    - ${SEARCH_ENGINE_PORT:-8004}:8004
+    environment:
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+    - QDRANT_PORT=${QDRANT_HTTP_PORT:-6333}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=3
+    - MULTIMODAL_WORKER_URL=${MULTIMODAL_WORKER_URL:-http://multimodal-worker:8001}
+    - RETRIEVAL_PROXY_URL=${RETRIEVAL_PROXY_URL:-http://multimodal-retrieval-proxy:8002}
+    depends_on:
+    - postgres
+    - qdrant
+    - redis
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${SEARCH_ENGINE_PORT:-8004}/health',
+        timeout=5)"
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  user-management:
+    build:
+      context: ./services/user-management
+      dockerfile: Dockerfile
+    container_name: multimodal-user-management
+    ports:
+    - ${USER_MANAGEMENT_PORT:-8006}:8006
+    environment:
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=5
+    - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    - DEBUG=${DEBUG:-false}
+    depends_on:
+    - postgres
+    - redis
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:${USER_MANAGEMENT_PORT:-8006}/health',
+        timeout=5)"
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: multimodal-openwebui
+    ports:
+    - ${OPENWEBUI_PORT:-3030}:8080
+    environment:
+    - OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL:-http://vllm:8000/v1}
+    - OPENAI_API_KEY=${VLLM_API_KEY}
+    - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
+    volumes:
+    - openwebui_data:/app/backend/data
+    depends_on:
+    - vllm
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:8080/health
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: multimodal-n8n
+    ports:
+    - ${N8N_PORT:-5678}:5678
+    environment:
+    - N8N_BASIC_AUTH_ACTIVE=true
+    - N8N_BASIC_AUTH_USER=admin
+    - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
+    - N8N_HOST=localhost
+    - N8N_PORT=5678
+    - N8N_PROTOCOL=https
+    - WEBHOOK_URL=https://localhost:5678
+    - GENERIC_TIMEZONE=UTC
+    - N8N_METRICS=true
+    - N8N_LOG_LEVEL=info
+    - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+    - DB_SQLITE_POOL_SIZE=5
+    - N8N_RUNNERS_ENABLED=true
+    - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+    - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    volumes:
+    - n8n_data:/home/node/.n8n
+    - ./workflows:/home/node/.n8n/workflows:ro
+    depends_on:
+    - postgres
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD
+      - wget
+      - --quiet
+      - --tries=1
+      - --spider
+      - http://localhost:${N8N_PORT:-5678}/healthz
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+  n8n-monitoring:
+    build:
+      context: ./services/n8n-monitoring
+      dockerfile: Dockerfile
+    container_name: multimodal-n8n-monitoring
+    ports:
+    - ${N8N_MONITORING_PORT:-8008}:8008
+    environment:
+    - N8N_MONITORING_HOST=${N8N_MONITORING_HOST:-0.0.0.0}
+    - N8N_MONITORING_PORT=${N8N_MONITORING_PORT:-8008}
+    - DEBUG=${DEBUG:-false}
+    - N8N_URL=${N8N_URL:-http://n8n:5678}
+    - N8N_API_KEY=${N8N_API_KEY:-}
+    - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://n8n-monitoring:8008/webhooks/n8n}
+    - AI_AGENTS_URL=${AI_AGENTS_URL:-http://ai-agents:8003}
+    - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+    - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    - POSTGRES_DB=${POSTGRES_DB:-multimodal}
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - REDIS_HOST=${REDIS_HOST:-redis}
+    - REDIS_PORT=${REDIS_PORT:-6379}
+    - REDIS_DB=7
+    - MONITORING_INTERVAL=30
+    - METRICS_RETENTION_DAYS=90
+    - MAX_EXECUTION_HISTORY=1000
+    - ALERT_EMAIL_ENABLED=true
+    - ALERT_SLACK_ENABLED=true
+    - ALERT_WEBHOOK_ENABLED=false
+    - ALERT_THRESHOLD_ERROR_RATE=5.0
+    - ALERT_THRESHOLD_RESPONSE_TIME=30000
+    - ALERT_THRESHOLD_FAILURE_COUNT=5
+    - SMTP_HOST=${SMTP_HOST:-}
+    - SMTP_PORT=587
+    - SMTP_USER=${SMTP_USER:-}
+    - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+    - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
+    - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+    - SLACK_CHANNEL=#n8n-monitoring
+    - WS_MAX_CONNECTIONS=100
+    - WS_HEARTBEAT_INTERVAL=30
+    - MAX_CONCURRENT_MONITORS=10
+    - REQUEST_TIMEOUT=30
+    - SECRET_KEY=${N8N_MONITORING_SECRET_KEY}
+    - ALLOWED_ORIGINS=*
+    - LOG_LEVEL=INFO
+    volumes:
+    - n8n_monitoring_cache:/app/cache
+    - ./services/n8n/workflow-templates:/app/workflow-templates:ro
+    depends_on:
+    - postgres
+    - redis
+    - n8n
+    - ai-agents
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:${N8N_MONITORING_PORT:-8008}/health
+    debug: false
+    log_level: INFO
+    restart: unless-stopped
+    networks:
+    - multimodal-net
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  qdrant_data:
+    driver: local
+  minio_data:
+    driver: local
+  vllm_cache:
+    driver: local
+  multimodal_cache:
+    driver: local
+  openwebui_data:
+    driver: local
+  n8n_data:
+    driver: local
+  n8n_monitoring_cache:
+    driver: local

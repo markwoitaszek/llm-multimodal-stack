@@ -38,8 +38,52 @@ python3 setup_secrets.py
 - **Multimodal Worker**: http://localhost:8001
 - **Retrieval Proxy**: http://localhost:8002
 
-## 🏗️ **Environment Options**
+## 🏗️ **Deployment Options**
 
+### **Unified Schema Structure (Recommended)**
+The stack now uses a **unified schema approach** where all Docker Compose files are generated from a single source of truth (`schemas/compose-schema.yaml`):
+
+```bash
+# Generate all compose files from schema
+make generate-compose
+
+# Core services only
+make start-dev
+
+# Full staging environment
+make start-staging
+
+# Production deployment with resource limits
+make start-prod
+
+# GPU-optimized deployment
+make start-gpu
+
+# Monitoring environment with ELK stack
+make start-monitoring
+```
+
+### **Normalized Compose Structure**
+The generated compose files use a normalized structure with profiles for flexible deployments:
+
+```bash
+# Core services only
+docker compose up -d
+
+# With monitoring tools
+docker compose --profile monitoring up -d
+
+# With all services
+docker compose --profile services --profile monitoring up -d
+
+# Production deployment with resource limits
+docker compose -f compose.yml -f compose.production.yml up -d
+
+# GPU-optimized deployment
+docker compose -f compose.yml -f compose.gpu.yml up -d
+```
+
+### **Legacy Environment Scripts**
 | Environment | Command | Purpose |
 |-------------|---------|---------|
 | **Development** | `./start-environment.sh dev` | Core services for development |
@@ -48,6 +92,74 @@ python3 setup_secrets.py
 | **Testing** | `./start-environment.sh testing` | Allure test reporting |
 | **Performance** | `./start-environment.sh performance` | JMeter load testing |
 | **Monitoring** | `./start-environment.sh monitoring` | ELK stack for observability |
+
+> **📋 See [Compose Deployment Guide](docs/COMPOSE_DEPLOYMENT_GUIDE.md) and [Unified Schema Guide](docs/UNIFIED_SCHEMA_GUIDE.md) for detailed information about the unified schema approach and control plane integration.**
+
+## 🏗️ **Unified Schema Architecture**
+
+### **Single Source of Truth**
+All Docker Compose configurations are generated from a unified schema:
+
+- **Schema File**: `schemas/compose-schema.yaml` - Single source of truth for all services
+- **Generator Script**: `scripts/compose-generator.py` - Converts schema to compose files
+- **Makefile**: Easy commands for schema management and deployment
+
+### **Generated Files**
+The schema automatically generates:
+- `compose.yml` - Base compose file with core services
+- `compose.development.yml` - Development environment
+- `compose.staging.yml` - Staging environment  
+- `compose.production.yml` - Production environment
+- `compose.gpu.yml` - GPU-optimized environment
+- `compose.monitoring.yml` - Monitoring environment
+- Profile-specific compose files (services, elk, n8n-monitoring)
+
+### **Benefits**
+- ✅ **No Duplication**: Single definition for each service
+- ✅ **Consistency**: Same services across all environments
+- ✅ **Maintainability**: Change once, apply everywhere
+- ✅ **Validation**: Schema validation prevents configuration errors
+- ✅ **Flexibility**: Environment-specific overrides and profiles
+
+## 🔐 **Control Plane Integration**
+
+### **Environment Templates**
+The stack now includes Jinja2 environment templates for seamless integration with the Ops control plane:
+
+- **Template Location**: `env-templates/` directory
+- **Format**: Jinja2 templates (`.env.j2`) with OpenBao integration
+- **Secrets**: All secrets prefixed with `vault_` for OpenBao compatibility
+- **Rendering**: Templates render to `/etc/llm-ms/.env.d/` directory
+
+### **Available Templates**
+- `core.env.j2` - Core services (postgres, redis, minio, qdrant)
+- `vllm.env.j2` - vLLM inference server
+- `litellm.env.j2` - LiteLLM proxy service
+- `multimodal-worker.env.j2` - Multimodal worker service
+- `retrieval-proxy.env.j2` - Retrieval proxy service
+- `ai-agents.env.j2` - AI agents service
+- `memory-system.env.j2` - Memory system service
+- `search-engine.env.j2` - Search engine service
+- `user-management.env.j2` - User management service
+- `openwebui.env.j2` - OpenWebUI interface
+- `n8n.env.j2` - n8n workflow platform
+- `n8n-monitoring.env.j2` - n8n monitoring service
+- `master.env.j2` - Combined template for all services
+
+### **Ansible Integration Example**
+```yaml
+- name: Render environment templates
+  template:
+    src: "env-templates/{{ item }}.j2"
+    dest: "/etc/llm-ms/.env.d/{{ item | regex_replace('\\.env\\.j2$', '.env') }}"
+    mode: '0600'
+  loop:
+    - core.env.j2
+    - vllm.env.j2
+    - litellm.env.j2
+```
+
+> **📋 See [Environment Templates README](env-templates/README.md) and [Secrets Mapping](env-templates/secrets-mapping.md) for detailed integration information.**
 
 ## 🔐 **Secrets Management**
 
