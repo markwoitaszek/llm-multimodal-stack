@@ -177,6 +177,7 @@ JWT_SECRET_KEY={secrets_dict.get('JWT_SECRET_KEY', 'changeme_in_production')}
 WEBUI_SECRET_KEY={secrets_dict.get('WEBUI_SECRET_KEY', 'changeme_in_production')}
 N8N_PASSWORD={secrets_dict.get('N8N_PASSWORD', 'changeme_in_production')}
 N8N_ENCRYPTION_KEY={secrets_dict.get('N8N_ENCRYPTION_KEY', 'changeme_in_production')}
+N8N_MONITORING_SECRET_KEY={secrets_dict.get('N8N_MONITORING_SECRET_KEY', 'changeme_in_production')}
 
 # =============================================================================
 # DEBUG AND DEVELOPMENT

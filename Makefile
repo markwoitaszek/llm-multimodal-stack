@@ -78,13 +78,13 @@ start-dev: generate-compose setup-secrets
 # Staging environment
 start-staging: generate-compose setup-secrets
 	@echo "Starting staging environment..."
-	docker compose -f compose.yml -f compose.production.yml --profile services --profile monitoring up -d
+	docker compose -f compose.yml -f compose.staging.yml up -d
 	@echo "✅ Staging environment started"
 
 # Production environment
 start-prod: generate-compose setup-secrets
 	@echo "Starting production environment..."
-	docker compose -f compose.yml -f compose.production.yml --profile services --profile monitoring up -d
+	docker compose -f compose.yml -f compose.production.yml up -d
 	@echo "✅ Production environment started"
 
 # GPU-optimized environment
