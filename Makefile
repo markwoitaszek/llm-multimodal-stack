@@ -25,7 +25,9 @@ help:
 	@echo "  setup                    Full setup with all validations"
 	@echo "  start-dev                Start development environment (with validation)"
 	@echo "  start-staging            Start staging environment (with validation)"
+	@echo "  start-staging-gpu        Start staging environment with GPU support"
 	@echo "  start-prod               Start production environment (with validation)"
+	@echo "  start-prod-gpu           Start production environment with GPU support"
 	@echo "  start-gpu                Start GPU-optimized environment"
 	@echo "  start-monitoring         Start monitoring environment with ELK stack"
 	@echo "  stop                     Stop all services"
@@ -131,11 +133,29 @@ start-staging: generate-compose setup-secrets-staging validate-credentials-stagi
 	docker compose -f compose.yml -f compose.staging.yml up -d
 	@echo "✅ Staging environment started"
 
+# Staging environment with GPU
+start-staging-gpu: detect-gpu configure-gpu generate-compose setup-secrets-staging validate-credentials-staging
+	@echo "Starting staging environment with GPU support..."
+	@echo "🎮 GPU Configuration:"
+	@echo "  CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env.staging 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	@echo "  GPU_COUNT: $$(grep '^GPU_COUNT=' .env.staging 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	docker compose -f compose.yml -f compose.staging.yml up -d
+	@echo "✅ Staging environment with GPU started"
+
 # Production environment
 start-prod: generate-compose setup-secrets-prod validate-credentials-prod
 	@echo "Starting production environment..."
 	docker compose -f compose.yml -f compose.production.yml up -d
 	@echo "✅ Production environment started"
+
+# Production environment with GPU
+start-prod-gpu: detect-gpu configure-gpu generate-compose setup-secrets-prod validate-credentials-prod
+	@echo "Starting production environment with GPU support..."
+	@echo "🎮 GPU Configuration:"
+	@echo "  CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env.prod 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	@echo "  GPU_COUNT: $$(grep '^GPU_COUNT=' .env.prod 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	docker compose -f compose.yml -f compose.production.yml up -d
+	@echo "✅ Production environment with GPU started"
 
 # GPU-optimized environment
 start-gpu: generate-compose setup-secrets

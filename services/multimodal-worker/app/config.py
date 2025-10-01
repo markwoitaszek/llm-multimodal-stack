@@ -14,8 +14,22 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # GPU settings
-    cuda_visible_devices: str = "0"
-    device: str = "cuda" if os.getenv("CUDA_VISIBLE_DEVICES") else "cpu"
+    cuda_visible_devices: str = os.getenv("CUDA_VISIBLE_DEVICES", "")
+    nvidia_visible_devices: str = os.getenv("NVIDIA_VISIBLE_DEVICES", "")
+    cuda_device_order: str = os.getenv("CUDA_DEVICE_ORDER", "PCI_BUS_ID")
+    gpu_count: int = int(os.getenv("GPU_COUNT", "0"))
+    
+    @property
+    def device(self) -> str:
+        """Determine device based on GPU availability and environment variables"""
+        if self.cuda_visible_devices and self.gpu_count > 0:
+            return "cuda"
+        return "cpu"
+    
+    @property
+    def use_gpu(self) -> bool:
+        """Check if GPU should be used"""
+        return self.device == "cuda" and self.gpu_count > 0
     
     # Model settings
     clip_model: str = "openai/clip-vit-base-patch32"
