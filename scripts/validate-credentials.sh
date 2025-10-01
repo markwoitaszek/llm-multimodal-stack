@@ -103,7 +103,7 @@ if [ -f "schemas/compose-schema.yaml" ]; then
     fi
 fi
 
-if find services/ -name "config.py" -exec grep -l ', "postgres")\|, "minioadmin")' {} \; 2>/dev/null | grep -q .; then
+if find services/ -name "config.py" -exec grep -l 'POSTGRES_PASSWORD.*,.*"postgres"\|POSTGRES_USER.*,.*"postgres"\|MINIO.*PASSWORD.*,.*"minioadmin"\|MINIO.*USER.*,.*"minioadmin"' {} \; 2>/dev/null | grep -q .; then
     log_error "Hardcoded defaults found in service configs"
     HARDCODED_FOUND=1
 fi

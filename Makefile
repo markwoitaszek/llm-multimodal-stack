@@ -210,7 +210,7 @@ validate-security:
 		echo "❌ Hardcoded defaults found in schema"; \
 		exit 1; \
 	fi
-	@if find services/ -name "config.py" -exec grep -l ', "postgres")\|, "minioadmin")' {} \; | grep -q .; then \
+	@if find services/ -name "config.py" -exec grep -l 'POSTGRES_PASSWORD.*,.*"postgres"\|POSTGRES_USER.*,.*"postgres"\|MINIO.*PASSWORD.*,.*"minioadmin"\|MINIO.*USER.*,.*"minioadmin"' {} \; | grep -q .; then \
 		echo "❌ Hardcoded defaults found in service configs"; \
 		exit 1; \
 	fi
