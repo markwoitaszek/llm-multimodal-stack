@@ -9,20 +9,29 @@ help:
 	@echo "=================================================="
 	@echo ""
 	@echo "Available targets:"
-	@echo "  generate-compose    Generate all Docker Compose files from unified schema"
-	@echo "  validate-schema     Validate the unified schema for errors"
-	@echo "  clean-compose       Remove all generated compose files"
-	@echo "  test-compose        Test generated compose files for syntax errors"
-	@echo "  setup-secrets       Generate environment files and secrets"
-	@echo "  start-dev           Start development environment"
-	@echo "  start-staging       Start staging environment"
-	@echo "  start-prod          Start production environment"
-	@echo "  start-gpu           Start GPU-optimized environment"
-	@echo "  start-monitoring    Start monitoring environment with ELK stack"
-	@echo "  stop                Stop all services"
-	@echo "  logs                View logs for all services"
-	@echo "  status              Show status of all services"
-	@echo "  clean               Clean up containers, volumes, and networks"
+	@echo "  generate-compose         Generate all Docker Compose files from unified schema"
+	@echo "  validate-schema          Validate the unified schema for errors"
+	@echo "  validate-security        Validate security configuration (no hardcoded defaults)"
+	@echo "  validate-credentials     Validate credentials for deployment (ENV=environment STRICT=true/false)"
+	@echo "  validate-credentials-dev Validate credentials for development"
+	@echo "  validate-credentials-staging  Validate credentials for staging (strict)"
+	@echo "  validate-credentials-prod     Validate credentials for production (strict)"
+	@echo "  clean-compose            Remove all generated compose files"
+	@echo "  test-compose             Test generated compose files for syntax errors"
+	@echo "  setup-secrets            Generate environment files and secrets (development)"
+	@echo "  setup-secrets-dev        Generate secrets for development"
+	@echo "  setup-secrets-staging    Generate secrets for staging"
+	@echo "  setup-secrets-prod       Generate secrets for production"
+	@echo "  setup                    Full setup with all validations"
+	@echo "  start-dev                Start development environment (with validation)"
+	@echo "  start-staging            Start staging environment (with validation)"
+	@echo "  start-prod               Start production environment (with validation)"
+	@echo "  start-gpu                Start GPU-optimized environment"
+	@echo "  start-monitoring         Start monitoring environment with ELK stack"
+	@echo "  stop                     Stop all services"
+	@echo "  logs                     View logs for all services"
+	@echo "  status                   Show status of all services"
+	@echo "  clean                    Clean up containers, volumes, and networks"
 	@echo ""
 
 # Generate all compose files from unified schema
@@ -52,18 +61,59 @@ test-compose: generate-compose
 	done
 	@echo "✅ All compose files validated successfully"
 
-# Setup secrets and environment files
+# Setup secrets and environment files (default: development)
 setup-secrets:
 	@echo "Setting up secrets and environment files..."
-	python3 setup_secrets.py
+	python3 setup_secrets.py --environment development
 	@if [ -f .env.development ]; then \
 		cp .env.development .env; \
 		echo "✅ Copied .env.development to .env for Docker Compose"; \
 	fi
 	@echo "✅ Secrets and environment files generated"
 
+# Environment-specific secret setup
+setup-secrets-dev:
+	@echo "Setting up secrets for development..."
+	python3 setup_secrets.py --environment development
+	@if [ -f .env.development ]; then \
+		cp .env.development .env; \
+		echo "✅ Copied .env.development to .env"; \
+	fi
+
+setup-secrets-staging:
+	@echo "Setting up secrets for staging..."
+	python3 setup_secrets.py --environment staging
+	@if [ -f .env.staging ]; then \
+		cp .env.staging .env; \
+		echo "✅ Copied .env.staging to .env"; \
+	fi
+
+setup-secrets-prod:
+	@echo "Setting up secrets for production..."
+	python3 setup_secrets.py --environment production
+	@if [ -f .env.production ]; then \
+		cp .env.production .env; \
+		echo "✅ Copied .env.production to .env"; \
+	fi
+
+# Validate credentials
+validate-credentials:
+	@echo "🔒 Validating credentials..."
+	@./scripts/validate-credentials.sh $(ENV) $(STRICT)
+	@echo "✅ Credential validation passed"
+
+# Validate credentials for specific environment
+validate-credentials-dev:
+	@$(MAKE) validate-credentials ENV=development STRICT=false
+
+validate-credentials-staging:
+	@$(MAKE) validate-credentials ENV=staging STRICT=true
+
+validate-credentials-prod:
+	@$(MAKE) validate-credentials ENV=production STRICT=true
+
 # Development environment
-start-dev: generate-compose setup-secrets
+start-dev: generate-compose setup-secrets-dev validate-credentials-dev
 	@echo "Starting development environment..."
 	docker compose up -d
 	@echo "✅ Development environment started"
@@ -76,13 +126,13 @@ start-dev: generate-compose setup-secrets
 	@echo "   - MinIO Console: http://localhost:9002"
 
 # Staging environment
-start-staging: generate-compose setup-secrets
+start-staging: generate-compose setup-secrets-staging validate-credentials-staging
 	@echo "Starting staging environment..."
 	docker compose -f compose.yml -f compose.staging.yml up -d
 	@echo "✅ Staging environment started"
 
 # Production environment
-start-prod: generate-compose setup-secrets
+start-prod: generate-compose setup-secrets-prod validate-credentials-prod
 	@echo "Starting production environment..."
 	docker compose -f compose.yml -f compose.production.yml up -d
 	@echo "✅ Production environment started"
@@ -166,9 +216,9 @@ validate-security:
 	fi
 	@echo "✅ Security validation passed"
 
-# Enhanced setup with security validation
-setup: validate-schema validate-security generate-compose setup-secrets
-	@echo "🎉 Full setup completed successfully!"
+# Enhanced setup with security and credential validation
+setup: validate-schema validate-security generate-compose setup-secrets validate-credentials-dev
+	@echo "🎉 Full setup completed successfully with credential validation!"
 	@echo ""
 	@echo "Next steps:"
 	@echo "  make start-dev        # Start development environment"

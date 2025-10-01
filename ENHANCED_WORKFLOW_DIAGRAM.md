@@ -21,6 +21,7 @@ graph TB
         GPUCommands["🎮 GPU Commands<br/>make detect-gpu, configure-gpu<br/>make start-gpu-auto"]
         WipeCommands["🧹 Wipe Commands<br/>make wipe, make reset"]
         SecurityCommands["🔒 Security Commands<br/>make validate-security"]
+        CredentialCommands["🔐 Credential Commands<br/>make validate-credentials<br/>make validate-credentials-dev/staging/prod"]
     end
 
     %% Unified Schema System (PR 130)
@@ -105,6 +106,7 @@ graph TB
     Makefile --> GPUCommands
     Makefile --> WipeCommands
     Makefile --> SecurityCommands
+    Makefile --> CredentialCommands
 
     %% Schema System Flow
     CoreCommands --> Schema
@@ -135,6 +137,10 @@ graph TB
     SecurityValidation --> Schema
     SecurityValidation --> EnvTemplates
     SecretsManagement --> EnvTemplates
+    
+    %% Credential Validation Flow
+    CredentialCommands --> SecurityValidation
+    CredentialCommands --> EnvTemplates
 
     %% Environment Template Flow
     EnvTemplates --> CoreTemplate
@@ -158,7 +164,7 @@ graph TB
 
     class GPUCommands,GPUDetection,NVLinkDetection,RTX3090Config,CUDAConfig gpu
     class WipeCommands,WipeScript,ContainerWipe,VolumeWipe,NetworkWipe,SecretsRegen wipe
-    class SecurityCommands,SecurityValidation,SecuritySystem security
+    class SecurityCommands,SecurityValidation,SecuritySystem,CredentialCommands security
     class CoreServices,InferenceServices,MultimodalServices,UIServices,MonitoringServices core
     class CoreCommands,Schema,Generator,GeneratedFiles,EnvTemplates enhanced
 ```
@@ -172,8 +178,9 @@ flowchart TD
     Start["🚀 make setup"] --> ValidateSchema["✅ make validate-schema"]
     ValidateSchema --> ValidateSecurity["🔒 make validate-security"]
     ValidateSecurity --> GenerateCompose["⚙️ make generate-compose"]
-    GenerateCompose --> SetupSecrets["🔐 make setup-secrets"]
-    SetupSecrets --> Complete["🎉 Setup Complete"]
+    GenerateCompose --> SetupSecrets["🔐 make setup-secrets-dev"]
+    SetupSecrets --> ValidateCredentials["🔐 make validate-credentials-dev"]
+    ValidateCredentials --> Complete["🎉 Setup Complete"]
     
     Complete --> NextSteps["📋 Next Steps Available:<br/>• make start-dev<br/>• make start-gpu-auto<br/>• make start-prod"]
 ```
@@ -218,7 +225,7 @@ flowchart TD
     ResetOption --> FreshSetup["🎉 Fresh environment from scratch"]
 ```
 
-### 4. Security Validation Workflow
+### 4. Security & Credential Validation Workflow
 
 ```mermaid
 flowchart TD
@@ -236,6 +243,18 @@ flowchart TD
     ServicesFail --> FixServices["🔧 Fix service defaults"]
     FixSchema --> SecurityCheck
     FixServices --> SecurityCheck
+    
+    SecurityPass --> CredentialValidation["🔐 make validate-credentials"]
+    CredentialValidation --> CheckEnvVars["🔍 Check environment variables<br/>and credentials"]
+    CheckEnvVars --> EnvChoice{"Environment?"}
+    
+    EnvChoice -->|Development| DevValidation["🔐 validate-credentials-dev<br/>STRICT=false"]
+    EnvChoice -->|Staging| StagingValidation["🔐 validate-credentials-staging<br/>STRICT=true"]
+    EnvChoice -->|Production| ProdValidation["🔐 validate-credentials-prod<br/>STRICT=true"]
+    
+    DevValidation --> CredPass["✅ Credential validation passed"]
+    StagingValidation --> CredPass
+    ProdValidation --> CredPass
 ```
 
 ### 5. Environment Management Workflow
@@ -248,11 +267,14 @@ flowchart TD
     EnvChoice --> GPU["🎮 GPU Optimized<br/>make start-gpu-auto"]
     EnvChoice --> Monitoring["📊 Monitoring<br/>make start-monitoring"]
     
-    Dev --> DevServices["📋 Services:<br/>• LiteLLM: :4000<br/>• vLLM: :8000<br/>• Multimodal Worker: :8001<br/>• Qdrant: :6333<br/>• MinIO: :9002"]
+    Dev --> DevPipeline["1. generate-compose<br/>2. setup-secrets-dev<br/>3. validate-credentials-dev<br/>4. docker compose up"]
+    DevPipeline --> DevServices["📋 Services:<br/>• LiteLLM: :4000<br/>• vLLM: :8000<br/>• Multimodal Worker: :8001<br/>• Retrieval Proxy: :8002<br/>• Qdrant: :6333<br/>• MinIO: :9002"]
     
-    Staging --> StagingServices["📋 Services:<br/>• All base services<br/>• Production-like config<br/>• Monitoring enabled"]
+    Staging --> StagingPipeline["1. generate-compose<br/>2. setup-secrets-staging<br/>3. validate-credentials-staging<br/>4. docker compose up"]
+    StagingPipeline --> StagingServices["📋 Services:<br/>• All base services<br/>• Production-like config<br/>• Monitoring enabled"]
     
-    Prod --> ProdServices["📋 Services:<br/>• All base services<br/>• Prometheus: :9090<br/>• Grafana: :3000<br/>• Full monitoring"]
+    Prod --> ProdPipeline["1. generate-compose<br/>2. setup-secrets-prod<br/>3. validate-credentials-prod<br/>4. docker compose up"]
+    ProdPipeline --> ProdServices["📋 Services:<br/>• All base services<br/>• Prometheus: :9090<br/>• Grafana: :3000<br/>• Full monitoring"]
     
     GPU --> GPUServices["📋 Services:<br/>• Dual RTX 3090 optimized<br/>• NVLink topology detected<br/>• Tensor parallelism: 2<br/>• GPU memory: 0.8-0.9"]
     
@@ -263,23 +285,30 @@ flowchart TD
 
 ### Core Function Matrix
 
-| Command | Schema Validation | Security Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Environment Wipe | Complete Reset |
-|---------|:-----------------:|:------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|
-| `make setup` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-dev` | ❌ | ❌ | ✅ | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ |
-| `make start-staging` | ❌ | ❌ | ✅ | ✅ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ |
-| `make start-prod` | ❌ | ❌ | ✅ | ✅ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ |
-| `make start-gpu` | ❌ | ❌ | ✅ | ✅ | ✅ (gpu) | ❌ | ❌ | ❌ | ❌ |
-| `make start-monitoring` | ❌ | ❌ | ✅ | ✅ | ✅ (monitoring) | ❌ | ❌ | ❌ | ❌ |
-| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `make start-gpu-auto` | ❌ | ❌ | ✅ | ✅ | ✅ (gpu) | ✅ | ✅ | ❌ | ❌ |
-| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `make reset` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| `make validate-schema` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-security` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make generate-compose` | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Command | Schema Validation | Security Validation | Credential Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Environment Wipe | Complete Reset |
+|---------|:-----------------:|:------------------:|:--------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|
+| `make setup` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-dev` | ❌ | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ |
+| `make start-staging` | ❌ | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ |
+| `make start-prod` | ❌ | ❌ | ✅ (prod) | ✅ | ✅ (prod) | ✅ (prod) | ❌ | ❌ | ❌ | ❌ |
+| `make start-gpu` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ❌ | ❌ | ❌ | ❌ |
+| `make start-monitoring` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (monitoring) | ❌ | ❌ | ❌ | ❌ |
+| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `make start-gpu-auto` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ✅ | ✅ | ❌ | ❌ |
+| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make reset` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ✅ | ✅ |
+| `make validate-schema` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-security` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials` | ❌ | ❌ | ✅ (custom) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials-dev` | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials-staging` | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials-prod` | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make generate-compose` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets-dev` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets-staging` | ❌ | ❌ | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets-prod` | ❌ | ❌ | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### Service Matrix
 
@@ -328,6 +357,7 @@ flowchart TD
 |----------|-------------|
 | **Schema Validation** | Validates `schemas/compose-schema.yaml` syntax and structure |
 | **Security Validation** | Checks for hardcoded defaults in schema and service configs |
+| **Credential Validation** | Validates environment credentials exist and are properly configured |
 | **Generate Compose** | Generates all Docker Compose files from unified schema |
 | **Setup Secrets** | Creates environment files and generates secure secrets |
 | **Start Services** | Starts the specified environment (dev/staging/prod/gpu/monitoring) |
@@ -359,7 +389,26 @@ make setup
 ├── validate-schema
 ├── validate-security
 ├── generate-compose
-└── setup-secrets
+├── setup-secrets-dev
+└── validate-credentials-dev
+
+make start-dev
+├── generate-compose
+├── setup-secrets-dev
+├── validate-credentials-dev
+└── docker compose up -d
+
+make start-staging
+├── generate-compose
+├── setup-secrets-staging
+├── validate-credentials-staging
+└── docker compose up -d (staging profile)
+
+make start-prod
+├── generate-compose
+├── setup-secrets-prod
+├── validate-credentials-prod
+└── docker compose up -d (production profile)
 ```
 
 ### **Recommended Usage Patterns**
@@ -400,17 +449,25 @@ make start-dev          # Just start (auto-generates if needed)
 1. **GPU Auto-Detection**: Automatic RTX 3090 and NVLink topology detection
 2. **Comprehensive Wipe**: Complete environment reset including database volumes
 3. **Security Hardening**: Validation and removal of hardcoded defaults
-4. **Enhanced Makefile**: Professional command interface with new targets
-5. **Unified Schema**: Single source of truth for all configurations
+4. **Credential Validation**: Environment-specific credential validation with strict/non-strict modes
+5. **Enhanced Makefile**: Professional command interface with new targets
+6. **Unified Schema**: Single source of truth for all configurations
 
 ### 🔄 **What's Improved**
 1. **Schema-Driven**: All compose files generated from unified schema
 2. **Template-Based**: Jinja2 environment templates for consistency
-3. **Professional Commands**: Clean, intuitive Makefile targets
-4. **Comprehensive Documentation**: Complete workflow and configuration guides
+3. **Professional Commands**: Clean, intuitive Makefile targets with credential validation
+4. **Environment-Specific Setup**: Separate secret and credential setup for dev/staging/prod
+5. **Comprehensive Documentation**: Complete workflow and configuration guides
+
+### 🔐 **Credential Validation System**
+- **Development**: Non-strict validation (`STRICT=false`) - allows empty/default values
+- **Staging**: Strict validation (`STRICT=true`) - requires all credentials
+- **Production**: Strict validation (`STRICT=true`) - requires all credentials
+- **Custom**: Configurable validation via `make validate-credentials ENV=<env> STRICT=<true/false>`
 
 ---
 
-**Diagram Version**: 2.0 (Post PR 130 + Enhancements)  
-**Last Updated**: October 1, 2024  
+**Diagram Version**: 2.1 (Post PR 130 + Credential Validation)  
+**Last Updated**: October 1, 2025  
 **Compatible With**: Enhanced LLM Multimodal Stack

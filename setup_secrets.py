@@ -61,8 +61,8 @@ class TemplateBasedSecretsManager(SimpleSecretsManager):
             
         logger.info(f"Rendering environment templates for {environment}")
         
-        # Generate secrets
-        secrets_dict = await self.generate_secure_secrets()
+        # Load secrets from stored file (already generated)
+        secrets_dict = await self.load_secrets(environment)
         
         # Convert secrets to template variables (add vault_ prefix)
         template_vars = {}
@@ -122,8 +122,8 @@ class TemplateBasedSecretsManager(SimpleSecretsManager):
         """Create a legacy .env file for backward compatibility"""
         logger.info(f"Creating legacy .env file for {environment}")
         
-        # Generate secrets
-        secrets_dict = await self.generate_secure_secrets()
+        # Load secrets from stored file (already generated)
+        secrets_dict = await self.load_secrets(environment)
         
         # Create a combined .env file
         env_content = f"""# =============================================================================
@@ -248,9 +248,9 @@ HEALTH_CHECK_START_PERIOD=30s
         logger.info(f"Created legacy .env file: {env_file_path}")
         return str(env_file_path)
 
-async def main():
+async def main(environment: str = "development"):
     """Main function to setup production secrets management with new structure"""
-    logger.info("Setting up Production Secrets Management System (Updated)")
+    logger.info(f"Setting up Production Secrets Management System for {environment} (Updated)")
     
     # Get current directory as workspace path
     workspace_path = str(Path(__file__).parent)
@@ -267,12 +267,12 @@ async def main():
         
         # Step 2: Store secrets securely (legacy method)
         logger.info("Step 2: Storing secrets securely...")
-        secrets_file = await secrets_manager.store_secrets(secrets_dict, "development")
+        secrets_file = await secrets_manager.store_secrets(secrets_dict, environment)
         logger.info(f"Secrets stored in: {secrets_file}")
         
         # Step 3: Render environment templates (new method)
         logger.info("Step 3: Rendering environment templates...")
-        template_files = await secrets_manager.render_environment_templates("development")
+        template_files = await secrets_manager.render_environment_templates(environment)
         if template_files:
             logger.info(f"Rendered {len(template_files)} environment template files:")
             for file in template_files:
@@ -282,7 +282,7 @@ async def main():
         
         # Step 4: Create legacy .env file for backward compatibility
         logger.info("Step 4: Creating legacy .env file for backward compatibility...")
-        legacy_env_file = await secrets_manager.create_legacy_env_file("development")
+        legacy_env_file = await secrets_manager.create_legacy_env_file(environment)
         logger.info(f"Created legacy .env file: {legacy_env_file}")
         
         # Step 5: Setup secret rotation
@@ -325,5 +325,15 @@ async def main():
         return False
 
 if __name__ == "__main__":
-    success = asyncio.run(main())
+    import argparse
+    parser = argparse.ArgumentParser(description='Setup secrets for environment')
+    parser.add_argument(
+        '--environment', '-e',
+        default='development',
+        choices=['development', 'staging', 'production'],
+        help='Environment to setup secrets for (default: development)'
+    )
+    args = parser.parse_args()
+    
+    success = asyncio.run(main(args.environment))
     sys.exit(0 if success else 1)

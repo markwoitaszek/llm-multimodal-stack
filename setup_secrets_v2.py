@@ -41,8 +41,8 @@ class TemplateBasedSecretsManager(SimpleSecretsManager):
         """Render all environment templates with generated secrets"""
         logger.info(f"Rendering environment templates for {environment}")
         
-        # Generate secrets
-        secrets_dict = await self.generate_secure_secrets()
+        # Load secrets from stored file (already generated)
+        secrets_dict = await self.load_secrets(environment)
         
         # Convert secrets to template variables (add vault_ prefix)
         template_vars = {}
@@ -102,8 +102,8 @@ class TemplateBasedSecretsManager(SimpleSecretsManager):
         """Create a legacy .env file for backward compatibility"""
         logger.info(f"Creating legacy .env file for {environment}")
         
-        # Generate secrets
-        secrets_dict = await self.generate_secure_secrets()
+        # Load secrets from stored file (already generated)
+        secrets_dict = await self.load_secrets(environment)
         
         # Create a combined .env file
         env_content = f"""# =============================================================================

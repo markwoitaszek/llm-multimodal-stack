@@ -88,7 +88,8 @@ class SimpleSecretsManager:
         # @, #, /, ?, :, &, = - URL parsing issues
         # < > - shell redirection
         # [ ] - IPv6 URL brackets (confuses URL parsers)
-        alphabet = string.ascii_letters + string.digits + "!%^*()_+-"
+        # %, (, ) - URL encoding issues (% is encoding prefix, parens can cause issues)
+        alphabet = string.ascii_letters + string.digits + "!^*_+-"
         return ''.join(secrets.choice(alphabet) for _ in range(length))
     
     def _generate_api_key(self, length: int = 64) -> str:
