@@ -1,5 +1,6 @@
 # Environment files
 .env
+.env.*
 .env.local
 .env.prod
 .env.development
@@ -7,6 +8,7 @@
 .env.production
 .env.*.backup*
 .env.backup*
+.env.d/
 
 # Docker volumes and data
 data/
@@ -89,6 +91,19 @@ configs/*_temp.*
 *_generated.yml
 *_generated.json
 
+# Generated Docker Compose files (from unified schema)
+compose.yml
+compose.*.yml
+compose.development.yml
+compose.staging.yml
+compose.production.yml
+compose.gpu.yml
+compose.monitoring.yml
+compose.services.yml
+compose.elk.yml
+compose.logging.yml
+compose.n8n-monitoring.yml
+
 # Phase-6A Secrets Management System
 secrets/
 docker-compose.*.override.yml
@@ -99,3 +114,4 @@ backups/
 *.backup
 backup_*
 llm-multimodal-stack.wiki/
+archive/

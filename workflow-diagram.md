@@ -5,85 +5,77 @@
 ```mermaid
 graph TB
     %% External Systems
-    subgraph "External Systems"
-        Vault[OpenBao Vault<br/>Secret Management]
-        Semaphore[Semaphore CI/CD<br/>Control Plane]
-        K8s[Kubernetes<br/>Production Runtime]
+    subgraph ExternalSys[External Systems]
+        Vault["OpenBao Vault<br/>Secret Management"]
+        Semaphore["Semaphore CI/CD<br/>Control Plane"]
+        K8s["Kubernetes<br/>Production Runtime"]
     end
 
     %% Development Workflow
-    subgraph "Development Workflow"
-        Dev[Developer]
-        SchemaEdit[Edit compose-schema.yaml]
-        Validate[make validate-schema]
-        Generate[make generate-compose]
-        DevStart[make start-dev]
+    subgraph DevWorkflow[Development Workflow]
+        Dev["Developer"]
+        SchemaEdit["Edit compose-schema.yaml"]
+        Validate["make validate-schema"]
+        Generate["make generate-compose"]
+        DevStart["make start-dev"]
     end
 
     %% Schema Management
-    subgraph "Unified Schema System"
-        Schema[compose-schema.yaml<br/>Single Source of Truth]
-        Generator[compose-generator.py<br/>Schema Processor]
-        GeneratedFiles[Generated Compose Files<br/>compose.yml, compose.development.yml<br/>compose.staging.yml, compose.production.yml]
+    subgraph SchemaSystem[Unified Schema System]
+        Schema["compose-schema.yaml<br/>Single Source of Truth"]
+        Generator["compose-generator.py<br/>Schema Processor"]
+        GeneratedFiles["Generated Compose Files<br/>compose.yml, compose.development.yml<br/>compose.staging.yml, compose.production.yml"]
     end
 
     %% Environment Templates
-    subgraph "Environment Templates"
-        EnvTemplates[env-templates/*.env.j2<br/>Jinja2 Templates]
-        AnsiblePlay[ansible/render-env-templates.yml<br/>Template Renderer]
-        RenderedEnv[/etc/llm-ms/.env.d/<br/>Rendered Environment Files]
+    subgraph EnvTemplate[Environment Templates]
+        EnvTemplates["env-templates/*.env.j2<br/>Jinja2 Templates"]
+        AnsiblePlay["ansible/render-env-templates.yml<br/>Template Renderer"]
+        RenderedEnv["Rendered Environment Files<br/>/etc/llm-ms/.env.d/"]
     end
 
     %% Service Categories
-    subgraph "Core Services"
-        Postgres[(PostgreSQL<br/>Database)]
-        Redis[(Redis<br/>Cache)]
-        Qdrant[(Qdrant<br/>Vector DB)]
-        Minio[(MinIO<br/>Object Storage)]
+    subgraph CoreSvc[Core Services]
+        Postgres[("PostgreSQL<br/>Database")]
+        Redis[("Redis<br/>Cache")]
+        Qdrant[("Qdrant<br/>Vector DB")]
+        Minio[("MinIO<br/>Object Storage")]
     end
 
-    subgraph "Inference Services"
-        VLLM[vLLM<br/>Model Server<br/>:8000]
-        LiteLLM[LiteLLM<br/>API Gateway<br/>:4000]
+    subgraph InferenceSvc[Inference Services]
+        VLLM["vLLM<br/>Model Server<br/>:8000"]
+        LiteLLM["LiteLLM<br/>API Gateway<br/>:4000"]
     end
 
-    subgraph "Multimodal Services"
-        MultiWorker[Multimodal Worker<br/>Processing<br/>:8001]
-        RetrievalProxy[Retrieval Proxy<br/>Search<br/>:8002]
+    subgraph MultimodalSvc[Multimodal Services]
+        MultiWorker["Multimodal Worker<br/>Processing<br/>:8001"]
+        RetrievalProxy["Retrieval Proxy<br/>Search<br/>:8002"]
     end
 
-    subgraph "AI Services"
-        AIAgents[AI Agents<br/>Orchestration<br/>:8003]
-        MemorySystem[Memory System<br/>Persistence<br/>:8005]
-        SearchEngine[Search Engine<br/>Query Processing<br/>:8004]
-        UserMgmt[User Management<br/>Authentication<br/>:8006]
+    subgraph AISvc[AI Services]
+        AIAgents["AI Agents<br/>Orchestration<br/>:8003"]
+        MemorySystem["Memory System<br/>Persistence<br/>:8005"]
+        SearchEngine["Search Engine<br/>Query Processing<br/>:8004"]
+        UserMgmt["User Management<br/>Authentication<br/>:8006"]
     end
 
-    subgraph "UI & Workflow"
-        OpenWebUI[OpenWebUI<br/>Interface<br/>:3030]
-        N8N[n8n<br/>Workflow Engine<br/>:5678]
-        N8NMonitor[n8n Monitoring<br/>Dashboard<br/>:8008]
+    subgraph UIWorkflow[UI & Workflow]
+        OpenWebUI["OpenWebUI<br/>Interface<br/>:3030"]
+        N8N["n8n<br/>Workflow Engine<br/>:5678"]
+        N8NMonitor["n8n Monitoring<br/>Dashboard<br/>:8008"]
     end
 
-    subgraph "Monitoring Stack"
-        ELK[ELK Stack<br/>Logging & Analytics]
-        Prometheus[Prometheus<br/>Metrics]
-        Grafana[Grafana<br/>Dashboards]
+    subgraph MonitorStack[Monitoring Stack]
+        ELK["ELK Stack<br/>Logging & Analytics"]
+        Prometheus["Prometheus<br/>Metrics"]
+        Grafana["Grafana<br/>Dashboards"]
     end
 
     %% Deployment Environments
-    subgraph "Deployment Environments"
-        subgraph "Development"
-            DevEnv[Core Services Only<br/>Debug Mode<br/>Local Development]
-        end
-        
-        subgraph "Staging"
-            StagingEnv[Full Stack<br/>Testing Environment<br/>Profile-based Services]
-        end
-        
-        subgraph "Production"
-            ProdEnv[Production Optimized<br/>Resource Limits<br/>High Availability]
-        end
+    subgraph DeploymentEnvs[Deployment Environments]
+        DevEnv["Development<br/>Core Services Only<br/>Debug Mode<br/>Local Development"]
+        StagingEnv["Staging<br/>Full Stack<br/>Testing Environment<br/>Profile-based Services"]
+        ProdEnv["Production<br/>Production Optimized<br/>Resource Limits<br/>High Availability"]
     end
 
     %% Workflow Connections
