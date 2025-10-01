@@ -8,6 +8,7 @@ pytest-mock==3.12.0
 pytest-xdist==3.5.0
 pytest-html==4.1.1
 pytest-benchmark==4.0.0
+allure-pytest==2.13.5
 
 # API testing
 httpx==0.25.2

@@ -22,13 +22,14 @@ graph TB
         WipeCommands["🧹 Wipe Commands<br/>make wipe, make reset"]
         SecurityCommands["🔒 Security Commands<br/>make validate-security"]
         CredentialCommands["🔐 Credential Commands<br/>make validate-credentials<br/>make validate-credentials-dev/staging/prod"]
+        TestingCommands["🧪 Testing Commands<br/>make start-testing, test-allure<br/>make test-jmeter, test-unit/integration"]
     end
 
     %% Unified Schema System (PR 130)
     subgraph SchemaSystem[Unified Schema System]
         Schema["📄 schemas/compose-schema.yaml<br/>Single Source of Truth (844 lines)"]
         Generator["⚙️ scripts/compose-generator.py<br/>Schema Processor"]
-        GeneratedFiles["📁 Generated Compose Files<br/>compose.yml, compose.development.yml<br/>compose.staging.yml, compose.production.yml<br/>compose.gpu.yml, compose.elk.yml"]
+        GeneratedFiles["📁 Generated Compose Files<br/>compose.yml, compose.development.yml<br/>compose.staging.yml, compose.production.yml<br/>compose.gpu.yml, compose.testing.yml<br/>compose.elk.yml"]
     end
 
     %% Environment Templates
@@ -100,6 +101,13 @@ graph TB
         Logstash["📝 Logstash<br/>:9600"]
     end
 
+    subgraph TestingServices[Testing Services]
+        AllureResults["🧪 Allure Results<br/>:5050"]
+        AllureReport["📊 Allure Report<br/>:8080"]
+        AllureCLI["⚙️ Allure CLI<br/>:8081"]
+        JMeter["⚡ JMeter<br/>Performance Testing"]
+    end
+
     %% Enhanced Workflow Connections
     Developer --> Makefile
     Makefile --> CoreCommands
@@ -107,6 +115,7 @@ graph TB
     Makefile --> WipeCommands
     Makefile --> SecurityCommands
     Makefile --> CredentialCommands
+    Makefile --> TestingCommands
 
     %% Schema System Flow
     CoreCommands --> Schema
@@ -117,6 +126,7 @@ graph TB
     GeneratedFiles --> MultimodalServices
     GeneratedFiles --> UIServices
     GeneratedFiles --> MonitoringServices
+    GeneratedFiles --> TestingServices
 
     %% GPU Enhancement Flow
     GPUCommands --> GPUDetection
@@ -142,6 +152,10 @@ graph TB
     CredentialCommands --> SecurityValidation
     CredentialCommands --> EnvTemplates
 
+    %% Testing Enhancement Flow
+    TestingCommands --> GeneratedFiles
+    TestingCommands --> TestingServices
+
     %% Environment Template Flow
     EnvTemplates --> CoreTemplate
     EnvTemplates --> VLLMTemplate
@@ -154,17 +168,20 @@ graph TB
     MultimodalServices --> InferenceServices
     UIServices --> MultimodalServices
     MonitoringServices --> CoreServices
+    TestingServices --> CoreServices
 
     %% Styling
     classDef enhanced fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     classDef gpu fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     classDef wipe fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef security fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef testing fill:#fff8e1,stroke:#f57f17,stroke-width:2px
     classDef core fill:#fce4ec,stroke:#880e4f,stroke-width:2px
 
     class GPUCommands,GPUDetection,NVLinkDetection,RTX3090Config,CUDAConfig gpu
     class WipeCommands,WipeScript,ContainerWipe,VolumeWipe,NetworkWipe,SecretsRegen wipe
     class SecurityCommands,SecurityValidation,SecuritySystem,CredentialCommands security
+    class TestingCommands,TestingServices testing
     class CoreServices,InferenceServices,MultimodalServices,UIServices,MonitoringServices core
     class CoreCommands,Schema,Generator,GeneratedFiles,EnvTemplates enhanced
 ```
@@ -281,34 +298,92 @@ flowchart TD
     Monitoring --> MonitoringServices["📋 Services:<br/>• Kibana: :5601<br/>• Elasticsearch: :9200<br/>• Logstash: :9600<br/>• ELK stack"]
 ```
 
+### 6. Testing Framework Workflow
+
+```mermaid
+flowchart TD
+    TestingSetup["🧪 make setup-testing"] --> GenerateCompose["⚙️ make generate-compose"]
+    GenerateCompose --> CreateDirs["📁 Create test directories<br/>allure-results, allure-report<br/>test-results"]
+    CreateDirs --> StartTesting["🚀 make start-testing"]
+    
+    StartTesting --> TestingServices["📋 Testing Services:<br/>• Allure Results: :5050<br/>• Allure Report: :8080<br/>• Allure CLI: :8081<br/>• JMeter: Performance Testing"]
+    
+    TestingServices --> TestExecution["🧪 Test Execution Options"]
+    
+    TestExecution --> AllureTests["📊 make test-allure<br/>Run tests with Allure reporting"]
+    TestExecution --> JMeterTests["⚡ make test-jmeter<br/>Run JMeter performance tests"]
+    TestExecution --> UnitTests["🔬 make test-unit<br/>Run unit tests only"]
+    TestExecution --> IntegrationTests["🔗 make test-integration<br/>Run integration tests only"]
+    TestExecution --> PerformanceTests["⚡ make test-performance<br/>Run performance tests only"]
+    TestExecution --> APITests["🌐 make test-api<br/>Run API tests only"]
+    
+    AllureTests --> GenerateReport["📊 make generate-allure-report<br/>Generate Allure test report"]
+    GenerateReport --> ServeReport["🌐 make serve-allure-report<br/>Serve report on localhost:8080"]
+    
+    JMeterTests --> JMeterResults["📊 JMeter Results<br/>Available in test-results/ directory"]
+    
+    ServeReport --> TestingComplete["✅ Testing Framework Ready<br/>Beautiful web-based reports available"]
+    JMeterResults --> TestingComplete
+```
+
+### 7. Allure Test Reporting Workflow
+
+```mermaid
+flowchart TD
+    TestRun["🧪 Run Tests"] --> PytestExecution["🐍 pytest execution<br/>with --alluredir=allure-results"]
+    PytestExecution --> AllureResults["📊 Allure Results<br/>JSON files in allure-results/"]
+    
+    AllureResults --> AllureResultsServer["🧪 Allure Results Server<br/>:5050 - Collects test results"]
+    AllureResultsServer --> AllureReportServer["📊 Allure Report Server<br/>:8080 - Web-based reports"]
+    
+    AllureResults --> GenerateReport["📊 make generate-allure-report<br/>Generate HTML report"]
+    GenerateReport --> AllureCLI["⚙️ Allure CLI<br/>:8081 - Report generation"]
+    
+    AllureReportServer --> WebReport["🌐 Beautiful Web Reports<br/>• Test execution history<br/>• Detailed test results<br/>• Performance metrics<br/>• Failure analysis"]
+    
+    AllureCLI --> WebReport
+    
+    WebReport --> CI_CD["🔄 CI/CD Integration<br/>• GitHub Actions<br/>• Jenkins<br/>• GitLab CI"]
+```
+
 ## 🔄 Enhanced Command Matrix
 
 ### Core Function Matrix
 
-| Command | Schema Validation | Security Validation | Credential Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Environment Wipe | Complete Reset |
-|---------|:-----------------:|:------------------:|:--------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|
-| `make setup` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-dev` | ❌ | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ |
-| `make start-staging` | ❌ | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ |
-| `make start-prod` | ❌ | ❌ | ✅ (prod) | ✅ | ✅ (prod) | ✅ (prod) | ❌ | ❌ | ❌ | ❌ |
-| `make start-gpu` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ❌ | ❌ | ❌ | ❌ |
-| `make start-monitoring` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (monitoring) | ❌ | ❌ | ❌ | ❌ |
-| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `make start-gpu-auto` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ✅ | ✅ | ❌ | ❌ |
-| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `make reset` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ✅ | ✅ |
-| `make validate-schema` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-security` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials` | ❌ | ❌ | ✅ (custom) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials-dev` | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials-staging` | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials-prod` | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make generate-compose` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets-dev` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets-staging` | ❌ | ❌ | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets-prod` | ❌ | ❌ | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Command | Schema Validation | Security Validation | Credential Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Environment Wipe | Complete Reset | Testing Setup | Test Execution |
+|---------|:-----------------:|:------------------:|:--------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|:-------------:|:-------------:|
+| `make setup` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-dev` | ❌ | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-staging` | ❌ | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-prod` | ❌ | ❌ | ✅ (prod) | ✅ | ✅ (prod) | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-gpu` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-monitoring` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (monitoring) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-testing` | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ (testing) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `make start-gpu-auto` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `make reset` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| `make validate-schema` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-security` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials` | ❌ | ❌ | ✅ (custom) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials-dev` | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials-staging` | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make validate-credentials-prod` | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make generate-compose` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets-dev` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets-staging` | ❌ | ❌ | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-secrets-prod` | ❌ | ❌ | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make setup-testing` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make test-allure` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (allure) |
+| `make test-jmeter` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (jmeter) |
+| `make test-unit` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (unit) |
+| `make test-integration` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (integration) |
+| `make test-performance` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (performance) |
+| `make test-api` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (api) |
+| `make generate-allure-report` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make serve-allure-report` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### Service Matrix
 
@@ -316,26 +391,29 @@ flowchart TD
 **Inference:** vLLM, LiteLLM  
 **AI Services:** Multimodal Worker, Retrieval Proxy, AI Agents, Memory System, Search Engine, User Management  
 **UI/Workflow:** OpenWebUI, n8n, n8n Monitoring  
-**Monitoring:** Prometheus, Grafana, Elasticsearch, Kibana, Logstash, Filebeat
+**Monitoring:** Prometheus, Grafana, Elasticsearch, Kibana, Logstash, Filebeat  
+**Testing:** Allure Results, Allure Report, Allure CLI, JMeter
 
-| Command | PostgreSQL | Redis | Qdrant | MinIO | vLLM | LiteLLM | Multimodal Worker | Retrieval Proxy | AI Agents | Memory System | Search Engine | User Management | OpenWebUI | n8n | n8n Monitoring | Nginx | Elasticsearch | Kibana | Logstash | Filebeat |
-|---------|:----------:|:-----:|:------:|:-----:|:----:|:-------:|:----------------:|:---------------:|:---------:|:-------------:|:-------------:|:---------------:|:---------:|:---:|:-------------:|:-----:|:-------------:|:-----:|:-------:|:--------:|
-| `make start-dev` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-staging` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `make start-prod` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `make start-gpu` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-gpu-auto` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-monitoring` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| `make setup` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make reset` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Command | PostgreSQL | Redis | Qdrant | MinIO | vLLM | LiteLLM | Multimodal Worker | Retrieval Proxy | AI Agents | Memory System | Search Engine | User Management | OpenWebUI | n8n | n8n Monitoring | Nginx | Elasticsearch | Kibana | Logstash | Filebeat | Allure Results | Allure Report | Allure CLI | JMeter |
+|---------|:----------:|:-----:|:------:|:-----:|:----:|:-------:|:----------------:|:---------------:|:---------:|:-------------:|:-------------:|:---------------:|:---------:|:---:|:-------------:|:-----:|:-------------:|:-----:|:-------:|:--------:|:-------------:|:-------------:|:----------:|:------:|
+| `make start-dev` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-staging` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-prod` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-gpu` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-gpu-auto` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make start-monitoring` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `make start-testing` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| `make setup` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `make reset` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 **Service Tiers:**
 - **Development (`start-dev`, `start-gpu`)**: Core infrastructure + inference services only (minimal footprint - 8 services)
 - **Staging (`start-staging`)**: All AI services + UI/workflow + nginx (full testing environment - 16 services)
 - **Production (`start-prod`)**: Full stack with nginx reverse proxy and optimizations (production deployment - 16 services)
+- **Testing (`start-testing`)**: Core services + Allure + JMeter for comprehensive testing (12 services)
 - **Monitoring (`start-monitoring`)**: Core services + ELK stack for log analysis (14 services)
 
 **Legend:** ✅ Active | ❌ Not included
@@ -348,6 +426,7 @@ flowchart TD
 | **Inference Services** | vLLM, LiteLLM | Model serving and API gateway |
 | **Multimodal Services** | Multimodal Worker, Retrieval Proxy, AI Agents, Memory System, Search Engine, User Management | Core application functionality |
 | **UI & Workflow** | OpenWebUI, n8n, n8n Monitoring | User interfaces and workflow automation |
+| **Testing Services** | Allure Results, Allure Report, Allure CLI, JMeter | Test execution, reporting, and performance testing |
 | **Monitoring** | Prometheus, Grafana | Metrics and dashboards |
 | **Logging** | Elasticsearch, Kibana, Logstash | Centralized logging and analysis |
 
@@ -360,11 +439,13 @@ flowchart TD
 | **Credential Validation** | Validates environment credentials exist and are properly configured |
 | **Generate Compose** | Generates all Docker Compose files from unified schema |
 | **Setup Secrets** | Creates environment files and generates secure secrets |
-| **Start Services** | Starts the specified environment (dev/staging/prod/gpu/monitoring) |
+| **Start Services** | Starts the specified environment (dev/staging/prod/gpu/monitoring/testing) |
 | **GPU Detection** | Detects GPU hardware and NVLink topology |
 | **GPU Configuration** | Configures optimal GPU settings and environment variables |
 | **Environment Wipe** | Removes all containers, volumes, and networks |
 | **Complete Reset** | Wipes environment and regenerates everything from scratch |
+| **Testing Setup** | Sets up testing environment with Allure and JMeter containers |
+| **Test Execution** | Runs various test suites (unit, integration, performance, API) with reporting |
 
 ## 🎯 **Command Relationships & Overlaps**
 
@@ -409,6 +490,18 @@ make start-prod
 ├── setup-secrets-prod
 ├── validate-credentials-prod
 └── docker compose up -d (production profile)
+
+make start-testing
+├── setup-testing
+└── docker compose up -d (testing profile)
+
+make test-allure
+├── setup-testing
+└── pytest with Allure reporting
+
+make test-jmeter
+├── setup-testing
+└── JMeter performance tests
 ```
 
 ### **Recommended Usage Patterns**
@@ -443,6 +536,24 @@ make start-dev          # Start development environment
 make start-dev          # Just start (auto-generates if needed)
 ```
 
+#### **For Testing:**
+```bash
+# Option 1: Complete testing environment
+make start-testing      # Start testing environment with Allure and JMeter
+
+# Option 2: Run specific test suites
+make test-allure        # Run tests with Allure reporting
+make test-jmeter        # Run JMeter performance tests
+make test-unit          # Run unit tests only
+make test-integration   # Run integration tests only
+make test-performance   # Run performance tests only
+make test-api           # Run API tests only
+
+# Option 3: Generate and serve reports
+make generate-allure-report  # Generate Allure HTML report
+make serve-allure-report     # Serve report on localhost:8080
+```
+
 ## 🎯 Key Enhancements Over Previous System
 
 ### ✅ **What's New**
@@ -450,15 +561,17 @@ make start-dev          # Just start (auto-generates if needed)
 2. **Comprehensive Wipe**: Complete environment reset including database volumes
 3. **Security Hardening**: Validation and removal of hardcoded defaults
 4. **Credential Validation**: Environment-specific credential validation with strict/non-strict modes
-5. **Enhanced Makefile**: Professional command interface with new targets
-6. **Unified Schema**: Single source of truth for all configurations
+5. **Testing Framework**: Complete Allure and JMeter integration with beautiful web reports
+6. **Enhanced Makefile**: Professional command interface with new targets
+7. **Unified Schema**: Single source of truth for all configurations
 
 ### 🔄 **What's Improved**
 1. **Schema-Driven**: All compose files generated from unified schema
 2. **Template-Based**: Jinja2 environment templates for consistency
 3. **Professional Commands**: Clean, intuitive Makefile targets with credential validation
 4. **Environment-Specific Setup**: Separate secret and credential setup for dev/staging/prod
-5. **Comprehensive Documentation**: Complete workflow and configuration guides
+5. **Testing Integration**: Seamless Allure and JMeter integration with existing test suite
+6. **Comprehensive Documentation**: Complete workflow and configuration guides
 
 ### 🔐 **Credential Validation System**
 - **Development**: Non-strict validation (`STRICT=false`) - allows empty/default values
@@ -468,6 +581,6 @@ make start-dev          # Just start (auto-generates if needed)
 
 ---
 
-**Diagram Version**: 2.1 (Post PR 130 + Credential Validation)  
+**Diagram Version**: 2.2 (Post PR 130 + Credential Validation + Testing Framework)  
 **Last Updated**: October 1, 2025  
 **Compatible With**: Enhanced LLM Multimodal Stack

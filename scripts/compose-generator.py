@@ -209,7 +209,7 @@ class ComposeGenerator:
         print("✅ Generated compose.yml")
         
         # Generate environment-specific overrides
-        environments = ['development', 'staging', 'production', 'gpu', 'monitoring']
+        environments = ['development', 'staging', 'production', 'gpu', 'monitoring', 'testing']
         for env in environments:
             if env in self.schema.get('environments', {}):
                 try:

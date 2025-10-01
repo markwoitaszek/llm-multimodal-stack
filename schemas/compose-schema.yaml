@@ -721,6 +721,92 @@ services:
     profiles:
       - "production"
 
+  # Testing Services
+  allure-results:
+    category: "testing"
+    image: "frankescobar/allure-docker-service:latest"
+    container_name: "multimodal-allure-results"
+    ports:
+      - "5050:5050"
+    environment:
+      - "CHECK_RESULTS_EVERY_SECONDS=3"
+      - "KEEP_HISTORY=1"
+      - "KEEP_HISTORY_BY_DAYS=30"
+      - "CLEAN_RESULTS_DIRECTORY=1"
+    volumes:
+      - "allure_results:/app/allure-results"
+      - "allure_history:/app/default-reports"
+    volumes_required:
+      - "allure_results"
+      - "allure_history"
+    restart: "unless-stopped"
+    networks:
+      - "multimodal-net"
+    profiles:
+      - "testing"
+
+  allure-report:
+    category: "testing"
+    image: "frankescobar/allure-docker-service:latest"
+    container_name: "multimodal-allure-report"
+    ports:
+      - "8080:5050"
+    environment:
+      - "CHECK_RESULTS_EVERY_SECONDS=3"
+      - "KEEP_HISTORY=1"
+      - "KEEP_HISTORY_BY_DAYS=30"
+      - "CLEAN_RESULTS_DIRECTORY=1"
+    volumes:
+      - "allure_results:/app/allure-results"
+      - "allure_history:/app/default-reports"
+    volumes_required:
+      - "allure_results"
+      - "allure_history"
+    restart: "unless-stopped"
+    networks:
+      - "multimodal-net"
+    profiles:
+      - "testing"
+
+  allure-cli:
+    category: "testing"
+    image: "frankescobar/allure-docker-service:latest"
+    container_name: "multimodal-allure-cli"
+    ports:
+      - "8081:8080"
+    volumes:
+      - "allure_results:/app/allure-results"
+      - "allure_history:/app/default-reports"
+      - "./reports:/app/reports"
+    volumes_required:
+      - "allure_results"
+      - "allure_history"
+    command: >
+      sh -c "
+        allure generate /app/allure-results -o /app/reports/allure-report --clean &&
+        allure open /app/reports/allure-report --port 8080 --host 0.0.0.0
+      "
+    depends_on:
+      - "allure-results"
+    restart: "unless-stopped"
+    networks:
+      - "multimodal-net"
+    profiles:
+      - "testing"
+
+  jmeter:
+    category: "testing"
+    image: "alpine:latest"
+    container_name: "multimodal-jmeter"
+    volumes:
+      - "./jmeter:/tests"
+      - "./test-results:/results"
+    command: ["sh", "-c", "echo 'JMeter container ready for performance testing' && echo 'Available test plans:' && ls -la /tests/ && tail -f /dev/null"]
+    networks:
+      - "multimodal-net"
+    profiles:
+      - "testing"
+
 # Environment configurations
 environments:
   development:
@@ -938,6 +1024,25 @@ environments:
       debug: false
       log_level: "INFO"
 
+  testing:
+    description: "Testing environment with Allure and JMeter"
+    services:
+      - "postgres"
+      - "redis"
+      - "qdrant"
+      - "minio"
+      - "vllm"
+      - "litellm"
+      - "multimodal-worker"
+      - "retrieval-proxy"
+      - "allure-results"
+      - "allure-report"
+      - "allure-cli"
+      - "jmeter"
+    overrides:
+      debug: true
+      log_level: "DEBUG"
+
 # Volume definitions
 volumes:
   postgres_data:
@@ -959,4 +1064,8 @@ volumes:
   n8n_monitoring_cache:
     driver: "local"
   elasticsearch_data:
+    driver: "local"
+  allure_results:
+    driver: "local"
+  allure_history:
     driver: "local"

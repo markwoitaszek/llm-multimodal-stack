@@ -30,6 +30,16 @@ help:
 	@echo "  start-prod-gpu           Start production environment with GPU support"
 	@echo "  start-gpu                Start GPU-optimized environment"
 	@echo "  start-monitoring         Start monitoring environment with ELK stack"
+	@echo "  start-testing            Start testing environment with Allure and JMeter"
+	@echo "  setup-testing            Setup testing environment and dependencies"
+	@echo "  test-allure              Run tests with Allure reporting"
+	@echo "  test-jmeter              Run JMeter performance tests"
+	@echo "  test-unit                Run unit tests only"
+	@echo "  test-integration         Run integration tests only"
+	@echo "  test-performance         Run performance tests only"
+	@echo "  test-api                 Run API tests only"
+	@echo "  generate-allure-report   Generate Allure test report"
+	@echo "  serve-allure-report      Serve Allure report on localhost:8080"
 	@echo "  stop                     Stop all services"
 	@echo "  logs                     View logs for all services"
 	@echo "  status                   Show status of all services"
@@ -245,3 +255,73 @@ setup: validate-schema validate-security generate-compose setup-secrets validate
 	@echo "  make start-gpu-auto   # Start GPU environment with auto-detection"
 	@echo "  make wipe             # Wipe environment (DESTRUCTIVE)"
 	@echo "  make reset            # Reset and regenerate from scratch"
+
+# Testing Environment Setup
+setup-testing: generate-compose
+	@echo "🧪 Setting up testing environment..."
+	@mkdir -p allure-results allure-report test-results
+	@echo "✅ Testing environment setup completed"
+
+# Start Testing Environment
+start-testing: setup-testing
+	@echo "🚀 Starting testing environment with Allure and JMeter..."
+	@docker compose -f compose.yml -f compose.testing.yml up -d
+	@echo "✅ Testing environment started"
+	@echo ""
+	@echo "Testing services available:"
+	@echo "  Allure Results: http://localhost:5050"
+	@echo "  Allure Reports: http://localhost:8080"
+	@echo "  JMeter: Available in container for performance testing"
+
+# Run Tests with Allure Reporting
+test-allure: setup-testing
+	@echo "🧪 Running tests with Allure reporting..."
+	@python3 -m pytest tests/ --alluredir=allure-results --allure-clean -v
+	@echo "✅ Tests completed with Allure reporting"
+
+# Run JMeter Performance Tests
+test-jmeter: setup-testing
+	@echo "⚡ Running JMeter performance tests..."
+	@docker run --rm -v $(PWD)/jmeter:/tests -v $(PWD)/test-results:/results justb4/jmeter:latest -n -t /tests/api_load_test.jmx -l /results/results.jtl -e -o /results/html-report
+	@echo "✅ JMeter performance tests completed"
+	@echo "📊 Results available in test-results/ directory"
+
+# Run Unit Tests
+test-unit: setup-testing
+	@echo "🔬 Running unit tests..."
+	@python3 -m pytest tests/ -m unit --alluredir=allure-results --allure-clean -v
+	@echo "✅ Unit tests completed"
+
+# Run Integration Tests
+test-integration: setup-testing
+	@echo "🔗 Running integration tests..."
+	@python3 -m pytest tests/ -m integration --alluredir=allure-results --allure-clean -v
+	@echo "✅ Integration tests completed"
+
+# Run Performance Tests
+test-performance: setup-testing
+	@echo "⚡ Running performance tests..."
+	@python3 -m pytest tests/ -m performance --alluredir=allure-results --allure-clean -v
+	@echo "✅ Performance tests completed"
+
+# Run API Tests
+test-api: setup-testing
+	@echo "🌐 Running API tests..."
+	@python3 -m pytest tests/ -m api --alluredir=allure-results --allure-clean -v
+	@echo "✅ API tests completed"
+
+# Generate Allure Report
+generate-allure-report:
+	@echo "📊 Generating Allure report..."
+	@if [ -d "allure-results" ]; then \
+		allure generate allure-results -o allure-report --clean; \
+		echo "✅ Allure report generated in allure-report/ directory"; \
+	else \
+		echo "❌ No test results found. Run tests first with 'make test-allure'"; \
+		exit 1; \
+	fi
+
+# Serve Allure Report
+serve-allure-report: generate-allure-report
+	@echo "🌐 Serving Allure report on http://localhost:8080..."
+	@allure open allure-report --port 8080 --host 0.0.0.0
