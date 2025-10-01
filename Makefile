@@ -143,12 +143,7 @@ start-gpu-auto: detect-gpu configure-gpu start-gpu
 
 # Comprehensive Environment Management
 wipe:
-	@echo "⚠️  WARNING: This will DELETE all data and containers!"
-	@echo "This includes PostgreSQL databases, MinIO data, and all volumes."
-	@read -p "Are you sure? Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ]
-	@echo "🧹 Wiping environment..."
 	@scripts/wipe-environment.sh
-	@echo "✅ Environment wiped completely"
 
 # Nuclear reset option
 reset: wipe setup
