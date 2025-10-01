@@ -84,6 +84,31 @@ help:
 	@echo "  validate-networks        Validate network configuration"
 	@echo "  check-network-health     Check network health and connectivity"
 	@echo ""
+	@echo "Granular wipe/reset commands:"
+	@echo "  wipe-core                Wipe core infrastructure stack (containers + data)"
+	@echo "  wipe-inference           Wipe inference stack (containers + data)"
+	@echo "  wipe-ai                  Wipe AI services stack (containers + data)"
+	@echo "  wipe-ui                  Wipe UI and workflow stack (containers + data)"
+	@echo "  wipe-testing             Wipe testing stack (containers + data)"
+	@echo "  wipe-monitoring          Wipe monitoring stack (containers + data)"
+	@echo "  restart-core             Restart core infrastructure stack (no data loss)"
+	@echo "  restart-inference        Restart inference stack (no data loss)"
+	@echo "  restart-ai               Restart AI services stack (no data loss)"
+	@echo "  restart-ui               Restart UI and workflow stack (no data loss)"
+	@echo "  restart-testing          Restart testing stack (no data loss)"
+	@echo "  restart-monitoring       Restart monitoring stack (no data loss)"
+	@echo "  rebuild-ai               Rebuild AI services stack (force image rebuild)"
+	@echo "  wipe-db                  Wipe database volumes only"
+	@echo "  wipe-cache               Wipe cache volumes only"
+	@echo "  wipe-models              Wipe model cache only"
+	@echo "  wipe-logs                Wipe log volumes only"
+	@echo "  wipe-test-results        Wipe test results only"
+	@echo "  wipe-dev                 Wipe development environment"
+	@echo "  wipe-staging             Wipe staging environment"
+	@echo "  wipe-prod                Wipe production environment"
+	@echo "  wipe-testing             Wipe testing environment"
+	@echo "  system-status            Show current system status"
+	@echo ""
 
 # Generate all compose files from unified schema
 generate-compose:
@@ -414,44 +439,7 @@ stop-monitoring:
 	@docker compose -f compose.monitoring.yml down
 	@echo "✅ Monitoring stack stopped"
 
-# Stack Restart Commands (no data loss)
-restart-core:
-	@echo "🔄 Restarting core infrastructure stack..."
-	@docker compose -f compose.core.yml restart
-	@echo "✅ Core infrastructure stack restarted"
-
-restart-inference:
-	@echo "🔄 Restarting inference stack..."
-	@docker compose -f compose.inference.yml restart
-	@echo "✅ Inference stack restarted"
-
-restart-ai:
-	@echo "🔄 Restarting AI services stack..."
-	@docker compose -f compose.ai.yml restart
-	@echo "✅ AI services stack restarted"
-
-restart-ui:
-	@echo "🔄 Restarting UI and workflow stack..."
-	@docker compose -f compose.ui.yml restart
-	@echo "✅ UI and workflow stack restarted"
-
-restart-testing:
-	@echo "🔄 Restarting testing stack..."
-	@docker compose -f compose.testing.yml restart
-	@echo "✅ Testing stack restarted"
-
-restart-monitoring:
-	@echo "🔄 Restarting monitoring stack..."
-	@docker compose -f compose.monitoring.yml restart
-	@echo "✅ Monitoring stack restarted"
-
-# Stack Rebuild Commands (force image rebuild)
-rebuild-ai:
-	@echo "🔨 Rebuilding AI services stack..."
-	@docker compose -f compose.ai.yml down
-	@docker compose -f compose.ai.yml build --no-cache
-	@docker compose -f compose.ai.yml up -d
-	@echo "✅ AI services stack rebuilt"
+# Stack Restart Commands (legacy - use granular wipe/reset commands instead)
 
 # Stack Logs Commands
 logs-core:
@@ -550,3 +538,105 @@ check-network-health:
 	else \
 		echo "❌ MinIO: Not running"; \
 	fi
+
+# =============================================================================
+# Granular Wipe/Reset Commands
+# =============================================================================
+
+# Stack Wipe Commands (containers + data)
+wipe-core:
+	@echo "🧹 Wiping core infrastructure stack..."
+	@./scripts/wipe-environment.sh wipe-stack core
+
+wipe-inference:
+	@echo "🧹 Wiping inference stack..."
+	@./scripts/wipe-environment.sh wipe-stack inference
+
+wipe-ai:
+	@echo "🧹 Wiping AI services stack..."
+	@./scripts/wipe-environment.sh wipe-stack ai
+
+wipe-ui:
+	@echo "🧹 Wiping UI and workflow stack..."
+	@./scripts/wipe-environment.sh wipe-stack ui
+
+wipe-testing-stack:
+	@echo "🧹 Wiping testing stack..."
+	@./scripts/wipe-environment.sh wipe-stack testing
+
+wipe-monitoring:
+	@echo "🧹 Wiping monitoring stack..."
+	@./scripts/wipe-environment.sh wipe-stack monitoring
+
+# Stack Restart Commands (no data loss)
+restart-core:
+	@echo "🔄 Restarting core infrastructure stack..."
+	@./scripts/wipe-environment.sh restart-stack core
+
+restart-inference:
+	@echo "🔄 Restarting inference stack..."
+	@./scripts/wipe-environment.sh restart-stack inference
+
+restart-ai:
+	@echo "🔄 Restarting AI services stack..."
+	@./scripts/wipe-environment.sh restart-stack ai
+
+restart-ui:
+	@echo "🔄 Restarting UI and workflow stack..."
+	@./scripts/wipe-environment.sh restart-stack ui
+
+restart-testing:
+	@echo "🔄 Restarting testing stack..."
+	@./scripts/wipe-environment.sh restart-stack testing
+
+restart-monitoring:
+	@echo "🔄 Restarting monitoring stack..."
+	@./scripts/wipe-environment.sh restart-stack monitoring
+
+# Stack Rebuild Commands (force image rebuild)
+rebuild-ai:
+	@echo "🔨 Rebuilding AI services stack..."
+	@./scripts/wipe-environment.sh rebuild-stack ai
+
+# Data-Specific Wipe Commands
+wipe-db:
+	@echo "🗑️  Wiping database volumes..."
+	@./scripts/wipe-environment.sh wipe-db
+
+wipe-cache:
+	@echo "🗑️  Wiping cache volumes..."
+	@./scripts/wipe-environment.sh wipe-cache
+
+wipe-models:
+	@echo "🗑️  Wiping model cache..."
+	@./scripts/wipe-environment.sh wipe-models
+
+wipe-logs:
+	@echo "🗑️  Wiping log volumes..."
+	@./scripts/wipe-environment.sh wipe-logs
+
+wipe-test-results:
+	@echo "🗑️  Wiping test results..."
+	@./scripts/wipe-environment.sh wipe-test-results
+
+# Environment-Specific Wipe Commands
+wipe-dev:
+	@echo "🗑️  Wiping development environment..."
+	@./scripts/wipe-environment.sh wipe-dev
+
+wipe-staging:
+	@echo "🗑️  Wiping staging environment..."
+	@./scripts/wipe-environment.sh wipe-staging
+
+wipe-prod:
+	@echo "🗑️  Wiping production environment..."
+	@./scripts/wipe-environment.sh wipe-prod
+
+wipe-testing:
+	@echo "🗑️  Wiping testing environment..."
+	@./scripts/wipe-environment.sh wipe-testing
+
+# System Status
+system-status:
+	@echo "📊 Showing system status..."
+	@./scripts/wipe-environment.sh status
