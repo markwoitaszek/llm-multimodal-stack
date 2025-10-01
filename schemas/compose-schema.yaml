@@ -1037,6 +1037,164 @@ environments:
       debug: true
       log_level: "DEBUG"
 
+# Stack definitions for modular architecture
+stacks:
+  core:
+    description: "Core infrastructure services"
+    services: ["postgres", "redis", "qdrant", "minio"]
+    dependencies: []
+    networks: ["multimodal-core-net"]
+    volumes: ["postgres_data", "redis_data", "qdrant_data", "minio_data"]
+    environment_variables:
+      - "POSTGRES_HOST"
+      - "POSTGRES_PORT"
+      - "POSTGRES_DB"
+      - "POSTGRES_USER"
+      - "POSTGRES_PASSWORD"
+      - "REDIS_HOST"
+      - "REDIS_PORT"
+      - "QDRANT_HOST"
+      - "QDRANT_HTTP_PORT"
+      - "QDRANT_GRPC_PORT"
+      - "MINIO_ENDPOINT"
+      - "MINIO_ROOT_USER"
+      - "MINIO_ROOT_PASSWORD"
+      - "MINIO_PORT"
+      - "MINIO_CONSOLE_PORT"
+
+  inference:
+    description: "Inference services for model serving"
+    services: ["vllm", "litellm"]
+    dependencies: ["core"]
+    networks: ["multimodal-inference-net"]
+    volumes: ["vllm_cache"]
+    environment_variables:
+      - "VLLM_MODEL"
+      - "VLLM_HOST"
+      - "VLLM_PORT"
+      - "VLLM_TENSOR_PARALLEL_SIZE"
+      - "VLLM_PIPELINE_PARALLEL_SIZE"
+      - "VLLM_GPU_MEMORY_UTILIZATION"
+      - "CUDA_VISIBLE_DEVICES"
+      - "NVIDIA_VISIBLE_DEVICES"
+      - "CUDA_DEVICE_ORDER"
+      - "LITELLM_PORT"
+      - "LITELLM_MASTER_KEY"
+      - "LITELLM_SALT_KEY"
+
+  ai:
+    description: "AI services for multimodal processing"
+    services: ["multimodal-worker", "retrieval-proxy", "ai-agents", "memory-system", "search-engine", "user-management"]
+    dependencies: ["core", "inference"]
+    networks: ["multimodal-ai-net"]
+    volumes: ["multimodal_cache"]
+    environment_variables:
+      - "MULTIMODAL_WORKER_PORT"
+      - "RETRIEVAL_PROXY_PORT"
+      - "AI_AGENTS_PORT"
+      - "MEMORY_SYSTEM_PORT"
+      - "SEARCH_ENGINE_PORT"
+      - "USER_MANAGEMENT_PORT"
+      - "GPU_COUNT"
+
+  ui:
+    description: "UI and workflow services"
+    services: ["openwebui", "n8n", "n8n-monitoring", "nginx"]
+    dependencies: ["core", "ai"]
+    networks: ["multimodal-ui-net"]
+    volumes: ["openwebui_data", "n8n_data", "n8n_monitoring_cache"]
+    environment_variables:
+      - "OPENWEBUI_PORT"
+      - "N8N_PORT"
+      - "N8N_MONITORING_PORT"
+      - "NGINX_PORT"
+
+  testing:
+    description: "Testing framework services"
+    services: ["postgres", "redis", "allure-results", "allure-report", "allure-cli", "jmeter"]
+    dependencies: ["core"]
+    networks: ["multimodal-testing-net"]
+    volumes: ["postgres_data", "redis_data", "allure_results", "allure_history"]
+    environment_variables:
+      - "POSTGRES_HOST"
+      - "POSTGRES_PORT"
+      - "POSTGRES_DB"
+      - "POSTGRES_USER"
+      - "POSTGRES_PASSWORD"
+      - "REDIS_HOST"
+      - "REDIS_PORT"
+
+  monitoring:
+    description: "Monitoring and logging services"
+    services: ["prometheus", "grafana", "elasticsearch", "kibana", "logstash", "filebeat"]
+    dependencies: ["core"]
+    networks: ["multimodal-monitoring-net"]
+    volumes: ["elasticsearch_data"]
+    environment_variables:
+      - "PROMETHEUS_PORT"
+      - "GRAFANA_PORT"
+      - "ELASTICSEARCH_PORT"
+      - "KIBANA_PORT"
+      - "LOGSTASH_PORT"
+
+# Stack network configurations
+stack_networks:
+  multimodal-core-net:
+    driver: "bridge"
+    ipam:
+      driver: "default"
+      config:
+        - subnet: "172.30.0.0/24"
+          gateway: "172.30.0.1"
+
+  multimodal-inference-net:
+    driver: "bridge"
+    ipam:
+      driver: "default"
+      config:
+        - subnet: "172.31.0.0/24"
+          gateway: "172.31.0.1"
+
+  multimodal-ai-net:
+    driver: "bridge"
+    ipam:
+      driver: "default"
+      config:
+        - subnet: "172.32.0.0/24"
+          gateway: "172.32.0.1"
+
+  multimodal-ui-net:
+    driver: "bridge"
+    ipam:
+      driver: "default"
+      config:
+        - subnet: "172.33.0.0/24"
+          gateway: "172.33.0.1"
+
+  multimodal-testing-net:
+    driver: "bridge"
+    ipam:
+      driver: "default"
+      config:
+        - subnet: "172.34.0.0/24"
+          gateway: "172.34.0.1"
+
+  multimodal-monitoring-net:
+    driver: "bridge"
+    ipam:
+      driver: "default"
+      config:
+        - subnet: "172.35.0.0/24"
+          gateway: "172.35.0.1"
+
+  multimodal-external:
+    driver: "bridge"
+    ipam:
+      driver: "default"
+      config:
+        - subnet: "172.29.0.0/24"
+          gateway: "172.29.0.1"
+
 # Volume definitions
 volumes:
   postgres_data:

@@ -227,6 +227,67 @@ class ComposeGenerator:
         
         return yaml.dump(compose_data, default_flow_style=False, sort_keys=False)
     
+    def generate_stack_compose(self, stack_name: str) -> str:
+        """Generate compose file for a specific stack"""
+        if stack_name not in self.schema.get('stacks', {}):
+            raise ValueError(f"Stack '{stack_name}' not found in schema")
+        
+        stack_config = self.schema['stacks'][stack_name]
+        services = {}
+        
+        # Generate services for this stack
+        for service_name in stack_config['services']:
+            if service_name in self.schema['services']:
+                service_def = self.schema['services'][service_name].copy()
+                # Override the network for stack-specific networks
+                if stack_config.get('networks'):
+                    service_def['networks'] = stack_config['networks']
+                
+                # Filter out dependencies that aren't in this stack
+                if 'depends_on' in service_def:
+                    available_services = set(stack_config['services'])
+                    filtered_deps = [dep for dep in service_def['depends_on'] if dep in available_services]
+                    if filtered_deps:
+                        service_def['depends_on'] = filtered_deps
+                    else:
+                        del service_def['depends_on']
+                
+                services[service_name] = self._expand_service(service_name, service_def)
+        
+        # Generate stack-specific networks
+        networks = {}
+        for network_name in stack_config.get('networks', []):
+            if network_name in self.schema.get('stack_networks', {}):
+                networks[network_name] = self.schema['stack_networks'][network_name]
+        
+        # Generate stack-specific volumes
+        volumes = {}
+        for volume_name in stack_config.get('volumes', []):
+            if volume_name in self.schema.get('volumes', {}):
+                volumes[volume_name] = self.schema['volumes'][volume_name]
+        
+        compose_data = {
+            'services': services,
+            'volumes': volumes,
+            'networks': networks
+        }
+        
+        return yaml.dump(compose_data, default_flow_style=False, sort_keys=False)
+    
+    def generate_all_stack_files(self):
+        """Generate compose files for all stacks"""
+        print("Generating stack-based compose files...")
+        
+        for stack_name in self.schema.get('stacks', {}):
+            try:
+                content = self.generate_stack_compose(stack_name)
+                filename = f"compose.{stack_name}.yml"
+                with open(self.output_dir / filename, 'w') as f:
+                    f.write(content)
+                print(f"✅ Generated {filename}")
+            except Exception as e:
+                print(f"❌ Failed to generate compose.{stack_name}.yml: {e}")
+    
     def generate_all_compose_files(self):
         """Generate all compose files from the schema"""
         print("Generating Docker Compose files from unified schema...")
@@ -260,6 +321,9 @@ class ComposeGenerator:
                 print(f"✅ Generated {filename}")
             except Exception as e:
                 print(f"❌ Failed to generate {filename}: {e}")
+        
+        # Generate stack-based compose files
+        self.generate_all_stack_files()
         
         # Generate profile-specific compose files
         profiles = ['services', 'monitoring', 'elk', 'logging', 'n8n-monitoring']

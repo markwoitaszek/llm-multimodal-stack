@@ -45,6 +45,39 @@ help:
 	@echo "  status                   Show status of all services"
 	@echo "  clean                    Clean up containers, volumes, and networks"
 	@echo ""
+	@echo "Stack-based commands:"
+	@echo "  start-core               Start core infrastructure stack (postgres, redis, qdrant, minio)"
+	@echo "  start-inference          Start inference stack (vllm, litellm)"
+	@echo "  start-ai                 Start AI services stack (worker, retrieval, agents, memory, search)"
+	@echo "  start-ui                 Start UI and workflow stack (openwebui, n8n, n8n-monitoring, nginx)"
+	@echo "  start-testing            Start testing stack (postgres, redis, allure, jmeter)"
+	@echo "  start-monitoring         Start monitoring stack (prometheus, grafana, elk)"
+	@echo "  stop-core                Stop core infrastructure stack"
+	@echo "  stop-inference           Stop inference stack"
+	@echo "  stop-ai                  Stop AI services stack"
+	@echo "  stop-ui                  Stop UI and workflow stack"
+	@echo "  stop-testing             Stop testing stack"
+	@echo "  stop-monitoring          Stop monitoring stack"
+	@echo "  restart-core             Restart core infrastructure stack (no data loss)"
+	@echo "  restart-inference        Restart inference stack (no data loss)"
+	@echo "  restart-ai               Restart AI services stack (no data loss)"
+	@echo "  restart-ui               Restart UI and workflow stack (no data loss)"
+	@echo "  restart-testing          Restart testing stack (no data loss)"
+	@echo "  restart-monitoring       Restart monitoring stack (no data loss)"
+	@echo "  rebuild-ai               Rebuild AI services stack (force image rebuild)"
+	@echo "  logs-core                View logs for core infrastructure stack"
+	@echo "  logs-inference           View logs for inference stack"
+	@echo "  logs-ai                  View logs for AI services stack"
+	@echo "  logs-ui                  View logs for UI and workflow stack"
+	@echo "  logs-testing             View logs for testing stack"
+	@echo "  logs-monitoring          View logs for monitoring stack"
+	@echo "  status-core              Show status of core infrastructure stack"
+	@echo "  status-inference         Show status of inference stack"
+	@echo "  status-ai                Show status of AI services stack"
+	@echo "  status-ui                Show status of UI and workflow stack"
+	@echo "  status-testing           Show status of testing stack"
+	@echo "  status-monitoring        Show status of monitoring stack"
+	@echo ""
 
 # Generate all compose files from unified schema
 generate-compose:
@@ -173,15 +206,7 @@ start-gpu: generate-compose setup-secrets
 	docker compose -f compose.yml -f compose.gpu.yml up -d
 	@echo "✅ GPU-optimized environment started"
 
-# Monitoring environment with ELK stack
-start-monitoring: generate-compose setup-secrets
-	@echo "Starting monitoring environment with ELK stack..."
-	docker compose -f compose.yml -f compose.elk.yml --profile elk --profile monitoring up -d
-	@echo "✅ Monitoring environment started"
-	@echo "📊 Services available:"
-	@echo "   - Kibana: http://localhost:5601"
-	@echo "   - Elasticsearch: http://localhost:9200"
-	@echo "   - Logstash: http://localhost:9600"
+# Monitoring environment with ELK stack (legacy - use start-monitoring stack command instead)
 
 # Stop all services
 stop:
@@ -262,16 +287,7 @@ setup-testing: generate-compose
 	@mkdir -p allure-results allure-report test-results
 	@echo "✅ Testing environment setup completed"
 
-# Start Testing Environment
-start-testing: setup-testing
-	@echo "🚀 Starting testing environment with Allure and JMeter..."
-	@docker compose -f compose.testing.yml up -d
-	@echo "✅ Testing environment started"
-	@echo ""
-	@echo "Testing services available:"
-	@echo "  Allure Results: http://localhost:5050"
-	@echo "  Allure Reports: http://localhost:8080"
-	@echo "  JMeter: Available in container for performance testing"
+# Start Testing Environment (legacy - use start-testing stack command instead)
 
 # Run Tests with Allure Reporting
 test-allure: setup-testing
@@ -325,3 +341,158 @@ generate-allure-report:
 serve-allure-report: generate-allure-report
 	@echo "🌐 Serving Allure report on http://localhost:8080..."
 	@allure open allure-report --port 8080 --host 0.0.0.0
+
+# =============================================================================
+# Stack-based Commands
+# =============================================================================
+
+# Stack Start Commands
+start-core: generate-compose
+	@echo "🚀 Starting core infrastructure stack..."
+	@docker compose -f compose.core.yml up -d
+	@echo "✅ Core infrastructure stack started"
+
+start-inference: generate-compose
+	@echo "🚀 Starting inference stack..."
+	@docker compose -f compose.inference.yml up -d
+	@echo "✅ Inference stack started"
+
+start-ai: generate-compose
+	@echo "🚀 Starting AI services stack..."
+	@docker compose -f compose.ai.yml up -d
+	@echo "✅ AI services stack started"
+
+start-ui: generate-compose
+	@echo "🚀 Starting UI and workflow stack..."
+	@docker compose -f compose.ui.yml up -d
+	@echo "✅ UI and workflow stack started"
+
+start-testing: generate-compose
+	@echo "🚀 Starting testing stack..."
+	@docker compose -f compose.testing.yml up -d
+	@echo "✅ Testing stack started"
+
+start-monitoring: generate-compose
+	@echo "🚀 Starting monitoring stack..."
+	@docker compose -f compose.monitoring.yml up -d
+	@echo "✅ Monitoring stack started"
+
+# Stack Stop Commands
+stop-core:
+	@echo "🛑 Stopping core infrastructure stack..."
+	@docker compose -f compose.core.yml down
+	@echo "✅ Core infrastructure stack stopped"
+
+stop-inference:
+	@echo "🛑 Stopping inference stack..."
+	@docker compose -f compose.inference.yml down
+	@echo "✅ Inference stack stopped"
+
+stop-ai:
+	@echo "🛑 Stopping AI services stack..."
+	@docker compose -f compose.ai.yml down
+	@echo "✅ AI services stack stopped"
+
+stop-ui:
+	@echo "🛑 Stopping UI and workflow stack..."
+	@docker compose -f compose.ui.yml down
+	@echo "✅ UI and workflow stack stopped"
+
+stop-testing:
+	@echo "🛑 Stopping testing stack..."
+	@docker compose -f compose.testing.yml down
+	@echo "✅ Testing stack stopped"
+
+stop-monitoring:
+	@echo "🛑 Stopping monitoring stack..."
+	@docker compose -f compose.monitoring.yml down
+	@echo "✅ Monitoring stack stopped"
+
+# Stack Restart Commands (no data loss)
+restart-core:
+	@echo "🔄 Restarting core infrastructure stack..."
+	@docker compose -f compose.core.yml restart
+	@echo "✅ Core infrastructure stack restarted"
+
+restart-inference:
+	@echo "🔄 Restarting inference stack..."
+	@docker compose -f compose.inference.yml restart
+	@echo "✅ Inference stack restarted"
+
+restart-ai:
+	@echo "🔄 Restarting AI services stack..."
+	@docker compose -f compose.ai.yml restart
+	@echo "✅ AI services stack restarted"
+
+restart-ui:
+	@echo "🔄 Restarting UI and workflow stack..."
+	@docker compose -f compose.ui.yml restart
+	@echo "✅ UI and workflow stack restarted"
+
+restart-testing:
+	@echo "🔄 Restarting testing stack..."
+	@docker compose -f compose.testing.yml restart
+	@echo "✅ Testing stack restarted"
+
+restart-monitoring:
+	@echo "🔄 Restarting monitoring stack..."
+	@docker compose -f compose.monitoring.yml restart
+	@echo "✅ Monitoring stack restarted"
+
+# Stack Rebuild Commands (force image rebuild)
+rebuild-ai:
+	@echo "🔨 Rebuilding AI services stack..."
+	@docker compose -f compose.ai.yml down
+	@docker compose -f compose.ai.yml build --no-cache
+	@docker compose -f compose.ai.yml up -d
+	@echo "✅ AI services stack rebuilt"
+
+# Stack Logs Commands
+logs-core:
+	@echo "📋 Viewing logs for core infrastructure stack..."
+	@docker compose -f compose.core.yml logs -f
+
+logs-inference:
+	@echo "📋 Viewing logs for inference stack..."
+	@docker compose -f compose.inference.yml logs -f
+
+logs-ai:
+	@echo "📋 Viewing logs for AI services stack..."
+	@docker compose -f compose.ai.yml logs -f
+
+logs-ui:
+	@echo "📋 Viewing logs for UI and workflow stack..."
+	@docker compose -f compose.ui.yml logs -f
+
+logs-testing:
+	@echo "📋 Viewing logs for testing stack..."
+	@docker compose -f compose.testing.yml logs -f
+
+logs-monitoring:
+	@echo "📋 Viewing logs for monitoring stack..."
+	@docker compose -f compose.monitoring.yml logs -f
+
+# Stack Status Commands
+status-core:
+	@echo "📊 Status of core infrastructure stack:"
+	@docker compose -f compose.core.yml ps
+
+status-inference:
+	@echo "📊 Status of inference stack:"
+	@docker compose -f compose.inference.yml ps
+
+status-ai:
+	@echo "📊 Status of AI services stack:"
+	@docker compose -f compose.ai.yml ps
+
+status-ui:
+	@echo "📊 Status of UI and workflow stack:"
+	@docker compose -f compose.ui.yml ps
+
+status-testing:
+	@echo "📊 Status of testing stack:"
+	@docker compose -f compose.testing.yml ps
+
+status-monitoring:
+	@echo "📊 Status of monitoring stack:"
+	@docker compose -f compose.monitoring.yml ps
