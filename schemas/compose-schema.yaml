@@ -708,6 +708,7 @@ environments:
       - "openwebui"
       - "n8n"
       - "n8n-monitoring"
+      - "nginx"
     overrides:
       debug: false
       log_level: "INFO"
@@ -727,6 +728,7 @@ environments:
       - "memory-system"
       - "search-engine"
       - "user-management"
+      - "openwebui"
       - "n8n"
       - "n8n-monitoring"
       - "nginx"
