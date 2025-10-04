@@ -43,6 +43,207 @@ Once running, access these services through your web browser:
 - **Kibana**: http://localhost:5601 (Log analysis)
 - **Grafana**: http://localhost:3001 (Metrics visualization)
 
+## 🔧 **First-Time Setup Guide**
+
+### **Step 1: Verify All Services Are Running**
+
+1. **Check Docker Status**:
+   ```bash
+   docker compose ps
+   ```
+   All services should show "Up" status. If any are down, wait a few minutes and check again.
+
+2. **Test Service Connectivity**:
+   ```bash
+   # Test if services are responding
+   curl -f http://localhost:3030/health || echo "OpenWebUI not ready"
+   curl -f http://localhost:8003/health || echo "AI Agents not ready"
+   curl -f http://localhost:8001/health || echo "Multimodal Worker not ready"
+   ```
+
+### **Step 2: Initial Service Configuration**
+
+#### **Configure OpenWebUI (Main Chat Interface)**
+
+1. **Open OpenWebUI**: http://localhost:3030
+2. **Create Admin Account**:
+   - Click "Sign Up" or "Create Account"
+   - Enter your email and password
+   - Complete the registration
+3. **Configure Models**:
+   - Go to Settings → Models
+   - Add your preferred LLM models (GPT-4, Claude, etc.)
+   - Test model connectivity
+
+#### **Set Up AI Agents Dashboard**
+
+1. **Open AI Agents Dashboard**: http://localhost:8003
+2. **Initial Setup**:
+   - Create your first user account
+   - Configure agent templates
+   - Set up tool integrations
+3. **Test Agent Creation**:
+   - Click "Create New Agent"
+   - Use the "Basic Assistant" template
+   - Test the agent with a simple question
+
+#### **Configure Multimodal Worker**
+
+1. **Open Multimodal Worker**: http://localhost:8001
+2. **Initial Configuration**:
+   - Set up storage directories
+   - Configure processing models
+   - Test file upload functionality
+3. **Upload Test File**:
+   - Upload a small image or text file
+   - Verify processing completes successfully
+
+#### **Set Up n8n Workflows**
+
+1. **Open n8n**: http://localhost:5678
+2. **Create Admin Account**:
+   - Set up your admin credentials
+   - Configure email settings (optional)
+3. **Test Workflow Creation**:
+   - Create a simple "Hello World" workflow
+   - Test webhook functionality
+   - Verify workflow execution
+
+### **Step 3: Create Your First AI Agent**
+
+1. **Go to AI Agents Dashboard**: http://localhost:8003
+2. **Click "Create New Agent"**
+3. **Fill in Basic Information**:
+   - **Name**: "My First Assistant"
+   - **Goal**: "Help me get started with the LLM Multimodal Stack"
+   - **Tools**: Select "web_search" and "text_analysis"
+   - **Memory Window**: 10 conversations
+4. **Click "Create Agent"**
+5. **Test Your Agent**:
+   - Click "Start Chat"
+   - Ask: "Hello! Can you help me understand what you can do?"
+   - Verify the agent responds appropriately
+
+### **Step 4: Set Up File Storage**
+
+1. **Create Storage Directories**:
+   ```bash
+   mkdir -p ~/multimodal-stack-data/{documents,images,videos,audio}
+   mkdir -p ~/multimodal-stack-data/processed/{documents,images,videos,audio}
+   ```
+
+2. **Configure Storage in Services**:
+   - **Multimodal Worker**: Set upload directory to `~/multimodal-stack-data/`
+   - **Search Engine**: Set index directory to `~/multimodal-stack-data/processed/`
+   - **AI Agents**: Set memory storage to `~/multimodal-stack-data/agents/`
+
+### **Step 5: Test End-to-End Workflow**
+
+1. **Upload a Test Document**:
+   - Go to Multimodal Worker: http://localhost:8001
+   - Upload a small text file or image
+   - Verify it processes successfully
+
+2. **Search Your Content**:
+   - Go to Search Engine: http://localhost:8004
+   - Search for content from your uploaded file
+   - Verify results appear
+
+3. **Ask Questions About Your Content**:
+   - Go to AI Agents Dashboard: http://localhost:8003
+   - Select your agent
+   - Ask questions about the content you uploaded
+   - Verify the agent can access and discuss your content
+
+### **Step 6: Configure Monitoring (Optional)**
+
+1. **Set Up Grafana Dashboards**:
+   - Open Grafana: http://localhost:3001
+   - Login with admin/admin (change password)
+   - Import default dashboards
+   - Configure alerts
+
+2. **Set Up Log Monitoring**:
+   - Open Kibana: http://localhost:5601
+   - Create index patterns
+   - Set up log visualization
+
+### **Step 7: Create Your First n8n Workflow**
+
+1. **Open n8n**: http://localhost:5678
+2. **Create Simple Workflow**:
+   - Drag "Webhook" node
+   - Drag "HTTP Request" node
+   - Connect them
+   - Configure webhook to receive data
+   - Configure HTTP request to send data to AI Agents
+3. **Test Workflow**:
+   - Activate the workflow
+   - Send test data to webhook
+   - Verify data flows through to AI Agents
+
+### **Troubleshooting Common Issues**
+
+#### **Services Not Starting**
+```bash
+# Check logs
+docker compose logs [service-name]
+
+# Restart specific service
+docker compose restart [service-name]
+
+# Rebuild if needed
+docker compose up --build [service-name]
+```
+
+#### **Port Conflicts**
+```bash
+# Check what's using ports
+sudo netstat -tulpn | grep :3030
+sudo netstat -tulpn | grep :8003
+
+# Kill conflicting processes
+sudo kill -9 [PID]
+```
+
+#### **Permission Issues**
+```bash
+# Fix file permissions
+sudo chown -R $USER:$USER ~/multimodal-stack-data/
+chmod -R 755 ~/multimodal-stack-data/
+```
+
+#### **Memory Issues**
+```bash
+# Check system resources
+free -h
+df -h
+
+# Increase Docker memory if needed
+# Edit docker-compose.yml and add:
+# deploy:
+#   resources:
+#     limits:
+#       memory: 4G
+```
+
+### **Verification Checklist**
+
+Before proceeding to scenarios, verify:
+
+- [ ] All Docker services are running (`docker compose ps`)
+- [ ] OpenWebUI is accessible and you can create an account
+- [ ] AI Agents Dashboard is accessible and you can create an agent
+- [ ] Multimodal Worker can process files
+- [ ] Search Engine can index and search content
+- [ ] n8n is accessible and you can create workflows
+- [ ] You can upload files and they process successfully
+- [ ] You can search for uploaded content
+- [ ] AI agents can answer questions about your content
+- [ ] Basic n8n workflows execute successfully
+
+**Once all items are checked, you're ready to start with the scenarios!**
+
 ## 📚 **Scenario 1: Erotic Fiction Writing Assistant**
 
 Create an intelligent chatbot that helps writers craft compelling erotic fiction while maintaining appropriate boundaries and creative guidance.
