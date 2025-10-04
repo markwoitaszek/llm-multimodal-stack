@@ -340,8 +340,9 @@ make start-gpu-auto
 
 ### GPU Environment Variables
 
+#### **Multi-GPU Configuration (RTX 3090s)**
 ```bash
-# Multi-GPU Configuration (RTX 3090s)
+# NVLink Optimization Settings
 CUDA_VISIBLE_DEVICES=0,1
 NVIDIA_VISIBLE_DEVICES=0,1
 CUDA_DEVICE_ORDER=PCI_BUS_ID
@@ -350,6 +351,62 @@ VLLM_PIPELINE_PARALLEL_SIZE=1
 GPU_COUNT=2
 VLLM_GPU_MEMORY_UTILIZATION=0.8
 ```
+
+#### **Single GPU Configuration (Fallback)**
+```bash
+# Single GPU Settings
+CUDA_VISIBLE_DEVICES=0
+NVIDIA_VISIBLE_DEVICES=0
+CUDA_DEVICE_ORDER=PCI_BUS_ID
+VLLM_TENSOR_PARALLEL_SIZE=1
+VLLM_PIPELINE_PARALLEL_SIZE=1
+GPU_COUNT=1
+VLLM_GPU_MEMORY_UTILIZATION=0.8
+```
+
+#### **CPU-Only Configuration (CI/CD)**
+```bash
+# No GPU environment variables needed
+# Uses CPU-only mode
+```
+
+### NVLink Optimization
+
+#### **RTX 3090 NVLink Configuration**
+The RTX 3090 supports NVLink 3.0 with the following specifications:
+- **Bandwidth**: 600 GB/s bidirectional
+- **Latency**: Ultra-low latency for GPU-to-GPU communication
+- **Topology**: Direct GPU-to-GPU connection
+
+#### **vLLM Tensor Parallelism**
+Tensor parallelism splits the model across multiple GPUs:
+- **Model Sharding**: Each GPU holds a portion of the model
+- **Communication**: NVLink enables fast inter-GPU communication
+- **Memory Efficiency**: Reduces per-GPU memory requirements
+- **Performance**: Near-linear scaling with proper NVLink setup
+
+### Performance Tuning
+
+#### **GPU Memory Utilization by Environment**
+
+| Environment | Memory Utilization | Rationale |
+|-------------|-------------------|-----------|
+| Development | 0.8 (80%) | Balanced performance and stability |
+| Staging | 0.85 (85%) | Higher utilization for testing |
+| Production | 0.9 (90%) | Maximum performance |
+| Optimized | 0.9 (90%) | Reduced from 0.95 for stability |
+
+#### **Worker Configuration**
+
+**Multi-GPU Setup:**
+- LiteLLM Workers: 8
+- Multimodal Worker Processes: 4
+- Retrieval Proxy Workers: 8
+
+**Single GPU Setup:**
+- LiteLLM Workers: 4
+- Multimodal Worker Processes: 2
+- Retrieval Proxy Workers: 4
 
 ## 📊 Available Makefile Targets
 
