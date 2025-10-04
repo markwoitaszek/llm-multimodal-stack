@@ -4,7 +4,7 @@
 
 The LLM Multimodal Stack uses a **unified schema-driven approach** for environment configuration management. This system centralizes all environment definitions in a single YAML schema file and uses Jinja2 templates to generate secure, consistent configurations across all environments.
 
-**Current Status**: Streamlined Makefile with essential commands by default and all extended functionality preserved. Interactive wipe mode restored with proper preview functionality.
+**Current Status**: Streamlined Makefile with essential commands by default and all extended functionality preserved. Interactive wipe mode restored with proper preview functionality. **NEW**: Credential preservation system prevents authentication failures during restart cycles.
 
 ## 🏗️ System Architecture
 
@@ -223,8 +223,15 @@ VLLM_TENSOR_PARALLEL_SIZE={{ vllm_tensor_parallel_size | default('1') }}
 The system uses secure secrets generation with no hardcoded defaults:
 
 ```bash
-# Generate secure secrets
-make setup-secrets
+# Generate secure secrets (preserves existing by default)
+make setup-secrets-dev        # Development with preservation
+make setup-secrets-staging    # Staging with preservation
+make setup-secrets-prod       # Production with preservation
+
+# Force regenerate secrets (for fresh environments)
+make setup-secrets-dev-force     # Force regenerate development
+make setup-secrets-staging-force # Force regenerate staging
+make setup-secrets-prod-force    # Force regenerate production
 
 # Validate security configuration
 make validate-security
@@ -233,8 +240,73 @@ make validate-security
 **Security Features**:
 - ✅ No hardcoded passwords or secrets
 - ✅ Environment-specific secret generation
+- ✅ **NEW**: Credential preservation across restart cycles
+- ✅ Force regeneration when needed
 - ✅ Secure defaults with validation
 - ✅ Secret rotation capabilities
+
+### 🔐 Credential Preservation System
+
+**Problem Solved**: Authentication failures during restart cycles caused by credential mismatches.
+
+**Root Cause**: `make start-*` commands always regenerated new credentials, causing mismatches between:
+- New credentials in `secrets/.env.{environment}.json`
+- Existing database volumes with old credentials
+- Services trying to authenticate with new credentials against old data
+
+**Solution**: Credential preservation system that:
+- ✅ **Preserves existing credentials** by default during restarts
+- ✅ **Validates existing secrets** before reusing
+- ✅ **Only regenerates when forced** or when secrets don't exist
+- ✅ **Maintains database consistency** across restart cycles
+
+#### **Restart Commands (Credential-Preserving)**
+
+```bash
+# Essential restart commands (preserves credentials)
+make restart-dev           # Restart development environment
+make restart-staging       # Restart staging environment
+make restart-prod          # Restart production environment
+
+# GPU restart commands (preserves credentials)
+make restart-dev-gpu       # Restart development with GPU
+make restart-staging-gpu   # Restart staging with GPU
+make restart-prod-gpu      # Restart production with GPU
+
+# Extended restart commands (preserves credentials)
+make restart-monitoring-env # Restart monitoring environment
+make restart-testing-env   # Restart testing environment
+```
+
+#### **Usage Patterns**
+
+**For Restart Cycles (Recommended)**:
+```bash
+# Instead of: make stop-staging && make start-staging-gpu
+make restart-staging-gpu   # Preserves credentials automatically
+```
+
+**For Fresh Environments**:
+```bash
+make wipe-nuclear          # Nuclear wipe (destroys everything)
+make setup                 # Fresh setup with new credentials
+make start-staging-gpu     # Start with preserved credentials
+```
+
+**For Credential Regeneration (When Needed)**:
+```bash
+make setup-secrets-staging-force  # Force regenerate
+make restart-staging-gpu          # Restart with new credentials
+```
+
+#### **Technical Implementation**
+
+The system uses `scripts/preserve-secrets.py` that:
+1. **Checks if secrets exist**: `secrets/.env.{environment}.json`
+2. **Validates existing secrets**: Ensures they're readable and valid
+3. **Preserves by default**: Copies existing `.env.{environment}` to `.env`
+4. **Only regenerates when forced**: Via `--force` flag or missing secrets
+5. **Maintains Docker compatibility**: Ensures `.env` is properly set for Docker Compose
 
 ### Environment Variables
 
@@ -450,6 +522,9 @@ make stop-all               # Stop ALL services from ALL compose files
 make stop-dev               # Stop development environment
 make stop-staging           # Stop staging environment
 make stop-prod              # Stop production environment
+make restart-dev            # Restart development (preserves credentials)
+make restart-staging        # Restart staging (preserves credentials)
+make restart-prod           # Restart production (preserves credentials)
 make wipe-nuclear           # Nuclear wipe (complete destruction - type 'NUKE')
 make reset                  # Nuclear reset (wipe + setup)
 make status                 # Show status of all services
@@ -519,6 +594,9 @@ make status
 # View logs
 make logs
 
+# Restart preserving credentials (recommended)
+make restart-dev
+
 # Stop when done
 make stop-all               # Stop ALL services (recommended)
 ```
@@ -534,6 +612,9 @@ nvidia-smi
 
 # Monitor services
 make logs
+
+# Restart preserving credentials (recommended)
+make restart-dev-gpu
 ```
 
 ### Production Deployment Workflow (Extended Commands)
@@ -609,7 +690,20 @@ make validate-security
 # Ensure no hardcoded defaults remain
 ```
 
-**4. Environment Conflicts**
+**4. Authentication Failures (Credential Mismatches)**
+```bash
+# Use credential-preserving restart commands
+make restart-staging-gpu   # Instead of: make stop-staging && make start-staging-gpu
+
+# Force regenerate credentials if needed
+make setup-secrets-staging-force
+make restart-staging-gpu
+
+# Validate credential consistency
+make validate-credentials-staging
+```
+
+**5. Environment Conflicts**
 ```bash
 # Nuclear wipe (complete reset)
 make wipe-nuclear

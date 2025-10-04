@@ -19,7 +19,7 @@ graph TB
 
     %% Enhanced Command Layer
     subgraph CommandLayer[Enhanced Command Layer]
-        EssentialCommands["📋 Essential Commands<br/>make setup, start-dev, start-staging<br/>make start-dev-gpu, start-staging-gpu<br/>make stop, stop-all, wipe, reset, status, logs"]
+        EssentialCommands["📋 Essential Commands<br/>make setup, start-dev, start-staging<br/>make start-dev-gpu, start-staging-gpu<br/>make stop, stop-all, wipe, reset, status, logs<br/>make restart-{dev,staging,prod} (preserves credentials)"]
         GPUCommands["🎮 GPU Commands<br/>make detect-gpu, configure-gpu<br/>make start-gpu-auto"]
         ExtendedCommands["🔧 Extended Commands<br/>make help-extended (100+ commands)<br/>Stack, Network, Wipe, Testing<br/>Backup, Retention, Security"]
         NuclearWipe["💥 Nuclear Wipe<br/>make wipe-nuclear (type 'NUKE' to confirm)<br/>Complete environment destruction<br/>make wipe (deprecated alias)"]
@@ -29,7 +29,7 @@ graph TB
         RetentionCommands["📊 Retention Commands<br/>make retention-{status,cleanup,test}<br/>make retention-cleanup-service<br/>make retention-schedule"]
         BackupCommands["💾 Backup Commands<br/>make backup-{status,full,list,verify}<br/>make backup-service, backup-schedule<br/>make backup-restore"]
         SecurityCommands["🔒 Security Commands<br/>make validate-security"]
-        CredentialCommands["🔐 Credential Commands<br/>make validate-credentials<br/>make validate-credentials-dev/staging/prod"]
+        CredentialCommands["🔐 Credential Commands<br/>make validate-credentials<br/>make validate-credentials-dev/staging/prod<br/>make setup-secrets-{env}-force (regenerate)<br/>Credential preservation on restart"]
         TestingCommands["🧪 Testing Commands<br/>make start-testing, test-allure<br/>make test-jmeter, test-unit/integration"]
     end
 
@@ -399,7 +399,30 @@ flowchart TD
     JMeterResults --> TestingComplete
 ```
 
-### 7. Allure Test Reporting Workflow
+### 7. Credential Preservation Workflow
+
+```mermaid
+flowchart TD
+    RestartChoice["🔄 Restart Options"] --> FreshStart["🆕 Fresh Start<br/>make wipe-nuclear → make start-staging-gpu"]
+    RestartChoice --> PreserveRestart["🔐 Preserve Credentials<br/>make restart-staging-gpu"]
+    RestartChoice --> ForceRegen["🔄 Force Regenerate<br/>make setup-secrets-staging-force"]
+    
+    FreshStart --> FreshProcess["💥 Fresh Process:<br/>• Nuclear wipe destroys everything<br/>• Generate NEW credentials<br/>• Services start with fresh data<br/>• ✅ Authentication matches"]
+    
+    PreserveRestart --> PreserveProcess["🔐 Preserve Process:<br/>• Stop containers only<br/>• Preserve existing secrets<br/>• Copy .env.{env} to .env<br/>• ✅ No credential mismatch"]
+    
+    ForceRegen --> ForceProcess["🔄 Force Process:<br/>• Generate NEW credentials<br/>• Overwrite existing secrets<br/>• Requires restart for consistency<br/>• ⚠️ Use sparingly"]
+    
+    FreshProcess --> FreshSuccess["✅ Fresh Start Success<br/>All services authenticated"]
+    PreserveProcess --> PreserveSuccess["✅ Preserve Success<br/>No authentication failures"]
+    ForceProcess --> ForceSuccess["✅ Force Success<br/>New credentials active"]
+    
+    FreshSuccess --> NextSteps1["💡 Next Steps:<br/>• make start-staging-gpu<br/>• make restart-staging-gpu"]
+    PreserveSuccess --> NextSteps2["💡 Next Steps:<br/>• Continue development<br/>• make restart-* commands"]
+    ForceSuccess --> NextSteps3["💡 Next Steps:<br/>• make restart-staging-gpu<br/>• Verify authentication"]
+```
+
+### 8. Allure Test Reporting Workflow
 
 ```mermaid
 flowchart TD
@@ -430,6 +453,10 @@ flowchart TD
 | `make start-staging` | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `make start-dev-gpu` | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev+gpu) | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | `make start-staging-gpu` | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging+gpu) | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| `make restart-dev` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make restart-staging` | ❌ | ❌ | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make restart-dev-gpu` | ❌ | ❌ | ❌ | ❌ | ✅ (dev+gpu) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make restart-staging-gpu` | ❌ | ❌ | ❌ | ❌ | ✅ (staging+gpu) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (interactive) | ❌ | ✅ | ❌ |

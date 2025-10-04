@@ -1,7 +1,7 @@
 # Comprehensive Makefile for LLM Multimodal Stack
 # Combines streamlined essential commands with all extended options
 
-.PHONY: help help-essential help-extended setup start-dev start-staging start-dev-gpu start-staging-gpu stop stop-all stop-dev stop-staging stop-prod stop-gpu force-stop wipe wipe-confirm reset status logs clean
+.PHONY: help help-essential help-extended setup start-dev start-staging start-dev-gpu start-staging-gpu stop stop-all stop-dev stop-staging stop-prod stop-gpu force-stop wipe wipe-confirm reset status logs clean restart-dev restart-staging restart-prod restart-dev-gpu restart-staging-gpu restart-prod-gpu restart-monitoring-env restart-testing-env
 
 # Default target - shows essential commands
 help:
@@ -21,6 +21,9 @@ help:
 	@echo "  stop-dev           Stop development environment"
 	@echo "  stop-staging       Stop staging environment"
 	@echo "  stop-prod          Stop production environment"
+	@echo "  restart-dev        Restart development (preserves credentials)"
+	@echo "  restart-staging    Restart staging (preserves credentials)"
+	@echo "  restart-prod       Restart production (preserves credentials)"
 	@echo "  wipe-nuclear       💥 NUCLEAR wipe (complete destruction - type 'NUKE')"
 	@echo "  reset              Nuclear reset (wipe + setup)"
 	@echo "  status             Show service status"
@@ -121,6 +124,13 @@ help-extended:
 	@echo "  restart-monitoring Restart monitoring stack (no data loss)"
 	@echo "  rebuild-ai         Rebuild AI services stack (force image rebuild)"
 	@echo ""
+	@echo "🔄 Environment Restart Commands (Credential-Preserving):"
+	@echo "  restart-dev-gpu    Restart development with GPU (preserves credentials)"
+	@echo "  restart-staging-gpu Restart staging with GPU (preserves credentials)"
+	@echo "  restart-prod-gpu   Restart production with GPU (preserves credentials)"
+	@echo "  restart-monitoring-env Restart monitoring environment (preserves credentials)"
+	@echo "  restart-testing-env Restart testing environment (preserves credentials)"
+	@echo ""
 	@echo "📋 Stack Logs & Status Commands:"
 	@echo "  logs-core          View logs for core infrastructure stack"
 	@echo "  logs-inference     View logs for inference stack"
@@ -184,7 +194,7 @@ setup:
 	@echo "🎯 Setting up LLM Multimodal Stack..."
 	@$(MAKE) validate-schema
 	@$(MAKE) generate-compose
-	@$(MAKE) setup-secrets-dev
+	@$(MAKE) setup-secrets-dev-force
 	@$(MAKE) validate-credentials-dev
 	@echo "✅ Setup complete! Use 'make start-dev' or 'make start-dev-gpu' to begin"
 
@@ -413,30 +423,37 @@ setup-secrets:
 	fi
 	@echo "✅ Secrets and environment files generated"
 
-# Environment-specific secret setup
+# Environment-specific secret setup (with preservation)
 setup-secrets-dev:
-	@echo "Setting up secrets for development..."
-	python3 setup_secrets.py --environment development
-	@if [ -f .env.development ]; then \
-		cp .env.development .env; \
-		echo "✅ Copied .env.development to .env"; \
-	fi
+	@echo "Setting up secrets for development (preserving existing)..."
+	python3 scripts/preserve-secrets.py --environment development
+	@echo "✅ Development secrets setup completed"
 
 setup-secrets-staging:
-	@echo "Setting up secrets for staging..."
-	python3 setup_secrets.py --environment staging
-	@if [ -f .env.staging ]; then \
-		cp .env.staging .env; \
-		echo "✅ Copied .env.staging to .env"; \
-	fi
+	@echo "Setting up secrets for staging (preserving existing)..."
+	python3 scripts/preserve-secrets.py --environment staging
+	@echo "✅ Staging secrets setup completed"
 
 setup-secrets-prod:
-	@echo "Setting up secrets for production..."
-	python3 setup_secrets.py --environment production
-	@if [ -f .env.production ]; then \
-		cp .env.production .env; \
-		echo "✅ Copied .env.production to .env"; \
-	fi
+	@echo "Setting up secrets for production (preserving existing)..."
+	python3 scripts/preserve-secrets.py --environment production
+	@echo "✅ Production secrets setup completed"
+
+# Force regeneration of secrets (for nuclear wipe scenarios)
+setup-secrets-dev-force:
+	@echo "Force regenerating secrets for development..."
+	python3 scripts/preserve-secrets.py --environment development --force
+	@echo "✅ Development secrets force regenerated"
+
+setup-secrets-staging-force:
+	@echo "Force regenerating secrets for staging..."
+	python3 scripts/preserve-secrets.py --environment staging --force
+	@echo "✅ Staging secrets force regenerated"
+
+setup-secrets-prod-force:
+	@echo "Force regenerating secrets for production..."
+	python3 scripts/preserve-secrets.py --environment production --force
+	@echo "✅ Production secrets force regenerated"
 
 # Validate credentials
 validate-credentials:
@@ -982,6 +999,66 @@ validate-security:
 		exit 1; \
 	fi
 	@echo "✅ Security validation passed"
+
+# =============================================================================
+# RESTART COMMANDS (Credential-Preserving)
+# =============================================================================
+
+# Restart staging environment (preserves credentials)
+restart-staging:
+	@echo "🔄 Restarting staging environment (preserving credentials)..."
+	@$(MAKE) stop-staging
+	@$(MAKE) start-staging
+	@echo "✅ Staging environment restarted with preserved credentials"
+
+# Restart staging environment with GPU (preserves credentials)
+restart-staging-gpu:
+	@echo "🔄 Restarting staging environment with GPU (preserving credentials)..."
+	@$(MAKE) stop-staging
+	@$(MAKE) start-staging-gpu
+	@echo "✅ Staging environment with GPU restarted with preserved credentials"
+
+# Restart development environment (preserves credentials)
+restart-dev:
+	@echo "🔄 Restarting development environment (preserving credentials)..."
+	@$(MAKE) stop
+	@$(MAKE) start-dev
+	@echo "✅ Development environment restarted with preserved credentials"
+
+# Restart development environment with GPU (preserves credentials)
+restart-dev-gpu:
+	@echo "🔄 Restarting development environment with GPU (preserving credentials)..."
+	@$(MAKE) stop
+	@$(MAKE) start-dev-gpu
+	@echo "✅ Development environment with GPU restarted with preserved credentials"
+
+# Restart production environment (preserves credentials)
+restart-prod:
+	@echo "🔄 Restarting production environment (preserving credentials)..."
+	@$(MAKE) stop-prod
+	@$(MAKE) start-prod
+	@echo "✅ Production environment restarted with preserved credentials"
+
+# Restart production environment with GPU (preserves credentials)
+restart-prod-gpu:
+	@echo "🔄 Restarting production environment with GPU (preserving credentials)..."
+	@$(MAKE) stop-prod
+	@$(MAKE) start-prod-gpu
+	@echo "✅ Production environment with GPU restarted with preserved credentials"
+
+# Restart monitoring environment (preserves credentials)
+restart-monitoring-env:
+	@echo "🔄 Restarting monitoring environment (preserving credentials)..."
+	@$(MAKE) stop-monitoring
+	@$(MAKE) start-monitoring
+	@echo "✅ Monitoring environment restarted with preserved credentials"
+
+# Restart testing environment (preserves credentials)
+restart-testing-env:
+	@echo "🔄 Restarting testing environment (preserving credentials)..."
+	@$(MAKE) stop-testing
+	@$(MAKE) start-testing
+	@echo "✅ Testing environment restarted with preserved credentials"
 
 # =============================================================================
 # UTILITY COMMANDS
