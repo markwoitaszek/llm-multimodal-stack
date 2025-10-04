@@ -857,16 +857,24 @@ environments:
                   device_ids: ['0', '1']
                   capabilities: [gpu]
         environment:
-          - "CUDA_VISIBLE_DEVICES=0,1"
-          - "NVIDIA_VISIBLE_DEVICES=0,1"
+          - "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}"
+          - "NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0,1}"
+          - "CUDA_DEVICE_ORDER=${CUDA_DEVICE_ORDER:-PCI_BUS_ID}"
+          - "VLLM_TENSOR_PARALLEL_SIZE=${VLLM_TENSOR_PARALLEL_SIZE:-2}"
+          - "VLLM_PIPELINE_PARALLEL_SIZE=${VLLM_PIPELINE_PARALLEL_SIZE:-1}"
+          - "VLLM_GPU_MEMORY_UTILIZATION=${VLLM_GPU_MEMORY_UTILIZATION:-0.85}"
+          - "VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}"
+          - "VLLM_HOST=${VLLM_HOST:-0.0.0.0}"
+          - "VLLM_PORT=${VLLM_PORT:-8000}"
         command: [
-          "--model", "microsoft/DialoGPT-small",
-          "--host", "0.0.0.0",
-          "--port", "8000",
-          "--gpu-memory-utilization", "0.8",
-          "--max-model-len", "512",
+          "--model", "${VLLM_MODEL:-microsoft/DialoGPT-medium}",
+          "--host", "${VLLM_HOST:-0.0.0.0}",
+          "--port", "${VLLM_PORT:-8000}",
+          "--gpu-memory-utilization", "${VLLM_GPU_MEMORY_UTILIZATION:-0.85}",
+          "--max-model-len", "1024",
           "--dtype", "auto",
-          "--tensor-parallel-size", "2"
+          "--tensor-parallel-size", "${VLLM_TENSOR_PARALLEL_SIZE:-2}",
+          "--pipeline-parallel-size", "${VLLM_PIPELINE_PARALLEL_SIZE:-1}"
         ]
       multimodal-worker:
         deploy:
@@ -919,16 +927,24 @@ environments:
                   device_ids: ['0', '1']
                   capabilities: [gpu]
         environment:
-          - "CUDA_VISIBLE_DEVICES=0,1"
-          - "NVIDIA_VISIBLE_DEVICES=0,1"
+          - "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}"
+          - "NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0,1}"
+          - "CUDA_DEVICE_ORDER=${CUDA_DEVICE_ORDER:-PCI_BUS_ID}"
+          - "VLLM_TENSOR_PARALLEL_SIZE=${VLLM_TENSOR_PARALLEL_SIZE:-2}"
+          - "VLLM_PIPELINE_PARALLEL_SIZE=${VLLM_PIPELINE_PARALLEL_SIZE:-1}"
+          - "VLLM_GPU_MEMORY_UTILIZATION=${VLLM_GPU_MEMORY_UTILIZATION:-0.85}"
+          - "VLLM_MODEL=${VLLM_MODEL:-microsoft/DialoGPT-medium}"
+          - "VLLM_HOST=${VLLM_HOST:-0.0.0.0}"
+          - "VLLM_PORT=${VLLM_PORT:-8000}"
         command: [
-          "--model", "microsoft/DialoGPT-small",
-          "--host", "0.0.0.0",
-          "--port", "8000",
-          "--gpu-memory-utilization", "0.8",
-          "--max-model-len", "512",
+          "--model", "${VLLM_MODEL:-microsoft/DialoGPT-medium}",
+          "--host", "${VLLM_HOST:-0.0.0.0}",
+          "--port", "${VLLM_PORT:-8000}",
+          "--gpu-memory-utilization", "${VLLM_GPU_MEMORY_UTILIZATION:-0.85}",
+          "--max-model-len", "1024",
           "--dtype", "auto",
-          "--tensor-parallel-size", "2"
+          "--tensor-parallel-size", "${VLLM_TENSOR_PARALLEL_SIZE:-2}",
+          "--pipeline-parallel-size", "${VLLM_PIPELINE_PARALLEL_SIZE:-1}"
         ]
       multimodal-worker:
         deploy:

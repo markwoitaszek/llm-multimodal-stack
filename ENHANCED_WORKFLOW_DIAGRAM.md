@@ -4,6 +4,8 @@
 
 This diagram shows the complete workflow for the enhanced LLM Multimodal Stack, including the unified schema system from PR 130 and all major enhancements: GPU optimization, stack-based architecture, network management, granular wipe/reset operations, data retention policies, and multi-tier backup system.
 
+**Current Status**: Streamlined Makefile with essential commands by default and all extended functionality preserved. Nuclear wipe mode with comprehensive destruction and targeted wipe options for granular control.
+
 ## 🏗️ Enhanced System Architecture
 
 ```mermaid
@@ -17,11 +19,13 @@ graph TB
 
     %% Enhanced Command Layer
     subgraph CommandLayer[Enhanced Command Layer]
-        CoreCommands["Core Commands<br/>make setup, start-dev, start-prod"]
+        EssentialCommands["📋 Essential Commands<br/>make setup, start-dev, start-staging<br/>make start-dev-gpu, start-staging-gpu<br/>make stop, wipe, reset, status, logs"]
         GPUCommands["🎮 GPU Commands<br/>make detect-gpu, configure-gpu<br/>make start-gpu-auto"]
+        ExtendedCommands["🔧 Extended Commands<br/>make help-extended (100+ commands)<br/>Stack, Network, Wipe, Testing<br/>Backup, Retention, Security"]
+        NuclearWipe["💥 Nuclear Wipe<br/>make wipe-nuclear (type 'NUKE' to confirm)<br/>Complete environment destruction<br/>make wipe (deprecated alias)"]
+        TargetedWipe["🎯 Targeted Wipe<br/>make wipe-{core,inference,ai,ui,testing,monitoring}<br/>make wipe-{db,cache,models,logs}<br/>Granular control for specific issues"]
         StackCommands["🏗️ Stack Commands<br/>make start-{core,inference,ai,ui,testing,monitoring}<br/>make stop-{core,inference,ai,ui,testing,monitoring}<br/>make restart-{core,inference,ai,ui,testing,monitoring}"]
         NetworkCommands["🌐 Network Commands<br/>make check-network-conflicts<br/>make validate-networks, check-network-health<br/>make cleanup-networks"]
-        WipeCommands["🧹 Wipe Commands<br/>make wipe-{core,inference,ai,ui,testing,monitoring}<br/>make wipe-{db,cache,models,logs,test-results}<br/>make wipe-{dev,staging,prod,testing}"]
         RetentionCommands["📊 Retention Commands<br/>make retention-{status,cleanup,test}<br/>make retention-cleanup-service<br/>make retention-schedule"]
         BackupCommands["💾 Backup Commands<br/>make backup-{status,full,list,verify}<br/>make backup-service, backup-schedule<br/>make backup-restore"]
         SecurityCommands["🔒 Security Commands<br/>make validate-security"]
@@ -141,19 +145,22 @@ graph TB
 
     %% Enhanced Workflow Connections
     Developer --> Makefile
-    Makefile --> CoreCommands
+    Makefile --> EssentialCommands
     Makefile --> GPUCommands
-    Makefile --> StackCommands
-    Makefile --> NetworkCommands
-    Makefile --> WipeCommands
-    Makefile --> RetentionCommands
-    Makefile --> BackupCommands
-    Makefile --> SecurityCommands
-    Makefile --> CredentialCommands
-    Makefile --> TestingCommands
+    Makefile --> ExtendedCommands
+    Makefile --> NuclearWipe
+    ExtendedCommands --> TargetedWipe
+    ExtendedCommands --> StackCommands
+    ExtendedCommands --> NetworkCommands
+    ExtendedCommands --> RetentionCommands
+    ExtendedCommands --> BackupCommands
+    ExtendedCommands --> SecurityCommands
+    ExtendedCommands --> CredentialCommands
+    ExtendedCommands --> TestingCommands
 
     %% Schema System Flow
-    CoreCommands --> Schema
+    EssentialCommands --> Schema
+    ExtendedCommands --> Schema
     Schema --> Generator
     Generator --> GeneratedFiles
     GeneratedFiles --> CoreServices
@@ -171,7 +178,8 @@ graph TB
     CUDAConfig --> GeneratedFiles
 
     %% Wipe Enhancement Flow
-    WipeCommands --> WipeScript
+    NuclearWipe --> WipeScript
+    TargetedWipe --> WipeScript
     WipeScript --> ContainerWipe
     WipeScript --> VolumeWipe
     WipeScript --> NetworkWipe
@@ -235,13 +243,15 @@ graph TB
     classDef security fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
     classDef testing fill:#fff8e1,stroke:#f57f17,stroke-width:2px
     classDef core fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef essential fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px
 
     class GPUCommands,GPUDetection,NVLinkDetection,RTX3090Config,CUDAConfig gpu
-    class WipeCommands,WipeScript,ContainerWipe,VolumeWipe,NetworkWipe,SecretsRegen wipe
+    class NuclearWipe,TargetedWipe,WipeScript,ContainerWipe,VolumeWipe,NetworkWipe,SecretsRegen wipe
     class SecurityCommands,SecurityValidation,SecuritySystem,CredentialCommands security
     class TestingCommands,TestingServices testing
     class CoreServices,InferenceServices,MultimodalServices,UIServices,MonitoringServices core
-    class CoreCommands,Schema,Generator,GeneratedFiles,EnvTemplates enhanced
+    class EssentialCommands,Schema,Generator,GeneratedFiles,EnvTemplates enhanced
+    class EssentialCommands essential
 ```
 
 ## 🚀 Enhanced Workflow Processes
@@ -251,13 +261,12 @@ graph TB
 ```mermaid
 flowchart TD
     Start["🚀 make setup"] --> ValidateSchema["✅ make validate-schema"]
-    ValidateSchema --> ValidateSecurity["🔒 make validate-security"]
-    ValidateSecurity --> GenerateCompose["⚙️ make generate-compose"]
+    ValidateSchema --> GenerateCompose["⚙️ make generate-compose"]
     GenerateCompose --> SetupSecrets["🔐 make setup-secrets-dev"]
     SetupSecrets --> ValidateCredentials["🔐 make validate-credentials-dev"]
     ValidateCredentials --> Complete["🎉 Setup Complete"]
     
-    Complete --> NextSteps["📋 Next Steps Available:<br/>• make start-dev<br/>• make start-gpu-auto<br/>• make start-prod"]
+    Complete --> NextSteps["📋 Next Steps Available:<br/>• make start-dev<br/>• make start-dev-gpu<br/>• make start-staging-gpu<br/>• make help-extended (100+ commands)"]
 ```
 
 ### 2. Enhanced GPU Workflow
@@ -273,7 +282,7 @@ flowchart TD
     ShowTopology --> ConfigureGPU["⚙️ make configure-gpu"]
     ConfigureGPU --> SetEnvVars["🔧 Set Environment Variables:<br/>CUDA_VISIBLE_DEVICES=0,1<br/>VLLM_TENSOR_PARALLEL_SIZE=2<br/>GPU_COUNT=2"]
     
-    SetEnvVars --> StartGPU["🚀 make start-gpu-auto"]
+    SetEnvVars --> StartGPU["🚀 make start-dev-gpu<br/>or make start-staging-gpu"]
     StartGPU --> GPURunning["✅ GPU Environment Running<br/>Optimized for RTX 3090s"]
     
     CPUOnly --> StartDev["🚀 make start-dev"]
@@ -284,20 +293,26 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    WipeRequest["🧹 make wipe"] --> Warning["⚠️ WARNING: DESTRUCTIVE OPERATION<br/>This will DELETE all data and containers!"]
-    Warning --> Confirmation{"Type 'yes' to continue"}
+    WipeChoice["🧹 Wipe Options"] --> NuclearWipe["💥 Nuclear Wipe<br/>make wipe-nuclear"]
+    WipeChoice --> TargetedWipe["🎯 Targeted Wipe<br/>make wipe-{core,ai,ui,etc}"]
+    WipeChoice --> LegacyWipe["⚠️ Legacy Wipe<br/>make wipe (deprecated)"]
     
-    Confirmation -->|No| Cancel["❌ Operation cancelled"]
-    Confirmation -->|Yes| WipeScript["🧹 scripts/wipe-environment.sh"]
+    NuclearWipe --> NuclearWarning["🚨 DANGER: NUCLEAR DESTRUCTION<br/>This will COMPLETELY DESTROY everything!"]
+    NuclearWarning --> NuclearStatus["📊 Show System Status:<br/>• ALL multimodal containers<br/>• ALL database volumes (DATA LOSS!)<br/>• ALL networks and data"]
+    NuclearStatus --> NuclearConfirmation{"Type 'NUKE' to confirm"}
     
-    WipeScript --> StopContainers["🛑 Stop all compose services"]
-    StopContainers --> RemoveVolumes["💾 Remove multimodal volumes<br/>(PostgreSQL, MinIO data)"]
-    RemoveVolumes --> RemoveNetworks["🌐 Remove multimodal networks"]
-    RemoveNetworks --> CleanupOrphans["🧹 Clean up orphaned containers"]
-    CleanupOrphans --> WipeComplete["✅ Environment wiped completely"]
+    NuclearConfirmation -->|No| NuclearCancel["❌ Nuclear wipe cancelled"]
+    NuclearConfirmation -->|NUKE| NuclearProcess["💥 Nuclear Process:<br/>• Stop ALL services<br/>• Remove ALL volumes<br/>• Remove ALL networks<br/>• Clean ALL data"]
     
-    WipeComplete --> ResetOption["🔄 make reset<br/>(Wipe + Regenerate)"]
-    ResetOption --> FreshSetup["🎉 Fresh environment from scratch"]
+    NuclearProcess --> NuclearComplete["✅ Nuclear wipe completed"]
+    NuclearComplete --> NuclearNextSteps["💡 Next Steps:<br/>• make setup (fresh setup)<br/>• make reset (nuclear reset)"]
+    
+    TargetedWipe --> TargetedOptions["🎯 Choose Target:<br/>• make wipe-core (infrastructure)<br/>• make wipe-ui (UI services)<br/>• make wipe-cache (cache only)<br/>• make wipe-db (database only)"]
+    TargetedOptions --> TargetedProcess["🎯 Targeted Process:<br/>• Stop specific services<br/>• Remove specific volumes<br/>• Preserve other data"]
+    TargetedProcess --> TargetedComplete["✅ Targeted wipe completed"]
+    
+    LegacyWipe --> LegacyWarning["⚠️ DEPRECATED: 'make wipe'<br/>Use 'make wipe-nuclear' instead"]
+    LegacyWarning --> NuclearWipe
 ```
 
 ### 4. Security & Credential Validation Workflow
@@ -406,51 +421,55 @@ flowchart TD
 
 ## 🔄 Enhanced Command Matrix
 
-### Core Function Matrix
+### Core Function Matrix (Essential Commands)
 
-| Command | Schema Validation | Security Validation | Credential Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Environment Wipe | Complete Reset | Testing Setup | Test Execution | Stack Management | Network Management | Data Retention | Backup Management |
-|---------|:-----------------:|:------------------:|:--------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|:-------------:|:-------------:|:---------------:|:-----------------:|:---------------:|:----------------:|
-| `make setup` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-dev` | ❌ | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-staging` | ❌ | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-prod` | ❌ | ❌ | ✅ (prod) | ✅ | ✅ (prod) | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-{core,inference,ai,ui,testing,monitoring}` | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ (stack) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `make stop-{core,inference,ai,ui,testing,monitoring}` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `make restart-{core,inference,ai,ui,testing,monitoring}` | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ (stack) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `make check-network-conflicts` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `make validate-networks` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `make wipe-{core,inference,ai,ui,testing,monitoring}` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (stack) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make wipe-{db,cache,models,logs,test-results}` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (data) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make retention-status` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `make retention-cleanup` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `make backup-status` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| `make backup-full` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| `make backup-service` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make start-gpu-auto` | ❌ | ❌ | ❌ | ✅ | ✅ (dev) | ✅ (gpu) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make reset` | ✅ | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-schema` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-security` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials` | ❌ | ❌ | ✅ (custom) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials-dev` | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials-staging` | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make validate-credentials-prod` | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make generate-compose` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets-dev` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets-staging` | ❌ | ❌ | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-secrets-prod` | ❌ | ❌ | ❌ | ❌ | ✅ (prod) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make setup-testing` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make test-allure` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (allure) | ❌ | ❌ | ❌ | ❌ |
-| `make test-jmeter` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (jmeter) | ❌ | ❌ | ❌ | ❌ |
-| `make test-unit` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (unit) | ❌ | ❌ | ❌ | ❌ |
-| `make test-integration` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (integration) | ❌ | ❌ | ❌ | ❌ |
-| `make test-performance` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (performance) | ❌ | ❌ | ❌ | ❌ |
-| `make test-api` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ (api) | ❌ | ❌ | ❌ | ❌ |
-| `make generate-allure-report` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `make serve-allure-report` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Command | Schema Validation | Credential Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Interactive Wipe | Complete Reset | Essential Commands | Extended Commands |
+|---------|:-----------------:|:--------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|:-----------------:|:----------------:|
+| `make setup` | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make start-dev` | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make start-staging` | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make start-dev-gpu` | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev+gpu) | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| `make start-staging-gpu` | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging+gpu) | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| `make detect-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make configure-gpu` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (interactive) | ❌ | ✅ | ❌ |
+| `make reset` | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| `make stop` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make status` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make logs` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make help` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make help-extended` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+**Essential Commands (15 total)**: Focused on daily development tasks with streamlined interface including nuclear wipe  
+**Extended Commands (100+ total)**: All advanced functionality preserved including targeted wipe options via `make help-extended`
+
+### Extended Commands Categories
+
+**Stack Management**: `make start-{core,inference,ai,ui,testing,monitoring}`, `make stop-*`, `make restart-*`  
+**Network Management**: `make check-network-conflicts`, `make validate-networks`, `make cleanup-networks`  
+**Nuclear Wipe**: `make wipe-nuclear` (complete destruction - type 'NUKE')  
+**Granular Wipe**: `make wipe-{core,inference,ai,ui,testing,monitoring}`, `make wipe-{db,cache,models,logs}`  
+**Legacy Wipe**: `make wipe` (deprecated - use `make wipe-nuclear`)  
+**Data Management**: `make retention-{status,cleanup,test}`, `make backup-{status,full,list,verify}`  
+**Security & Validation**: `make validate-security`, `make validate-credentials-{dev,staging,prod}`  
+**Testing Framework**: `make start-testing`, `make test-{allure,jmeter,unit,integration,api}`  
+**Schema & Compose**: `make generate-compose`, `make validate-schema`, `make setup-secrets-{dev,staging,prod}`
+
+### Command Access Patterns
+
+```bash
+# Essential Commands (Default)
+make help              # Shows 15 essential commands
+make setup             # Complete setup
+make start-dev-gpu     # GPU development
+make wipe-nuclear      # Nuclear wipe (complete destruction)
+
+# Extended Commands (On Demand)
+make help-extended     # Shows all 100+ commands
+make start-core        # Stack management
+make test-allure       # Testing framework
+make backup-full       # Data management
+```
 
 ### Service Matrix
 
@@ -577,36 +596,53 @@ make test-jmeter
 
 #### **For GPU Development:**
 ```bash
-# Option 1: Complete automated workflow
-make start-gpu-auto
+# Option 1: Essential commands (streamlined)
+make start-dev-gpu       # Development with GPU
+make start-staging-gpu   # Staging with GPU
 
 # Option 2: Step-by-step control
 make detect-gpu          # Check what GPUs are available
 make configure-gpu       # Configure optimal settings
-make start-gpu          # Start the environment
+make start-dev           # Start the environment
 ```
 
 #### **For Environment Reset:**
 ```bash
-# Option 1: Nuclear reset (recommended)
+# Option 1: Nuclear wipe (recommended for complete reset)
+make wipe-nuclear       # Nuclear confirmation (type 'NUKE')
+
+# Option 2: Detailed preview wipe
+./scripts/wipe-environment-fixed.sh preview  # Detailed preview
+./scripts/wipe-environment-fixed.sh wipe     # Script with confirmation
+
+# Option 3: Nuclear reset (wipe + setup)
 make reset              # Wipes everything + regenerates
 
-# Option 2: Just wipe (manual setup after)
-make wipe               # Only wipes, you setup manually after
+# Option 4: Targeted wipes (preserve other data)
+make wipe-ui           # Fix UI/n8n issues only
+make wipe-core         # Reset infrastructure only
+make wipe-cache        # Clear cache only
 ```
 
 #### **For Development:**
 ```bash
-# Option 1: Complete setup from scratch
-make setup              # Validates + generates + configures
+# Option 1: Essential commands (streamlined)
+make help               # See essential commands
+make setup              # Complete setup from scratch
 make start-dev          # Start development environment
 
-# Option 2: Quick development (if already set up)
+# Option 2: GPU development
+make start-dev-gpu      # Development with GPU support
+
+# Option 3: Quick development (if already set up)
 make start-dev          # Just start (auto-generates if needed)
 ```
 
-#### **For Testing:**
+#### **For Testing (Extended Commands):**
 ```bash
+# Access extended commands
+make help-extended      # See all 100+ commands including testing
+
 # Option 1: Complete testing environment
 make start-testing      # Start testing environment with Allure and JMeter
 
@@ -626,21 +662,27 @@ make serve-allure-report     # Serve report on localhost:8080
 ## 🎯 Key Enhancements Over Previous System
 
 ### ✅ **What's New**
-1. **GPU Auto-Detection**: Automatic RTX 3090 and NVLink topology detection
-2. **Comprehensive Wipe**: Complete environment reset including database volumes
-3. **Security Hardening**: Validation and removal of hardcoded defaults
-4. **Credential Validation**: Environment-specific credential validation with strict/non-strict modes
-5. **Testing Framework**: Complete Allure and JMeter integration with beautiful web reports
-6. **Enhanced Makefile**: Professional command interface with new targets
-7. **Unified Schema**: Single source of truth for all configurations
+1. **Streamlined Makefile**: Essential commands by default, extended commands on demand
+2. **Nuclear Wipe System**: Complete environment destruction with "NUKE" confirmation
+3. **Targeted Wipe Options**: Granular control with stack-specific and data-type wipes
+4. **GPU Auto-Detection**: Automatic RTX 3090 and NVLink topology detection
+5. **Comprehensive Wipe**: Complete environment reset including database volumes
+6. **Security Hardening**: Validation and removal of hardcoded defaults
+7. **Credential Validation**: Environment-specific credential validation with strict/non-strict modes
+8. **Testing Framework**: Complete Allure and JMeter integration with beautiful web reports
+9. **Two-Tier Help System**: Essential commands by default, extended commands via `make help-extended`
+10. **Unified Schema**: Single source of truth for all configurations
 
 ### 🔄 **What's Improved**
-1. **Schema-Driven**: All compose files generated from unified schema
-2. **Template-Based**: Jinja2 environment templates for consistency
-3. **Professional Commands**: Clean, intuitive Makefile targets with credential validation
-4. **Environment-Specific Setup**: Separate secret and credential setup for dev/staging/prod
-5. **Testing Integration**: Seamless Allure and JMeter integration with existing test suite
-6. **Comprehensive Documentation**: Complete workflow and configuration guides
+1. **User Experience**: Clean, focused essential commands for daily use
+2. **Command Discovery**: Two-tier help system (essential vs extended)
+3. **Wipe Functionality**: Nuclear wipe with comprehensive destruction and targeted options
+4. **Schema-Driven**: All compose files generated from unified schema
+5. **Template-Based**: Jinja2 environment templates for consistency
+6. **Professional Commands**: Clean, intuitive Makefile targets with credential validation
+7. **Environment-Specific Setup**: Separate secret and credential setup for dev/staging/prod
+8. **Testing Integration**: Seamless Allure and JMeter integration with existing test suite
+9. **Comprehensive Documentation**: Complete workflow and configuration guides
 
 ### 🔐 **Credential Validation System**
 - **Development**: Non-strict validation (`STRICT=false`) - allows empty/default values
@@ -650,10 +692,13 @@ make serve-allure-report     # Serve report on localhost:8080
 
 ---
 
-**Diagram Version**: 3.0 (Post PR 130 + Major Enhancements: Stack Architecture, Network Management, Data Retention, Multi-Tier Backup)  
-**Last Updated**: October 1, 2025  
+**Diagram Version**: 5.0 (Nuclear Wipe System + Targeted Wipe Options + Essential/Extended Commands)  
+**Last Updated**: January 2025  
 **Compatible With**: Enhanced LLM Multimodal Stack  
-**Total Commands**: 100+  
+**Essential Commands**: 15 (streamlined for daily use)  
+**Extended Commands**: 100+ (accessible via `make help-extended`)  
 **Total Stacks**: 6 (core, inference, ai, ui, testing, monitoring)  
 **Total Networks**: 6 (isolated stack networks + external)  
-**Total Management Systems**: 5 (stack, network, retention, backup, testing)
+**Total Management Systems**: 5 (stack, network, retention, backup, testing)  
+**Wipe Modes**: 4 (nuclear, targeted, detailed preview, legacy deprecated)  
+**Targeted Wipe Options**: 12+ (stack-specific and data-type specific)

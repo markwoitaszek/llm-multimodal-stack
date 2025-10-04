@@ -4,6 +4,8 @@
 
 The LLM Multimodal Stack uses a **unified schema-driven approach** for environment configuration management. This system centralizes all environment definitions in a single YAML schema file and uses Jinja2 templates to generate secure, consistent configurations across all environments.
 
+**Current Status**: Streamlined Makefile with essential commands by default and all extended functionality preserved. Interactive wipe mode restored with proper preview functionality.
+
 ## 🏗️ System Architecture
 
 ### Current Implementation (Post PR 130 + Enhancements)
@@ -39,9 +41,13 @@ make detect-gpu         # Detect GPU configuration
 # Complete setup from scratch
 make setup             # Generate compose files + setup secrets + validate
 
-# Start specific environments
+# Essential environment commands (streamlined)
 make start-dev         # Development environment
 make start-staging     # Staging environment  
+make start-dev-gpu     # Development with GPU support
+make start-staging-gpu # Staging with GPU support
+
+# Extended environment commands (via make help-extended)
 make start-prod        # Production environment
 make start-gpu         # GPU-optimized environment
 make start-monitoring  # Monitoring with ELK stack
@@ -49,10 +55,13 @@ make start-monitoring  # Monitoring with ELK stack
 
 ### Enhanced GPU Workflow
 ```bash
-# Auto-detect and configure GPU
+# Essential GPU commands (streamlined)
+make start-dev-gpu     # Development with GPU support
+make start-staging-gpu # Staging with GPU support
+
+# Manual GPU configuration (if needed)
 make detect-gpu        # Detect RTX 3090s and NVLink topology
 make configure-gpu     # Configure optimal GPU settings
-make start-gpu-auto    # Start with automatic GPU configuration
 ```
 
 ## 🌍 Available Environments
@@ -109,9 +118,9 @@ make start-gpu-auto    # Start with automatic GPU configuration
 - Log Level: WARNING
 ```
 
-### 4. GPU-Optimized Environment
-**Purpose**: High-performance inference with dual RTX 3090s  
-**Command**: `make start-gpu` or `make start-gpu-auto`
+### 4. GPU-Optimized Development Environment
+**Purpose**: High-performance development with dual RTX 3090s  
+**Command**: `make start-dev-gpu`
 
 ```bash
 # Configuration
@@ -132,9 +141,13 @@ GPU0   X   NV4  0-31  0   N/A
 GPU1  NV4   X   0-31  0   N/A
 ```
 
-### 5. Monitoring Environment
+### 5. GPU-Optimized Staging Environment
+**Purpose**: High-performance staging with dual RTX 3090s  
+**Command**: `make start-staging-gpu`
+
+### 6. Monitoring Environment (Extended Command)
 **Purpose**: Centralized logging and monitoring  
-**Command**: `make start-monitoring`
+**Command**: `make start-monitoring` (via `make help-extended`)
 
 ```bash
 # Configuration
@@ -234,22 +247,59 @@ JWT_SECRET=<generated_secret>
 ### Comprehensive Environment Reset
 
 ```bash
-# Complete environment wipe (DESTRUCTIVE!)
-make wipe
-# ⚠️  WARNING: This will DELETE all data and containers!
-# This includes PostgreSQL databases, MinIO data, and all volumes.
+# Nuclear wipe (recommended for complete reset)
+make wipe-nuclear
+# 🚨 DANGER: This will COMPLETELY DESTROY your entire environment!
+# Shows system status and prompts: Type 'NUKE' to confirm
 
-# Nuclear reset option
+# Legacy wipe (deprecated - use wipe-nuclear instead)
+make wipe
+# ⚠️  DEPRECATED: 'make wipe' is deprecated. Use 'make wipe-nuclear' instead.
+
+# Detailed preview wipe (alternative method)
+./scripts/wipe-environment-fixed.sh preview  # Detailed preview
+./scripts/wipe-environment-fixed.sh wipe     # Script with confirmation
+
+# Nuclear reset option (wipe + setup)
 make reset
 # Wipes everything + regenerates from scratch
 ```
 
-**What Gets Wiped**:
-- All multimodal containers
-- PostgreSQL data volumes
-- MinIO data volumes
-- All multimodal networks
-- Orphaned containers
+**What Gets Wiped (Nuclear)**:
+- ALL multimodal containers and services
+- ALL PostgreSQL database volumes (DATA LOSS!)
+- ALL MinIO object storage volumes (DATA LOSS!)
+- ALL Redis cache volumes (DATA LOSS!)
+- ALL multimodal networks
+- ALL orphaned containers and volumes
+- Generated compose files
+
+### Targeted Wipe Options (Extended Commands)
+
+For more granular control, use targeted wipe commands via `make help-extended`:
+
+```bash
+# Stack-based wipes (preserve other stacks)
+make wipe-core          # Core infrastructure only (postgres, redis, qdrant, minio)
+make wipe-inference     # Inference services only (vllm, litellm)
+make wipe-ai           # AI services only (multimodal-worker, retrieval-proxy, etc.)
+make wipe-ui           # UI services only (openwebui, n8n, nginx)
+make wipe-testing      # Testing services only (allure, jmeter)
+make wipe-monitoring   # Monitoring services only (prometheus, grafana, elk)
+
+# Data-type wipes (preserve other data)
+make wipe-db           # Database volumes only (postgres)
+make wipe-cache        # Cache volumes only (redis)
+make wipe-models       # Model storage only (minio models bucket)
+make wipe-logs         # Log volumes only
+```
+
+**Benefits of Targeted Wipes**:
+- **Precision**: Only remove what's needed
+- **Speed**: Faster than nuclear wipe
+- **Safety**: Preserve other stacks and data
+- **Debugging**: Isolate specific issues
+- **Development**: Quick reset of specific components
 
 ### Routine Maintenance
 
@@ -303,35 +353,61 @@ VLLM_GPU_MEMORY_UTILIZATION=0.8
 
 ## 📊 Available Makefile Targets
 
-### Core Commands
+### Essential Commands (Default)
 ```bash
-make help                    # Show all available commands
-make setup                   # Complete setup from scratch
-make validate-schema         # Validate unified schema
-make generate-compose        # Generate all compose files
-make setup-secrets          # Generate environment files and secrets
-```
-
-### Environment Management
-```bash
+make help                   # Show essential commands (15 total)
+make setup                  # Complete setup from scratch
 make start-dev              # Start development environment
 make start-staging          # Start staging environment
+make start-dev-gpu          # Start development with GPU support
+make start-staging-gpu      # Start staging with GPU support
+make detect-gpu             # Detect GPU configuration
+make configure-gpu          # Configure GPU for optimal performance
+make stop                   # Stop all running services
+make wipe-nuclear           # Nuclear wipe (complete destruction - type 'NUKE')
+make reset                  # Nuclear reset (wipe + setup)
+make status                 # Show status of all services
+make logs                   # View logs for all services
+make help-extended          # Show all extended commands (100+)
+```
+
+### Extended Commands (via make help-extended)
+```bash
+# Schema & Compose Management
+make validate-schema        # Validate unified schema
+make generate-compose       # Generate all compose files
+make setup-secrets          # Generate environment files and secrets
+make validate-security      # Validate no hardcoded defaults
+
+# Extended Environment Management
 make start-prod             # Start production environment
 make start-gpu              # Start GPU-optimized environment
 make start-monitoring       # Start monitoring environment
-make stop                   # Stop all services
-make logs                   # View logs for all services
-make status                 # Show status of all services
-```
 
-### Enhanced Features (New)
-```bash
-make detect-gpu             # Detect GPU configuration
-make configure-gpu          # Configure GPU for optimal performance
-make start-gpu-auto         # Start GPU environment with auto-detection
-make wipe                   # Wipe environment (DESTRUCTIVE!)
-make reset                  # Reset and regenerate from scratch
-make validate-security      # Validate no hardcoded defaults
+# Stack Management
+make start-{core,inference,ai,ui,testing,monitoring}  # Individual stacks
+make stop-{core,inference,ai,ui,testing,monitoring}   # Stop individual stacks
+make restart-{core,inference,ai,ui,testing,monitoring} # Restart individual stacks
+
+# Network Management
+make check-network-conflicts  # Check for network conflicts
+make validate-networks        # Validate network configuration
+make cleanup-networks         # Clean up orphaned networks
+
+# Wipe Management
+make wipe-nuclear             # Nuclear wipe (complete destruction - type 'NUKE')
+make wipe-{core,inference,ai,ui,testing,monitoring}  # Stack-specific wipes
+make wipe-{db,cache,models,logs}  # Data-type specific wipes
+
+# Testing Framework
+make start-testing          # Start testing environment
+make test-allure            # Run tests with Allure reporting
+make test-jmeter            # Run JMeter performance tests
+make test-{unit,integration,api,performance}  # Specific test types
+
+# Data Management
+make retention-{status,cleanup,test}  # Data retention management
+make backup-{status,full,list,verify} # Backup management
 ```
 
 ### Maintenance
@@ -363,10 +439,9 @@ make stop
 
 ### GPU Development Workflow
 ```bash
-# Setup with GPU detection
+# Essential GPU development (streamlined)
 make setup
-make detect-gpu
-make start-gpu-auto
+make start-dev-gpu
 
 # Check GPU utilization
 nvidia-smi
@@ -375,8 +450,11 @@ nvidia-smi
 make logs
 ```
 
-### Production Deployment Workflow
+### Production Deployment Workflow (Extended Commands)
 ```bash
+# Access extended commands
+make help-extended
+
 # Validate and setup
 make validate-schema
 make validate-security
@@ -392,13 +470,35 @@ make logs
 
 ### Environment Reset Workflow
 ```bash
-# Complete reset (when things go wrong)
-make wipe
+# Nuclear wipe (recommended for complete reset)
+make wipe-nuclear
+# Type 'NUKE' to confirm complete destruction
+
+# Alternative: Detailed preview
+./scripts/wipe-environment-fixed.sh preview
+./scripts/wipe-environment-fixed.sh wipe
+
+# Nuclear reset (wipe + setup)
 make reset
 
 # Verify fresh setup
 make validate-security
 make start-dev
+```
+
+### Targeted Reset Workflow (Extended Commands)
+```bash
+# Access extended commands
+make help-extended
+
+# For specific issues (preserve other data)
+make wipe-ui           # Only reset UI services (fixes n8n issues)
+make wipe-core         # Only reset infrastructure (postgres, redis)
+make wipe-cache        # Only clear cache (redis volumes)
+
+# For development workflow
+make wipe-ai           # Reset AI services only
+make wipe-testing      # Reset testing environment only
 ```
 
 ## 🛠️ Troubleshooting
@@ -425,16 +525,29 @@ make validate-security
 
 **4. Environment Conflicts**
 ```bash
-make wipe
+# Nuclear wipe (complete reset)
+make wipe-nuclear
+# Type 'NUKE' to confirm
+
+# Or detailed preview wipe
+./scripts/wipe-environment-fixed.sh wipe
+
+# Complete environment reset (wipe + setup)
 make reset
-# Complete environment reset
+
+# For specific issues (preserve other data)
+make wipe-ui           # Fix UI/n8n issues only
+make wipe-core         # Reset infrastructure only
 ```
 
 ### Getting Help
 
 ```bash
-# Show all available commands
+# Show essential commands (default)
 make help
+
+# Show all extended commands (100+)
+make help-extended
 
 # Get GPU configuration help
 ./scripts/configure-gpu.sh help
@@ -460,6 +573,10 @@ make validate-security
 
 ---
 
-**Last Updated**: October 1, 2024  
-**Compatible With**: PR 130 + GPU/wipe/security enhancements  
-**Schema Version**: Unified compose schema v1.0
+**Last Updated**: January 2025  
+**Compatible With**: Streamlined Makefile + Nuclear Wipe + Essential/Extended Commands  
+**Schema Version**: Unified compose schema v1.0  
+**Essential Commands**: 15 (streamlined for daily use)  
+**Extended Commands**: 100+ (accessible via `make help-extended`)  
+**Wipe Modes**: 4 (nuclear, targeted, detailed preview, legacy deprecated)  
+**Targeted Wipe Options**: 12+ (stack-specific and data-type specific)

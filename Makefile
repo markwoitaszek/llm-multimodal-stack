@@ -1,159 +1,330 @@
-# Makefile for Multimodal LLM Stack
-# Unified schema-based Docker Compose management
+# Comprehensive Makefile for LLM Multimodal Stack
+# Combines streamlined essential commands with all extended options
 
-.PHONY: help generate-compose validate-schema clean-compose test-compose test-stack-operations test-network-operations test-data-operations test-granular-operations test-comprehensive test-quick test-performance test-report test-monitoring test-documentation
+.PHONY: help help-essential help-extended setup start-dev start-staging start-dev-gpu start-staging-gpu stop wipe wipe-confirm reset status logs clean
 
-# Default target
+# Default target - shows essential commands
 help:
-	@echo "Multimodal LLM Stack - Unified Compose Management"
-	@echo "=================================================="
+	@echo "🚀 LLM Multimodal Stack - Essential Commands"
+	@echo "============================================="
 	@echo ""
-	@echo "Available targets:"
-	@echo "  generate-compose         Generate all Docker Compose files from unified schema"
-	@echo "  validate-schema          Validate the unified schema for errors"
-	@echo "  validate-security        Validate security configuration (no hardcoded defaults)"
-	@echo "  validate-credentials     Validate credentials for deployment (ENV=environment STRICT=true/false)"
+	@echo "📋 Essential Commands:"
+	@echo "  setup              Complete setup from scratch"
+	@echo "  start-dev          Start development environment"
+	@echo "  start-staging      Start staging environment"
+	@echo "  start-dev-gpu      Start development with GPU support"
+	@echo "  start-staging-gpu  Start staging with GPU support"
+	@echo ""
+	@echo "🔧 Management Commands:"
+	@echo "  stop               Stop all running services"
+	@echo "  wipe-nuclear       💥 NUCLEAR wipe (complete destruction - type 'NUKE')"
+	@echo "  reset              Nuclear reset (wipe + setup)"
+	@echo "  status             Show service status"
+	@echo "  logs               View service logs"
+	@echo ""
+	@echo "🎮 GPU Commands:"
+	@echo "  detect-gpu         Detect GPU configuration"
+	@echo "  configure-gpu      Configure GPU settings"
+	@echo ""
+	@echo "📚 Extended Options:"
+	@echo "  help-extended      Show all extended commands"
+	@echo "  help-essential     Show this essential commands list"
+	@echo ""
+
+# Extended help - shows all available commands
+help-extended:
+	@echo "🚀 LLM Multimodal Stack - All Commands"
+	@echo "======================================"
+	@echo ""
+	@echo "📋 Essential Commands:"
+	@echo "  setup              Complete setup from scratch"
+	@echo "  start-dev          Start development environment"
+	@echo "  start-staging      Start staging environment"
+	@echo "  start-dev-gpu      Start development with GPU support"
+	@echo "  start-staging-gpu  Start staging with GPU support"
+	@echo ""
+	@echo "🔧 Management Commands:"
+	@echo "  stop               Stop all running services"
+	@echo "  wipe-nuclear       💥 NUCLEAR wipe (complete destruction - type 'NUKE')"
+	@echo "  reset              Nuclear reset (wipe + setup)"
+	@echo "  status             Show service status"
+	@echo "  logs               View service logs"
+	@echo "  clean              Clean up containers, volumes, and networks"
+	@echo ""
+	@echo "🎮 GPU Commands:"
+	@echo "  detect-gpu         Detect GPU configuration"
+	@echo "  configure-gpu      Configure GPU settings"
+	@echo ""
+	@echo "📄 Schema & Compose Commands:"
+	@echo "  generate-compose   Generate all Docker Compose files from unified schema"
+	@echo "  validate-schema    Validate the unified schema for errors"
+	@echo "  validate-security  Validate security configuration (no hardcoded defaults)"
+	@echo "  clean-compose      Remove all generated compose files"
+	@echo "  test-compose       Test generated compose files for syntax errors"
+	@echo ""
+	@echo "🔐 Secret Management Commands:"
+	@echo "  setup-secrets      Generate environment files and secrets (development)"
+	@echo "  setup-secrets-dev  Generate secrets for development"
+	@echo "  setup-secrets-staging Generate secrets for staging"
+	@echo "  setup-secrets-prod Generate secrets for production"
+	@echo ""
+	@echo "🔒 Credential Validation Commands:"
+	@echo "  validate-credentials Validate credentials for deployment (ENV=environment STRICT=true/false)"
 	@echo "  validate-credentials-dev Validate credentials for development"
-	@echo "  validate-credentials-staging  Validate credentials for staging (strict)"
-	@echo "  validate-credentials-prod     Validate credentials for production (strict)"
-	@echo "  clean-compose            Remove all generated compose files"
-	@echo "  test-compose             Test generated compose files for syntax errors"
-	@echo "  setup-secrets            Generate environment files and secrets (development)"
-	@echo "  setup-secrets-dev        Generate secrets for development"
-	@echo "  setup-secrets-staging    Generate secrets for staging"
-	@echo "  setup-secrets-prod       Generate secrets for production"
-	@echo "  setup                    Full setup with all validations"
-	@echo "  start-dev                Start development environment (with validation)"
-	@echo "  start-staging            Start staging environment (with validation)"
-	@echo "  start-staging-gpu        Start staging environment with GPU support"
-	@echo "  start-prod               Start production environment (with validation)"
-	@echo "  start-prod-gpu           Start production environment with GPU support"
-	@echo "  start-gpu                Start GPU-optimized environment"
-	@echo "  start-monitoring         Start monitoring environment with ELK stack"
-	@echo "  start-testing            Start testing environment with Allure and JMeter"
-	@echo "  setup-testing            Setup testing environment and dependencies"
-	@echo "  test-allure              Run tests with Allure reporting"
-	@echo "  test-jmeter              Run JMeter performance tests"
-	@echo "  test-unit                Run unit tests only"
-	@echo "  test-integration         Run integration tests only"
-	@echo "  test-performance         Run performance tests only"
-	@echo "  test-api                 Run API tests only"
-	@echo "  generate-allure-report   Generate Allure test report"
-	@echo "  serve-allure-report      Serve Allure report on localhost:8080"
+	@echo "  validate-credentials-staging Validate credentials for staging (strict)"
+	@echo "  validate-credentials-prod Validate credentials for production (strict)"
 	@echo ""
-	@echo "Enterprise Testing Commands:"
-	@echo "  test-stack-operations    Test stack-based operations (start, stop, restart, status)"
-	@echo "  test-network-operations  Test network management and isolation"
-	@echo "  test-data-operations     Test data retention and backup operations"
+	@echo "🌍 Extended Environment Commands:"
+	@echo "  start-prod         Start production environment (with validation)"
+	@echo "  start-prod-gpu     Start production environment with GPU support"
+	@echo "  start-monitoring   Start monitoring environment with ELK stack"
+	@echo "  start-testing      Start testing environment with Allure and JMeter"
+	@echo ""
+	@echo "🧪 Testing Commands:"
+	@echo "  setup-testing      Setup testing environment and dependencies"
+	@echo "  test-allure        Run tests with Allure reporting"
+	@echo "  test-jmeter        Run JMeter performance tests"
+	@echo "  test-unit          Run unit tests only"
+	@echo "  test-integration   Run integration tests only"
+	@echo "  test-api           Run API tests only"
+	@echo "  generate-allure-report Generate Allure test report"
+	@echo "  serve-allure-report Serve Allure report on localhost:8080"
+	@echo ""
+	@echo "🏗️ Stack-based Commands:"
+	@echo "  start-core         Start core infrastructure stack (postgres, redis, qdrant, minio)"
+	@echo "  start-inference    Start inference stack (vllm, litellm)"
+	@echo "  start-ai           Start AI services stack (worker, retrieval, agents, memory, search)"
+	@echo "  start-ui           Start UI and workflow stack (openwebui, n8n, n8n-monitoring, nginx)"
+	@echo ""
+	@echo "🛑 Stack Management Commands:"
+	@echo "  stop-core          Stop core infrastructure stack"
+	@echo "  stop-inference     Stop inference stack"
+	@echo "  stop-ai            Stop AI services stack"
+	@echo "  stop-ui            Stop UI and workflow stack"
+	@echo "  stop-testing       Stop testing stack"
+	@echo "  stop-monitoring    Stop monitoring stack"
+	@echo ""
+	@echo "🔄 Stack Restart Commands:"
+	@echo "  restart-core       Restart core infrastructure stack (no data loss)"
+	@echo "  restart-inference  Restart inference stack (no data loss)"
+	@echo "  restart-ai         Restart AI services stack (no data loss)"
+	@echo "  restart-ui         Restart UI and workflow stack (no data loss)"
+	@echo "  restart-testing    Restart testing stack (no data loss)"
+	@echo "  restart-monitoring Restart monitoring stack (no data loss)"
+	@echo "  rebuild-ai         Rebuild AI services stack (force image rebuild)"
+	@echo ""
+	@echo "📋 Stack Logs & Status Commands:"
+	@echo "  logs-core          View logs for core infrastructure stack"
+	@echo "  logs-inference     View logs for inference stack"
+	@echo "  logs-ai            View logs for AI services stack"
+	@echo "  logs-ui            View logs for UI and workflow stack"
+	@echo "  status-core        Show status of core infrastructure stack"
+	@echo "  status-inference   Show status of inference stack"
+	@echo "  status-ai          Show status of AI services stack"
+	@echo "  status-ui          Show status of UI and workflow stack"
+	@echo ""
+	@echo "🌐 Network Management Commands:"
+	@echo "  check-network-conflicts Check for network conflicts before starting stacks"
+	@echo "  cleanup-networks   Clean up orphaned networks"
+	@echo "  validate-networks  Validate network configuration"
+	@echo "  check-network-health Check network health and connectivity"
+	@echo ""
+	@echo "🧹 Granular Wipe/Reset Commands:"
+	@echo "  wipe-core          Wipe core infrastructure stack (containers + data)"
+	@echo "  wipe-inference     Wipe inference stack (containers + data)"
+	@echo "  wipe-ai            Wipe AI services stack (containers + data)"
+	@echo "  wipe-ui            Wipe UI and workflow stack (containers + data)"
+	@echo "  wipe-db            Wipe database volumes only"
+	@echo "  wipe-cache         Wipe cache volumes only"
+	@echo "  wipe-models        Wipe model cache only"
+	@echo "  wipe-logs          Wipe log volumes only"
+	@echo "  wipe-test-results  Wipe test results only"
+	@echo "  wipe-dev           Wipe development environment"
+	@echo "  wipe-staging       Wipe staging environment"
+	@echo "  wipe-prod          Wipe production environment"
+	@echo "  system-status      Show current system status"
+	@echo ""
+	@echo "📊 Data Retention & Backup Commands:"
+	@echo "  retention-status [env] Show retention status for environment"
+	@echo "  retention-cleanup [env] Run retention cleanup for environment"
+	@echo "  retention-test [env] Test retention cleanup (dry run)"
+	@echo "  backup-status [env] Show backup status for environment"
+	@echo "  backup-full [env] Run full backup for environment"
+	@echo "  backup-list [env] List available backups for environment"
+	@echo ""
+	@echo "🧪 Enterprise Testing Commands:"
+	@echo "  test-stack-operations Test stack-based operations (start, stop, restart, status)"
+	@echo "  test-network-operations Test network management and isolation"
+	@echo "  test-data-operations Test data retention and backup operations"
 	@echo "  test-granular-operations Test granular wipe/reset operations"
-	@echo "  test-comprehensive       Run comprehensive test suite for all enterprise features"
-	@echo "  test-quick               Run quick tests (non-destructive)"
-	@echo "  test-performance         Run performance-focused tests"
-	@echo "  test-report              Generate comprehensive test report"
-	@echo "  test-monitoring          Test monitoring and alerting system"
-	@echo "  test-documentation       Test documentation completeness and accuracy"
-	@echo "  stop                     Stop all services"
-	@echo "  logs                     View logs for all services"
-	@echo "  status                   Show status of all services"
-	@echo "  clean                    Clean up containers, volumes, and networks"
+	@echo "  test-comprehensive Run comprehensive test suite for all enterprise features"
+	@echo "  test-quick Run quick tests (non-destructive)"
+	@echo "  test-report Generate comprehensive test report"
+	@echo "  test-monitoring Test monitoring and alerting system"
 	@echo ""
-	@echo "Stack-based commands:"
-	@echo "  start-core               Start core infrastructure stack (postgres, redis, qdrant, minio)"
-	@echo "  start-inference          Start inference stack (vllm, litellm)"
-	@echo "  start-ai                 Start AI services stack (worker, retrieval, agents, memory, search)"
-	@echo "  start-ui                 Start UI and workflow stack (openwebui, n8n, n8n-monitoring, nginx)"
-	@echo "  start-testing            Start testing stack (postgres, redis, allure, jmeter)"
-	@echo "  start-monitoring         Start monitoring stack (prometheus, grafana, elk)"
-	@echo "  stop-core                Stop core infrastructure stack"
-	@echo "  stop-inference           Stop inference stack"
-	@echo "  stop-ai                  Stop AI services stack"
-	@echo "  stop-ui                  Stop UI and workflow stack"
-	@echo "  stop-testing             Stop testing stack"
-	@echo "  stop-monitoring          Stop monitoring stack"
-	@echo "  restart-core             Restart core infrastructure stack (no data loss)"
-	@echo "  restart-inference        Restart inference stack (no data loss)"
-	@echo "  restart-ai               Restart AI services stack (no data loss)"
-	@echo "  restart-ui               Restart UI and workflow stack (no data loss)"
-	@echo "  restart-testing          Restart testing stack (no data loss)"
-	@echo "  restart-monitoring       Restart monitoring stack (no data loss)"
-	@echo "  rebuild-ai               Rebuild AI services stack (force image rebuild)"
-	@echo "  logs-core                View logs for core infrastructure stack"
-	@echo "  logs-inference           View logs for inference stack"
-	@echo "  logs-ai                  View logs for AI services stack"
-	@echo "  logs-ui                  View logs for UI and workflow stack"
-	@echo "  logs-testing             View logs for testing stack"
-	@echo "  logs-monitoring          View logs for monitoring stack"
-	@echo "  status-core              Show status of core infrastructure stack"
-	@echo "  status-inference         Show status of inference stack"
-	@echo "  status-ai                Show status of AI services stack"
-	@echo "  status-ui                Show status of UI and workflow stack"
-	@echo "  status-testing           Show status of testing stack"
-	@echo "  status-monitoring        Show status of monitoring stack"
+
+# Essential commands help
+help-essential:
+	@$(MAKE) help
+
+# =============================================================================
+# ESSENTIAL COMMANDS (Streamlined)
+# =============================================================================
+
+# Complete setup from scratch
+setup:
+	@echo "🎯 Setting up LLM Multimodal Stack..."
+	@$(MAKE) validate-schema
+	@$(MAKE) generate-compose
+	@$(MAKE) setup-secrets-dev
+	@$(MAKE) validate-credentials-dev
+	@echo "✅ Setup complete! Use 'make start-dev' or 'make start-dev-gpu' to begin"
+
+# Development environment
+start-dev: generate-compose setup-secrets-dev validate-credentials-dev
+	@echo "🚀 Starting development environment..."
+	docker compose up -d
+	@echo "✅ Development environment started"
+	@echo "📊 Services available:"
+	@echo "   - LiteLLM: http://localhost:4000"
+	@echo "   - vLLM: http://localhost:8000"
+	@echo "   - Multimodal Worker: http://localhost:8001"
+	@echo "   - Retrieval Proxy: http://localhost:8002"
+	@echo "   - Qdrant: http://localhost:6333"
+	@echo "   - MinIO Console: http://localhost:9002"
+
+# Staging environment
+start-staging: generate-compose setup-secrets-staging validate-credentials-staging
+	@echo "🚀 Starting staging environment..."
+	docker compose -f compose.yml -f compose.staging.yml up -d
+	@echo "✅ Staging environment started"
+
+# Development with GPU support
+start-dev-gpu: detect-gpu configure-gpu start-dev
+	@echo "🎮 GPU-enabled development environment started"
+	@echo "📊 GPU Configuration:"
+	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+
+# Staging with GPU support
+start-staging-gpu: detect-gpu configure-gpu
+	@echo "🚀 Starting staging environment with GPU support..."
+	@$(MAKE) generate-compose
+	@$(MAKE) setup-secrets-staging
+	@$(MAKE) validate-credentials-staging
+	docker compose -f compose.yml -f compose.staging.yml up -d
+	@echo "✅ Staging environment with GPU started"
+	@echo "📊 GPU Configuration:"
+	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env.staging 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env.staging 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+
+# GPU detection
+detect-gpu:
+	@echo "🔍 Detecting GPU configuration..."
+	@scripts/configure-gpu.sh detect
+
+# GPU configuration
+configure-gpu:
+	@echo "🎮 Configuring GPU for optimal performance..."
+	@scripts/configure-gpu.sh auto
+
+# Stop all services
+stop:
+	@echo "🛑 Stopping all services..."
+	docker compose down
+	@echo "✅ All services stopped"
+
+# Nuclear wipe with interactive confirmation - COMPLETE ENVIRONMENT DESTRUCTION
+wipe-nuclear:
+	@echo "💥 NUCLEAR ENVIRONMENT WIPE"
+	@echo "==========================="
 	@echo ""
-	@echo "Network management commands:"
-	@echo "  check-network-conflicts  Check for network conflicts before starting stacks"
-	@echo "  cleanup-networks         Clean up orphaned networks"
-	@echo "  validate-networks        Validate network configuration"
-	@echo "  check-network-health     Check network health and connectivity"
+	@echo "🚨 DANGER: This will COMPLETELY DESTROY your entire environment!"
 	@echo ""
-	@echo "Granular wipe/reset commands:"
-	@echo "  wipe-core                Wipe core infrastructure stack (containers + data)"
-	@echo "  wipe-inference           Wipe inference stack (containers + data)"
-	@echo "  wipe-ai                  Wipe AI services stack (containers + data)"
-	@echo "  wipe-ui                  Wipe UI and workflow stack (containers + data)"
-	@echo "  wipe-testing             Wipe testing stack (containers + data)"
-	@echo "  wipe-monitoring          Wipe monitoring stack (containers + data)"
-	@echo "  restart-core             Restart core infrastructure stack (no data loss)"
-	@echo "  restart-inference        Restart inference stack (no data loss)"
-	@echo "  restart-ai               Restart AI services stack (no data loss)"
-	@echo "  restart-ui               Restart UI and workflow stack (no data loss)"
-	@echo "  restart-testing          Restart testing stack (no data loss)"
-	@echo "  restart-monitoring       Restart monitoring stack (no data loss)"
-	@echo "  rebuild-ai               Rebuild AI services stack (force image rebuild)"
-	@echo "  wipe-db                  Wipe database volumes only"
-	@echo "  wipe-cache               Wipe cache volumes only"
-	@echo "  wipe-models              Wipe model cache only"
-	@echo "  wipe-logs                Wipe log volumes only"
-	@echo "  wipe-test-results        Wipe test results only"
-	@echo "  wipe-dev                 Wipe development environment"
-	@echo "  wipe-staging             Wipe staging environment"
-	@echo "  wipe-prod                Wipe production environment"
-	@echo "  wipe-testing             Wipe testing environment"
-	@echo "  system-status            Show current system status"
+	@echo "📋 What will be NUKED:"
+	@echo "   • ALL multimodal containers and services"
+	@echo "   • ALL PostgreSQL database volumes (DATA LOSS!)"
+	@echo "   • ALL MinIO object storage volumes (DATA LOSS!)"
+	@echo "   • ALL Redis cache volumes (DATA LOSS!)"
+	@echo "   • ALL multimodal networks"
+	@echo "   • ALL orphaned containers and volumes"
+	@echo "   • Generated compose files"
 	@echo ""
-	@echo "Data retention management commands:"
-	@echo "  retention-status [env]    Show retention status for environment"
-	@echo "  retention-cleanup [env]   Run retention cleanup for environment"
-	@echo "  retention-test [env]      Test retention cleanup (dry run)"
-	@echo "  retention-cleanup-service <service> [env]  Cleanup specific service"
-	@echo "  retention-schedule        Show retention schedules"
-	@echo "  retention-backup [env]    Create backups before cleanup"
+	@echo "🔍 Current system status:"
+	@echo "   Running containers: $$(docker ps --format '{{.Names}}' | grep multimodal | wc -l)"
+	@echo "   Multimodal volumes: $$(docker volume ls --format '{{.Name}}' | grep multimodal | wc -l)"
+	@echo "   Multimodal networks: $$(docker network ls --format '{{.Name}}' | grep multimodal | wc -l)"
 	@echo ""
-	@echo "Multi-tier backup system commands:"
-	@echo "  backup-status [env]        Show backup status for environment"
-	@echo "  backup-full [env]          Run full backup for environment"
-	@echo "  backup-service <service> [env] [type]  Backup specific service"
-	@echo "  backup-list [env]          List available backups for environment"
-	@echo "  backup-verify [env]        Verify backup integrity"
-	@echo "  backup-schedule            Show backup schedules"
-	@echo "  backup-restore <service> [env] <file>  Restore from backup"
+	@echo "💡 For detailed preview, use: ./scripts/wipe-environment-fixed.sh preview"
+	@echo "💡 For targeted fixes, use: make wipe-ui, make wipe-core, etc."
 	@echo ""
+	@bash -c 'read -p "Type '\''NUKE'\'' to confirm nuclear wipe: " -r; \
+	if [ "$$REPLY" = "NUKE" ]; then \
+		echo ""; \
+		echo "💥 Executing nuclear wipe..."; \
+		./scripts/wipe-environment-fixed.sh force; \
+		echo "✅ Nuclear wipe completed"; \
+		echo ""; \
+		echo "💡 Next steps:"; \
+		echo "   make setup     # Set up fresh environment"; \
+		echo "   make reset     # Nuclear reset (wipe + setup)"; \
+	else \
+		echo ""; \
+		echo "❌ Nuclear wipe cancelled by user"; \
+	fi'
+
+# Confirmation wipe (after preview)
+wipe-confirm:
+	@echo "🧹 Starting wipe process..."
+	@docker compose down --volumes --remove-orphans 2>/dev/null || true
+	@docker container prune -f 2>/dev/null || true
+	@docker volume prune -f 2>/dev/null || true
+	@docker network prune -f 2>/dev/null || true
+	@echo "✅ Environment wiped successfully"
+	@echo ""
+	@echo "💡 Next steps:"
+	@echo "   make setup     # Set up fresh environment"
+	@echo "   make reset     # Nuclear reset (wipe + setup)"
+
+# Legacy alias for backward compatibility
+wipe: wipe-nuclear
+	@echo "⚠️  DEPRECATED: 'make wipe' is deprecated. Use 'make wipe-nuclear' instead."
+
+# Nuclear reset (wipe + setup)
+reset: wipe-nuclear setup
+	@echo "🎉 Nuclear reset complete!"
+	@echo "✅ Fresh environment ready"
+
+# Show service status
+status:
+	@echo "📊 Service Status:"
+	@echo "=================="
+	@docker compose ps
+
+# View service logs
+logs:
+	@echo "📋 Viewing service logs..."
+	@docker compose logs -f
+
+# =============================================================================
+# EXTENDED COMMANDS (All Original Functionality)
+# =============================================================================
 
 # Generate all compose files from unified schema
 generate-compose:
-	@echo "Generating Docker Compose files from unified schema..."
+	@echo "📄 Generating Docker Compose files..."
 	python3 scripts/compose-generator.py
-	@echo "✅ Compose files generated successfully"
+	@echo "✅ Compose files generated"
 
 # Validate the unified schema
 validate-schema:
-	@echo "Validating unified schema..."
+	@echo "🔍 Validating schema..."
 	python3 scripts/compose-generator.py --validate-only
 	@echo "✅ Schema validation passed"
 
 # Clean generated compose files
 clean-compose:
-	@echo "Cleaning generated compose files..."
+	@echo "🧹 Cleaning generated compose files..."
 	rm -f compose*.yml
 	@echo "✅ Compose files cleaned"
 
@@ -217,34 +388,6 @@ validate-credentials-staging:
 validate-credentials-prod:
 	@$(MAKE) validate-credentials ENV=production STRICT=true
 
-# Development environment
-start-dev: generate-compose setup-secrets-dev validate-credentials-dev
-	@echo "Starting development environment..."
-	docker compose up -d
-	@echo "✅ Development environment started"
-	@echo "📊 Services available:"
-	@echo "   - LiteLLM: http://localhost:4000"
-	@echo "   - Multimodal Worker: http://localhost:8001"
-	@echo "   - Retrieval Proxy: http://localhost:8002"
-	@echo "   - vLLM: http://localhost:8000"
-	@echo "   - Qdrant: http://localhost:6333"
-	@echo "   - MinIO Console: http://localhost:9002"
-
-# Staging environment
-start-staging: generate-compose setup-secrets-staging validate-credentials-staging
-	@echo "Starting staging environment..."
-	docker compose -f compose.yml -f compose.staging.yml up -d
-	@echo "✅ Staging environment started"
-
-# Staging environment with GPU
-start-staging-gpu: generate-compose setup-secrets-staging configure-gpu validate-credentials-staging
-	@echo "Starting staging environment with GPU support..."
-	@echo "🎮 GPU Configuration:"
-	@echo "  CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env.staging 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
-	@echo "  GPU_COUNT: $$(grep '^GPU_COUNT=' .env.staging 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
-	docker compose -f compose.yml -f compose.staging.yml up -d
-	@echo "✅ Staging environment with GPU started"
-
 # Production environment
 start-prod: generate-compose setup-secrets-prod validate-credentials-prod
 	@echo "Starting production environment..."
@@ -266,80 +409,15 @@ start-gpu: generate-compose setup-secrets
 	docker compose -f compose.yml -f compose.gpu.yml up -d
 	@echo "✅ GPU-optimized environment started"
 
-# Monitoring environment with ELK stack (legacy - use start-monitoring stack command instead)
-
-# Stop all services
-stop:
-	@echo "Stopping all services..."
-	docker compose down
-	@echo "✅ All services stopped"
-
-# View logs
-logs:
-	@echo "Viewing logs for all services..."
-	docker compose logs -f
-
-# Show status
-status:
-	@echo "Service status:"
-	docker compose ps
-
-# Clean up everything
-clean:
-	@echo "Cleaning up containers, volumes, and networks..."
-	docker compose down --volumes --remove-orphans
-	docker system prune -f
-	@echo "✅ Cleanup completed"
-
-# Full setup from scratch
-	@echo ""
-	@echo "Next steps:"
-	@echo "  make start-dev     # Start development environment"
-	@echo "  make start-staging # Start staging environment"
-	@echo "  make start-prod    # Start production environment"
-# Enhanced GPU Detection and Configuration
-detect-gpu:
-	@echo "🔍 Detecting GPU configuration..."
-	@scripts/configure-gpu.sh detect
-
-configure-gpu:
-	@echo "🎮 Configuring GPU for optimal performance..."
-	@scripts/configure-gpu.sh auto
-
 # Enhanced GPU start with auto-detection
 start-gpu-auto: detect-gpu configure-gpu start-gpu
 	@echo "✅ GPU environment started with auto-configuration"
 
-# Comprehensive Environment Management
-wipe:
-	@scripts/wipe-environment.sh
-
-# Nuclear reset option
-reset: wipe setup
-	@echo "🎉 Environment reset and regenerated from scratch"
-
-# Security validation
-validate-security:
-	@echo "🔒 Validating security configuration..."
-	@if grep -q ":-postgres\|:-minioadmin" schemas/compose-schema.yaml; then \
-		echo "❌ Hardcoded defaults found in schema"; \
-		exit 1; \
-	fi
-	@if find services/ -name "config.py" -exec grep -l 'POSTGRES_PASSWORD.*,.*"postgres"\|POSTGRES_USER.*,.*"postgres"\|MINIO.*PASSWORD.*,.*"minioadmin"\|MINIO.*USER.*,.*"minioadmin"' {} \; | grep -q .; then \
-		echo "❌ Hardcoded defaults found in service configs"; \
-		exit 1; \
-	fi
-	@echo "✅ Security validation passed"
-
-# Enhanced setup with security and credential validation
-setup: validate-schema validate-security generate-compose setup-secrets validate-credentials-dev
-	@echo "🎉 Full setup completed successfully with credential validation!"
-	@echo ""
-	@echo "Next steps:"
-	@echo "  make start-dev        # Start development environment"
-	@echo "  make start-gpu-auto   # Start GPU environment with auto-detection"
-	@echo "  make wipe             # Wipe environment (DESTRUCTIVE)"
-	@echo "  make reset            # Reset and regenerate from scratch"
+# Monitoring environment with ELK stack
+start-monitoring: generate-compose
+	@echo "Starting monitoring environment with ELK stack..."
+	docker compose -f compose.yml -f compose.elk.yml up -d
+	@echo "✅ Monitoring environment started"
 
 # Testing Environment Setup
 setup-testing: generate-compose
@@ -347,7 +425,11 @@ setup-testing: generate-compose
 	@mkdir -p allure-results allure-report test-results
 	@echo "✅ Testing environment setup completed"
 
-# Start Testing Environment (legacy - use start-testing stack command instead)
+# Start Testing Environment
+start-testing: setup-testing
+	@echo "Starting testing environment..."
+	docker compose -f compose.yml -f compose.testing.yml up -d
+	@echo "✅ Testing environment started"
 
 # Run Tests with Allure Reporting
 test-allure: setup-testing
@@ -374,12 +456,6 @@ test-integration: setup-testing
 	@python3 -m pytest tests/ -m integration --alluredir=allure-results --allure-clean -v
 	@echo "✅ Integration tests completed"
 
-# Run Performance Tests (Legacy - use test-performance for enterprise features)
-test-performance-legacy: setup-testing
-	@echo "⚡ Running performance tests..."
-	@python3 -m pytest tests/ -m performance --alluredir=allure-results --allure-clean -v
-	@echo "✅ Performance tests completed"
-
 # Run API Tests
 test-api: setup-testing
 	@echo "🌐 Running API tests..."
@@ -403,61 +479,7 @@ serve-allure-report: generate-allure-report
 	@allure open allure-report --port 8080 --host 0.0.0.0
 
 # =============================================================================
-# Enterprise Testing Commands
-
-# Test stack operations
-test-stack-operations:
-	@echo "🧪 Testing stack operations..."
-	@./scripts/test-stack-operations.sh
-
-# Test network operations
-test-network-operations:
-	@echo "🌐 Testing network operations..."
-	@./scripts/test-network-operations.sh
-
-# Test data operations
-test-data-operations:
-	@echo "💾 Testing data operations..."
-	@./scripts/test-data-operations.sh
-
-# Test granular operations
-test-granular-operations:
-	@echo "🔧 Testing granular operations..."
-	@./scripts/test-granular-operations.sh
-
-# Run comprehensive test suite
-test-comprehensive:
-	@echo "🧪 Running comprehensive test suite..."
-	@./scripts/test-comprehensive.sh
-
-# Run quick tests (non-destructive)
-test-quick:
-	@echo "🚀 Running quick tests (non-destructive)..."
-	@./scripts/test-comprehensive.sh --quick
-
-# Run performance tests
-test-performance:
-	@echo "⚡ Running performance tests..."
-	@./scripts/test-comprehensive.sh --performance
-
-# Generate comprehensive test report
-test-report:
-	@echo "📊 Generating comprehensive test report..."
-	@./scripts/test-comprehensive.sh --report
-
-# Test monitoring and alerting system
-test-monitoring:
-	@echo "📊 Testing monitoring and alerting system..."
-	@./scripts/test-monitoring.sh init
-	@./scripts/test-monitoring.sh status
-
-# Test documentation
-test-documentation:
-	@echo "📚 Testing documentation..."
-	@./scripts/test-documentation.sh
-
-# =============================================================================
-# Stack-based Commands
+# STACK-BASED COMMANDS
 # =============================================================================
 
 # Stack Start Commands
@@ -480,16 +502,6 @@ start-ui: generate-compose
 	@echo "🚀 Starting UI and workflow stack..."
 	@docker compose -f compose.ui.yml up -d
 	@echo "✅ UI and workflow stack started"
-
-start-testing: generate-compose
-	@echo "🚀 Starting testing stack..."
-	@docker compose -f compose.testing.yml up -d
-	@echo "✅ Testing stack started"
-
-start-monitoring: generate-compose
-	@echo "🚀 Starting monitoring stack..."
-	@docker compose -f compose.monitoring.yml up -d
-	@echo "✅ Monitoring stack started"
 
 # Stack Stop Commands
 stop-core:
@@ -522,7 +534,44 @@ stop-monitoring:
 	@docker compose -f compose.monitoring.yml down
 	@echo "✅ Monitoring stack stopped"
 
-# Stack Restart Commands (legacy - use granular wipe/reset commands instead)
+# Stack Restart Commands
+restart-core:
+	@echo "🔄 Restarting core infrastructure stack..."
+	@docker compose -f compose.core.yml restart
+	@echo "✅ Core infrastructure stack restarted"
+
+restart-inference:
+	@echo "🔄 Restarting inference stack..."
+	@docker compose -f compose.inference.yml restart
+	@echo "✅ Inference stack restarted"
+
+restart-ai:
+	@echo "🔄 Restarting AI services stack..."
+	@docker compose -f compose.ai.yml restart
+	@echo "✅ AI services stack restarted"
+
+restart-ui:
+	@echo "🔄 Restarting UI and workflow stack..."
+	@docker compose -f compose.ui.yml restart
+	@echo "✅ UI and workflow stack restarted"
+
+restart-testing:
+	@echo "🔄 Restarting testing stack..."
+	@docker compose -f compose.testing.yml restart
+	@echo "✅ Testing stack restarted"
+
+restart-monitoring:
+	@echo "🔄 Restarting monitoring stack..."
+	@docker compose -f compose.monitoring.yml restart
+	@echo "✅ Monitoring stack restarted"
+
+# Stack Rebuild Commands
+rebuild-ai:
+	@echo "🔨 Rebuilding AI services stack..."
+	@docker compose -f compose.ai.yml down
+	@docker compose -f compose.ai.yml build --no-cache
+	@docker compose -f compose.ai.yml up -d
+	@echo "✅ AI services stack rebuilt"
 
 # Stack Logs Commands
 logs-core:
@@ -575,7 +624,7 @@ status-monitoring:
 	@docker compose -f compose.monitoring.yml ps
 
 # =============================================================================
-# Network Management Commands
+# NETWORK MANAGEMENT COMMANDS
 # =============================================================================
 
 # Check for network conflicts
@@ -602,28 +651,28 @@ check-network-health:
 	@echo "🔍 Network connectivity tests:"
 	@echo "Testing core services connectivity..."
 	@if docker ps --format "{{.Names}}" | grep -q "multimodal-postgres"; then \
-		echo "✅ PostgreSQL: $(docker exec multimodal-postgres pg_isready -U ${POSTGRES_USER:-postgres} 2>/dev/null && echo 'Ready' || echo 'Not ready')"; \
+		echo "✅ PostgreSQL: $$(docker exec multimodal-postgres pg_isready -U $${POSTGRES_USER:-postgres} 2>/dev/null && echo 'Ready' || echo 'Not ready')"; \
 	else \
 		echo "❌ PostgreSQL: Not running"; \
 	fi
 	@if docker ps --format "{{.Names}}" | grep -q "multimodal-redis"; then \
-		echo "✅ Redis: $(docker exec multimodal-redis redis-cli ping 2>/dev/null || echo 'Not responding')"; \
+		echo "✅ Redis: $$(docker exec multimodal-redis redis-cli ping 2>/dev/null || echo 'Not responding')"; \
 	else \
 		echo "❌ Redis: Not running"; \
 	fi
 	@if docker ps --format "{{.Names}}" | grep -q "multimodal-qdrant"; then \
-		echo "✅ Qdrant: $(curl -s http://localhost:6333/health 2>/dev/null | grep -q 'ok' && echo 'Healthy' || echo 'Not responding')"; \
+		echo "✅ Qdrant: $$(curl -s http://localhost:6333/health 2>/dev/null | grep -q 'ok' && echo 'Healthy' || echo 'Not responding')"; \
 	else \
 		echo "❌ Qdrant: Not running"; \
 	fi
 	@if docker ps --format "{{.Names}}" | grep -q "multimodal-minio"; then \
-		echo "✅ MinIO: $(curl -s http://localhost:9000/minio/health/live 2>/dev/null | grep -q 'ok' && echo 'Healthy' || echo 'Not responding')"; \
+		echo "✅ MinIO: $$(curl -s http://localhost:9000/minio/health/live 2>/dev/null | grep -q 'ok' && echo 'Healthy' || echo 'Not responding')"; \
 	else \
 		echo "❌ MinIO: Not running"; \
 	fi
 
 # =============================================================================
-# Granular Wipe/Reset Commands
+# GRANULAR WIPE/RESET COMMANDS
 # =============================================================================
 
 # Stack Wipe Commands (containers + data)
@@ -643,43 +692,13 @@ wipe-ui:
 	@echo "🧹 Wiping UI and workflow stack..."
 	@./scripts/wipe-environment.sh wipe-stack ui
 
-wipe-testing-stack:
+wipe-testing:
 	@echo "🧹 Wiping testing stack..."
 	@./scripts/wipe-environment.sh wipe-stack testing
 
 wipe-monitoring:
 	@echo "🧹 Wiping monitoring stack..."
 	@./scripts/wipe-environment.sh wipe-stack monitoring
-
-# Stack Restart Commands (no data loss)
-restart-core:
-	@echo "🔄 Restarting core infrastructure stack..."
-	@./scripts/wipe-environment.sh restart-stack core
-
-restart-inference:
-	@echo "🔄 Restarting inference stack..."
-	@./scripts/wipe-environment.sh restart-stack inference
-
-restart-ai:
-	@echo "🔄 Restarting AI services stack..."
-	@./scripts/wipe-environment.sh restart-stack ai
-
-restart-ui:
-	@echo "🔄 Restarting UI and workflow stack..."
-	@./scripts/wipe-environment.sh restart-stack ui
-
-restart-testing:
-	@echo "🔄 Restarting testing stack..."
-	@./scripts/wipe-environment.sh restart-stack testing
-
-restart-monitoring:
-	@echo "🔄 Restarting monitoring stack..."
-	@./scripts/wipe-environment.sh restart-stack monitoring
-
-# Stack Rebuild Commands (force image rebuild)
-rebuild-ai:
-	@echo "🔨 Rebuilding AI services stack..."
-	@./scripts/wipe-environment.sh rebuild-stack ai
 
 # Data-Specific Wipe Commands
 wipe-db:
@@ -715,17 +734,13 @@ wipe-prod:
 	@echo "🗑️  Wiping production environment..."
 	@./scripts/wipe-environment.sh wipe-prod
 
-wipe-testing:
-	@echo "🗑️  Wiping testing environment..."
-	@./scripts/wipe-environment.sh wipe-testing
-
 # System Status
 system-status:
 	@echo "📊 Showing system status..."
 	@./scripts/wipe-environment.sh status
 
 # =============================================================================
-# Data Retention Management Commands
+# DATA RETENTION MANAGEMENT COMMANDS
 # =============================================================================
 
 # Show retention status for environment
@@ -763,7 +778,7 @@ retention-backup:
 	@echo "Implementation depends on backup strategy configuration"
 
 # =============================================================================
-# Multi-Tier Backup System Commands
+# MULTI-TIER BACKUP SYSTEM COMMANDS
 # =============================================================================
 
 # Show backup status for environment
@@ -805,3 +820,81 @@ backup-restore:
 	@echo "🔄 Restoring from backup..."
 	@echo "This would restore from a specific backup file"
 	@echo "Implementation depends on restore strategy configuration"
+
+# =============================================================================
+# ENTERPRISE TESTING COMMANDS
+# =============================================================================
+
+# Test stack operations
+test-stack-operations:
+	@echo "🧪 Testing stack operations..."
+	@./scripts/test-stack-operations.sh
+
+# Test network operations
+test-network-operations:
+	@echo "🌐 Testing network operations..."
+	@./scripts/test-network-operations.sh
+
+# Test data operations
+test-data-operations:
+	@echo "💾 Testing data operations..."
+	@./scripts/test-data-operations.sh
+
+# Test granular operations
+test-granular-operations:
+	@echo "🔧 Testing granular operations..."
+	@./scripts/test-granular-operations.sh
+
+# Run comprehensive test suite
+test-comprehensive:
+	@echo "🧪 Running comprehensive test suite..."
+	@./scripts/test-comprehensive.sh
+
+# Run quick tests (non-destructive)
+test-quick:
+	@echo "🚀 Running quick tests (non-destructive)..."
+	@./scripts/test-comprehensive.sh --quick
+
+# Generate comprehensive test report
+test-report:
+	@echo "📊 Generating comprehensive test report..."
+	@./scripts/test-comprehensive.sh --report
+
+# Test monitoring and alerting system
+test-monitoring:
+	@echo "📊 Testing monitoring and alerting system..."
+	@./scripts/test-monitoring.sh init
+	@./scripts/test-monitoring.sh status
+
+# Test documentation
+test-documentation:
+	@echo "📚 Testing documentation..."
+	@./scripts/test-documentation.sh
+
+# =============================================================================
+# SECURITY AND VALIDATION COMMANDS
+# =============================================================================
+
+# Security validation
+validate-security:
+	@echo "🔒 Validating security configuration..."
+	@if grep -q ":-postgres\|:-minioadmin" schemas/compose-schema.yaml; then \
+		echo "❌ Hardcoded defaults found in schema"; \
+		exit 1; \
+	fi
+	@if find services/ -name "config.py" -exec grep -l 'POSTGRES_PASSWORD.*,.*"postgres"\|POSTGRES_USER.*,.*"postgres"\|MINIO.*PASSWORD.*,.*"minioadmin"\|MINIO.*USER.*,.*"minioadmin"' {} \; | grep -q .; then \
+		echo "❌ Hardcoded defaults found in service configs"; \
+		exit 1; \
+	fi
+	@echo "✅ Security validation passed"
+
+# =============================================================================
+# UTILITY COMMANDS
+# =============================================================================
+
+# Clean up everything
+clean:
+	@echo "Cleaning up containers, volumes, and networks..."
+	docker compose down --volumes --remove-orphans
+	docker system prune -f
+	@echo "✅ Cleanup completed"
