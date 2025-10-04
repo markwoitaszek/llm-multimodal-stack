@@ -19,7 +19,7 @@ graph TB
 
     %% Enhanced Command Layer
     subgraph CommandLayer[Enhanced Command Layer]
-        EssentialCommands["📋 Essential Commands<br/>make setup, start-dev, start-staging<br/>make start-dev-gpu, start-staging-gpu<br/>make stop, stop-all, wipe, reset, status, logs<br/>make restart-{dev,staging,prod} (preserves credentials)"]
+        EssentialCommands["📋 Essential Commands<br/>🔥 NEW: make new-{dev,staging,prod} (regenerates credentials)<br/>🚀 START: make start-{dev,staging,prod} (preserves credentials)<br/>🔄 RESTART: make restart-{dev,staging,prod} (preserves credentials)<br/>make setup, stop, stop-all, wipe, reset, status, logs"]
         GPUCommands["🎮 GPU Commands<br/>make detect-gpu, configure-gpu<br/>make start-gpu-auto"]
         ExtendedCommands["🔧 Extended Commands<br/>make help-extended (100+ commands)<br/>Stack, Network, Wipe, Testing<br/>Backup, Retention, Security"]
         NuclearWipe["💥 Nuclear Wipe<br/>make wipe-nuclear (type 'NUKE' to confirm)<br/>Complete environment destruction<br/>make wipe (deprecated alias)"]
@@ -449,10 +449,16 @@ flowchart TD
 | Command | Schema Validation | Credential Validation | Generate Compose | Setup Secrets | Start Services | GPU Detection | GPU Configuration | Interactive Wipe | Complete Reset | Essential Commands | Extended Commands |
 |---------|:-----------------:|:--------------------:|:----------------:|:-------------:|:--------------:|:-------------:|:----------------:|:----------------:|:---------------:|:-----------------:|:----------------:|
 | `make setup` | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `make start-dev` | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `make start-staging` | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `make start-dev-gpu` | ❌ | ✅ (dev) | ✅ | ✅ (dev) | ✅ (dev+gpu) | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
-| `make start-staging-gpu` | ❌ | ✅ (staging) | ✅ | ✅ (staging) | ✅ (staging+gpu) | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **🔥 NEW Commands (regenerate credentials)** | | | | | | | | | | | |
+| `make new-dev` | ❌ | ✅ (dev) | ✅ | ✅ (dev force) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make new-staging` | ❌ | ✅ (staging) | ✅ | ✅ (staging force) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make new-staging-gpu` | ❌ | ✅ (staging) | ✅ | ✅ (staging force) | ✅ (staging+gpu) | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **🚀 START Commands (preserve credentials)** | | | | | | | | | | | |
+| `make start-dev` | ❌ | ✅ (dev) | ✅ | ✅ (dev preserve) | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make start-staging` | ❌ | ✅ (staging) | ✅ | ✅ (staging preserve) | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make start-dev-gpu` | ❌ | ✅ (dev) | ✅ | ✅ (dev preserve) | ✅ (dev+gpu) | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| `make start-staging-gpu` | ❌ | ✅ (staging) | ✅ | ✅ (staging preserve) | ✅ (staging+gpu) | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **🔄 RESTART Commands (preserve credentials)** | | | | | | | | | | | |
 | `make restart-dev` | ❌ | ❌ | ❌ | ❌ | ✅ (dev) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `make restart-staging` | ❌ | ❌ | ❌ | ❌ | ✅ (staging) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `make restart-dev-gpu` | ❌ | ❌ | ❌ | ❌ | ✅ (dev+gpu) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |

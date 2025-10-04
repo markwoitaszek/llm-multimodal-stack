@@ -1,7 +1,7 @@
 # Comprehensive Makefile for LLM Multimodal Stack
 # Combines streamlined essential commands with all extended options
 
-.PHONY: help help-essential help-extended setup start-dev start-staging start-dev-gpu start-staging-gpu stop stop-all stop-dev stop-staging stop-prod stop-gpu force-stop wipe wipe-confirm reset status logs clean restart-dev restart-staging restart-prod restart-dev-gpu restart-staging-gpu restart-prod-gpu restart-monitoring-env restart-testing-env
+.PHONY: help help-essential help-extended setup start-dev start-staging start-dev-gpu start-staging-gpu start-prod start-prod-gpu new-dev new-staging new-dev-gpu new-staging-gpu new-prod new-prod-gpu stop stop-all stop-dev stop-staging stop-prod stop-gpu force-stop wipe wipe-confirm reset status logs clean restart-dev restart-staging restart-prod restart-dev-gpu restart-staging-gpu restart-prod-gpu restart-monitoring-env restart-testing-env
 
 # Default target - shows essential commands
 help:
@@ -10,10 +10,23 @@ help:
 	@echo ""
 	@echo "📋 Essential Commands:"
 	@echo "  setup              Complete setup from scratch"
+	@echo ""
+	@echo "🔥 NEW Environment (regenerates credentials):"
+	@echo "  new-dev            Create fresh development environment"
+	@echo "  new-staging        Create fresh staging environment"
+	@echo "  new-staging-gpu    Create fresh staging with GPU"
+	@echo "  new-prod           Create fresh production environment"
+	@echo ""
+	@echo "🚀 START Existing (preserves credentials):"
 	@echo "  start-dev          Start development environment"
 	@echo "  start-staging      Start staging environment"
 	@echo "  start-dev-gpu      Start development with GPU support"
 	@echo "  start-staging-gpu  Start staging with GPU support"
+	@echo ""
+	@echo "🔄 RESTART Existing (preserves credentials):"
+	@echo "  restart-dev        Restart development environment"
+	@echo "  restart-staging    Restart staging environment"
+	@echo "  restart-prod       Restart production environment"
 	@echo ""
 	@echo "🔧 Management Commands:"
 	@echo "  stop               Stop main services (basic)"
@@ -21,9 +34,6 @@ help:
 	@echo "  stop-dev           Stop development environment"
 	@echo "  stop-staging       Stop staging environment"
 	@echo "  stop-prod          Stop production environment"
-	@echo "  restart-dev        Restart development (preserves credentials)"
-	@echo "  restart-staging    Restart staging (preserves credentials)"
-	@echo "  restart-prod       Restart production (preserves credentials)"
 	@echo "  wipe-nuclear       💥 NUCLEAR wipe (complete destruction - type 'NUKE')"
 	@echo "  reset              Nuclear reset (wipe + setup)"
 	@echo "  status             Show service status"
@@ -45,10 +55,30 @@ help-extended:
 	@echo ""
 	@echo "📋 Essential Commands:"
 	@echo "  setup              Complete setup from scratch"
+	@echo ""
+	@echo "🔥 NEW Environment (regenerates credentials):"
+	@echo "  new-dev            Create fresh development environment"
+	@echo "  new-staging        Create fresh staging environment"
+	@echo "  new-staging-gpu    Create fresh staging with GPU"
+	@echo "  new-prod           Create fresh production environment"
+	@echo "  new-dev-gpu        Create fresh development with GPU"
+	@echo "  new-prod-gpu       Create fresh production with GPU"
+	@echo ""
+	@echo "🚀 START Existing (preserves credentials):"
 	@echo "  start-dev          Start development environment"
 	@echo "  start-staging      Start staging environment"
 	@echo "  start-dev-gpu      Start development with GPU support"
 	@echo "  start-staging-gpu  Start staging with GPU support"
+	@echo "  start-prod         Start production environment"
+	@echo "  start-prod-gpu     Start production with GPU support"
+	@echo ""
+	@echo "🔄 RESTART Existing (preserves credentials):"
+	@echo "  restart-dev        Restart development environment"
+	@echo "  restart-staging    Restart staging environment"
+	@echo "  restart-prod       Restart production environment"
+	@echo "  restart-dev-gpu    Restart development with GPU"
+	@echo "  restart-staging-gpu Restart staging with GPU"
+	@echo "  restart-prod-gpu   Restart production with GPU"
 	@echo ""
 	@echo "🔧 Management Commands:"
 	@echo "  stop               Stop main services (basic)"
@@ -198,11 +228,15 @@ setup:
 	@$(MAKE) validate-credentials-dev
 	@echo "✅ Setup complete! Use 'make start-dev' or 'make start-dev-gpu' to begin"
 
-# Development environment
+# =============================================================================
+# 🚀 START EXISTING ENVIRONMENT COMMANDS (Preserve credentials - for existing environments)
+# =============================================================================
+
+# Start development environment (preserves credentials)
 start-dev: generate-compose setup-secrets-dev validate-credentials-dev
-	@echo "🚀 Starting development environment..."
+	@echo "🚀 Starting development environment (preserving credentials)..."
 	docker compose up -d
-	@echo "✅ Development environment started"
+	@echo "✅ Development environment started with preserved credentials"
 	@echo "📊 Services available:"
 	@echo "   - LiteLLM: http://localhost:4000"
 	@echo "   - vLLM: http://localhost:8000"
@@ -211,39 +245,150 @@ start-dev: generate-compose setup-secrets-dev validate-credentials-dev
 	@echo "   - Qdrant: http://localhost:6333"
 	@echo "   - MinIO Console: http://localhost:9002"
 
-# Staging environment
+# Start staging environment (preserves credentials)
 start-staging: generate-compose setup-secrets-staging validate-credentials-staging
-	@echo "🚀 Starting staging environment..."
+	@echo "🚀 Starting staging environment (preserving credentials)..."
 	docker compose -f compose.yml -f compose.staging.yml up -d
-	@echo "✅ Staging environment started"
+	@echo "✅ Staging environment started with preserved credentials"
 
-# Development with GPU support
+# Start development environment with GPU (preserves credentials)
 start-dev-gpu: configure-gpu
-	@echo "🚀 Starting development environment with GPU support..."
+	@echo "🚀 Starting development environment with GPU support (preserving credentials)..."
 	@$(MAKE) generate-compose
 	@$(MAKE) setup-secrets-dev
 	@echo "🎮 Re-applying GPU configuration after secrets setup..."
 	@$(MAKE) configure-gpu
 	@$(MAKE) validate-credentials-dev
 	docker compose up -d
-	@echo "🎮 GPU-enabled development environment started"
+	@echo "🎮 GPU-enabled development environment started with preserved credentials"
 	@echo "📊 GPU Configuration:"
 	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
 	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
 
-# Staging with GPU support
+# Start staging environment with GPU (preserves credentials)
 start-staging-gpu: configure-gpu
-	@echo "🚀 Starting staging environment with GPU support..."
+	@echo "🚀 Starting staging environment with GPU support (preserving credentials)..."
 	@$(MAKE) generate-compose
 	@$(MAKE) setup-secrets-staging
 	@echo "🎮 Re-applying GPU configuration after secrets setup..."
 	@$(MAKE) configure-gpu
 	@$(MAKE) validate-credentials-staging
 	docker compose -f compose.yml -f compose.staging.yml up -d
-	@echo "✅ Staging environment with GPU started"
+	@echo "✅ Staging environment with GPU started with preserved credentials"
 	@echo "📊 GPU Configuration:"
 	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
 	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+
+# =============================================================================
+# 🔥 NEW ENVIRONMENT COMMANDS (Regenerate credentials - for fresh environments)
+# =============================================================================
+
+# Create fresh development environment (regenerates credentials)
+new-dev: generate-compose setup-secrets-dev-force validate-credentials-dev
+	@echo "🔥 Creating fresh development environment (regenerating credentials)..."
+	docker compose up -d
+	@echo "✅ Fresh development environment created"
+	@echo "📊 Services available:"
+	@echo "   - LiteLLM: http://localhost:4000"
+	@echo "   - vLLM: http://localhost:8000"
+	@echo "   - Multimodal Worker: http://localhost:8001"
+	@echo "   - Retrieval Proxy: http://localhost:8002"
+	@echo "   - Qdrant: http://localhost:6333"
+	@echo "   - MinIO Console: http://localhost:9002"
+
+# Create fresh staging environment (regenerates credentials)
+new-staging: generate-compose setup-secrets-staging-force validate-credentials-staging
+	@echo "🔥 Creating fresh staging environment (regenerating credentials)..."
+	docker compose -f compose.yml -f compose.staging.yml up -d
+	@echo "✅ Fresh staging environment created"
+
+# Create fresh development environment with GPU (regenerates credentials)
+new-dev-gpu: configure-gpu
+	@echo "🔥 Creating fresh development environment with GPU (regenerating credentials)..."
+	@$(MAKE) generate-compose
+	@$(MAKE) setup-secrets-dev-force
+	@echo "🎮 Re-applying GPU configuration after secrets setup..."
+	@$(MAKE) configure-gpu
+	@$(MAKE) validate-credentials-dev
+	docker compose up -d
+	@echo "🎮 Fresh GPU-enabled development environment created"
+	@echo "📊 GPU Configuration:"
+	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+
+# Create fresh staging environment with GPU (regenerates credentials)
+new-staging-gpu: configure-gpu
+	@echo "🔥 Creating fresh staging environment with GPU (regenerating credentials)..."
+	@$(MAKE) generate-compose
+	@$(MAKE) setup-secrets-staging-force
+	@echo "🎮 Re-applying GPU configuration after secrets setup..."
+	@$(MAKE) configure-gpu
+	@$(MAKE) validate-credentials-staging
+	docker compose -f compose.yml -f compose.staging.yml up -d
+	@echo "✅ Fresh staging environment with GPU created"
+	@echo "📊 GPU Configuration:"
+	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+
+# Create fresh production environment (regenerates credentials)
+new-prod: generate-compose setup-secrets-prod-force validate-credentials-prod
+	@echo "🔥 Creating fresh production environment (regenerating credentials)..."
+	docker compose -f compose.yml -f compose.production.yml up -d
+	@echo "✅ Fresh production environment created"
+
+# Create fresh production environment with GPU (regenerates credentials)
+new-prod-gpu: configure-gpu
+	@echo "🔥 Creating fresh production environment with GPU (regenerating credentials)..."
+	@$(MAKE) generate-compose
+	@$(MAKE) setup-secrets-prod-force
+	@echo "🎮 Re-applying GPU configuration after secrets setup..."
+	@$(MAKE) configure-gpu
+	@$(MAKE) validate-credentials-prod
+	docker compose -f compose.yml -f compose.production.yml up -d
+	@echo "✅ Fresh production environment with GPU created"
+	@echo "📊 GPU Configuration:"
+	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+
+# =============================================================================
+# 🔄 RESTART EXISTING ENVIRONMENT COMMANDS (Preserve credentials)
+# =============================================================================
+
+# Restart development environment (preserves credentials)
+restart-dev: stop-dev
+	@echo "🔄 Restarting development environment (preserving credentials)..."
+	@$(MAKE) start-dev
+	@echo "✅ Development environment restarted with preserved credentials"
+
+# Restart staging environment (preserves credentials)
+restart-staging: stop-staging
+	@echo "🔄 Restarting staging environment (preserving credentials)..."
+	@$(MAKE) start-staging
+	@echo "✅ Staging environment restarted with preserved credentials"
+
+# Restart production environment (preserves credentials)
+restart-prod: stop-prod
+	@echo "🔄 Restarting production environment (preserving credentials)..."
+	@$(MAKE) start-prod
+	@echo "✅ Production environment restarted with preserved credentials"
+
+# Restart development environment with GPU (preserves credentials)
+restart-dev-gpu: stop-dev
+	@echo "🔄 Restarting development environment with GPU (preserving credentials)..."
+	@$(MAKE) start-dev-gpu
+	@echo "✅ Development environment with GPU restarted with preserved credentials"
+
+# Restart staging environment with GPU (preserves credentials)
+restart-staging-gpu: stop-staging
+	@echo "🔄 Restarting staging environment with GPU (preserving credentials)..."
+	@$(MAKE) start-staging-gpu
+	@echo "✅ Staging environment with GPU restarted with preserved credentials"
+
+# Restart production environment with GPU (preserves credentials)
+restart-prod-gpu: stop-prod
+	@echo "🔄 Restarting production environment with GPU (preserving credentials)..."
+	@$(MAKE) start-prod-gpu
+	@echo "✅ Production environment with GPU restarted with preserved credentials"
 
 # GPU detection
 detect-gpu:
@@ -471,22 +616,22 @@ validate-credentials-staging:
 validate-credentials-prod:
 	@$(MAKE) validate-credentials ENV=production STRICT=true
 
-# Production environment
+# Start production environment (preserves credentials)
 start-prod: generate-compose setup-secrets-prod validate-credentials-prod
-	@echo "Starting production environment..."
+	@echo "🚀 Starting production environment (preserving credentials)..."
 	docker compose -f compose.yml -f compose.production.yml up -d
-	@echo "✅ Production environment started"
+	@echo "✅ Production environment started with preserved credentials"
 
-# Production environment with GPU
+# Start production environment with GPU (preserves credentials)
 start-prod-gpu: configure-gpu
-	@echo "🚀 Starting production environment with GPU support..."
+	@echo "🚀 Starting production environment with GPU support (preserving credentials)..."
 	@$(MAKE) generate-compose
 	@$(MAKE) setup-secrets-prod
 	@echo "🎮 Re-applying GPU configuration after secrets setup..."
 	@$(MAKE) configure-gpu
 	@$(MAKE) validate-credentials-prod
 	docker compose -f compose.yml -f compose.production.yml up -d
-	@echo "✅ Production environment with GPU started"
+	@echo "✅ Production environment with GPU started with preserved credentials"
 	@echo "📊 GPU Configuration:"
 	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
 	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
@@ -1003,62 +1148,6 @@ validate-security:
 # =============================================================================
 # RESTART COMMANDS (Credential-Preserving)
 # =============================================================================
-
-# Restart staging environment (preserves credentials)
-restart-staging:
-	@echo "🔄 Restarting staging environment (preserving credentials)..."
-	@$(MAKE) stop-staging
-	@$(MAKE) start-staging
-	@echo "✅ Staging environment restarted with preserved credentials"
-
-# Restart staging environment with GPU (preserves credentials)
-restart-staging-gpu:
-	@echo "🔄 Restarting staging environment with GPU (preserving credentials)..."
-	@$(MAKE) stop-staging
-	@$(MAKE) start-staging-gpu
-	@echo "✅ Staging environment with GPU restarted with preserved credentials"
-
-# Restart development environment (preserves credentials)
-restart-dev:
-	@echo "🔄 Restarting development environment (preserving credentials)..."
-	@$(MAKE) stop
-	@$(MAKE) start-dev
-	@echo "✅ Development environment restarted with preserved credentials"
-
-# Restart development environment with GPU (preserves credentials)
-restart-dev-gpu:
-	@echo "🔄 Restarting development environment with GPU (preserving credentials)..."
-	@$(MAKE) stop
-	@$(MAKE) start-dev-gpu
-	@echo "✅ Development environment with GPU restarted with preserved credentials"
-
-# Restart production environment (preserves credentials)
-restart-prod:
-	@echo "🔄 Restarting production environment (preserving credentials)..."
-	@$(MAKE) stop-prod
-	@$(MAKE) start-prod
-	@echo "✅ Production environment restarted with preserved credentials"
-
-# Restart production environment with GPU (preserves credentials)
-restart-prod-gpu:
-	@echo "🔄 Restarting production environment with GPU (preserving credentials)..."
-	@$(MAKE) stop-prod
-	@$(MAKE) start-prod-gpu
-	@echo "✅ Production environment with GPU restarted with preserved credentials"
-
-# Restart monitoring environment (preserves credentials)
-restart-monitoring-env:
-	@echo "🔄 Restarting monitoring environment (preserving credentials)..."
-	@$(MAKE) stop-monitoring
-	@$(MAKE) start-monitoring
-	@echo "✅ Monitoring environment restarted with preserved credentials"
-
-# Restart testing environment (preserves credentials)
-restart-testing-env:
-	@echo "🔄 Restarting testing environment (preserving credentials)..."
-	@$(MAKE) stop-testing
-	@$(MAKE) start-testing
-	@echo "✅ Testing environment restarted with preserved credentials"
 
 # =============================================================================
 # UTILITY COMMANDS

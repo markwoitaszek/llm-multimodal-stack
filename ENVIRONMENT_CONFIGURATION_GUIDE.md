@@ -41,11 +41,23 @@ make detect-gpu         # Detect GPU configuration
 # Complete setup from scratch
 make setup             # Generate compose files + setup secrets + validate
 
-# Essential environment commands (streamlined)
-make start-dev         # Development environment
-make start-staging     # Staging environment  
-make start-dev-gpu     # Development with GPU support
-make start-staging-gpu # Staging with GPU support
+# 🔥 NEW Environment (regenerates credentials - for fresh environments)
+make new-dev           # Create fresh development environment
+make new-staging       # Create fresh staging environment
+make new-staging-gpu   # Create fresh staging with GPU
+make new-prod          # Create fresh production environment
+
+# 🚀 START Existing (preserves credentials - for existing environments)
+make start-dev         # Start development environment
+make start-staging     # Start staging environment  
+make start-dev-gpu     # Start development with GPU support
+make start-staging-gpu # Start staging with GPU support
+
+# 🔄 RESTART Existing (preserves credentials - for restart cycles)
+make restart-dev       # Restart development environment
+make restart-staging   # Restart staging environment
+make restart-dev-gpu   # Restart development with GPU
+make restart-staging-gpu # Restart staging with GPU
 
 # Extended environment commands (via make help-extended)
 make start-prod        # Production environment
@@ -55,9 +67,20 @@ make start-monitoring  # Monitoring with ELK stack
 
 ### Enhanced GPU Workflow
 ```bash
-# Essential GPU commands (streamlined)
-make start-dev-gpu     # Development with GPU support
-make start-staging-gpu # Staging with GPU support
+# 🔥 NEW GPU Environment (regenerates credentials)
+make new-dev-gpu       # Create fresh development with GPU
+make new-staging-gpu   # Create fresh staging with GPU
+make new-prod-gpu      # Create fresh production with GPU
+
+# 🚀 START GPU Environment (preserves credentials)
+make start-dev-gpu     # Start development with GPU support
+make start-staging-gpu # Start staging with GPU support
+make start-prod-gpu    # Start production with GPU support
+
+# 🔄 RESTART GPU Environment (preserves credentials)
+make restart-dev-gpu   # Restart development with GPU
+make restart-staging-gpu # Restart staging with GPU
+make restart-prod-gpu  # Restart production with GPU
 
 # Manual GPU configuration (if needed)
 make detect-gpu        # Detect RTX 3090s and NVLink topology
@@ -511,10 +534,25 @@ Tensor parallelism splits the model across multiple GPUs:
 ```bash
 make help                   # Show essential commands (15 total)
 make setup                  # Complete setup from scratch
+
+# 🔥 NEW Environment (regenerates credentials)
+make new-dev                # Create fresh development environment
+make new-staging            # Create fresh staging environment
+make new-staging-gpu        # Create fresh staging with GPU
+make new-prod               # Create fresh production environment
+
+# 🚀 START Existing (preserves credentials)
 make start-dev              # Start development environment
 make start-staging          # Start staging environment
 make start-dev-gpu          # Start development with GPU support
 make start-staging-gpu      # Start staging with GPU support
+
+# 🔄 RESTART Existing (preserves credentials)
+make restart-dev            # Restart development (preserves credentials)
+make restart-staging        # Restart staging (preserves credentials)
+make restart-prod           # Restart production (preserves credentials)
+
+# GPU & Management
 make detect-gpu             # Detect GPU configuration
 make configure-gpu          # Configure GPU for optimal performance
 make stop                   # Stop main services (basic)
@@ -522,9 +560,6 @@ make stop-all               # Stop ALL services from ALL compose files
 make stop-dev               # Stop development environment
 make stop-staging           # Stop staging environment
 make stop-prod              # Stop production environment
-make restart-dev            # Restart development (preserves credentials)
-make restart-staging        # Restart staging (preserves credentials)
-make restart-prod           # Restart production (preserves credentials)
 make wipe-nuclear           # Nuclear wipe (complete destruction - type 'NUKE')
 make reset                  # Nuclear reset (wipe + setup)
 make status                 # Show status of all services
