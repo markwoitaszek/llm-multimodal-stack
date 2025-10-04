@@ -19,12 +19,12 @@ graph TB
 
     %% Enhanced Command Layer
     subgraph CommandLayer[Enhanced Command Layer]
-        EssentialCommands["📋 Essential Commands<br/>make setup, start-dev, start-staging<br/>make start-dev-gpu, start-staging-gpu<br/>make stop, wipe, reset, status, logs"]
+        EssentialCommands["📋 Essential Commands<br/>make setup, start-dev, start-staging<br/>make start-dev-gpu, start-staging-gpu<br/>make stop, stop-all, wipe, reset, status, logs"]
         GPUCommands["🎮 GPU Commands<br/>make detect-gpu, configure-gpu<br/>make start-gpu-auto"]
         ExtendedCommands["🔧 Extended Commands<br/>make help-extended (100+ commands)<br/>Stack, Network, Wipe, Testing<br/>Backup, Retention, Security"]
         NuclearWipe["💥 Nuclear Wipe<br/>make wipe-nuclear (type 'NUKE' to confirm)<br/>Complete environment destruction<br/>make wipe (deprecated alias)"]
         TargetedWipe["🎯 Targeted Wipe<br/>make wipe-{core,inference,ai,ui,testing,monitoring}<br/>make wipe-{db,cache,models,logs}<br/>Granular control for specific issues"]
-        StackCommands["🏗️ Stack Commands<br/>make start-{core,inference,ai,ui,testing,monitoring}<br/>make stop-{core,inference,ai,ui,testing,monitoring}<br/>make restart-{core,inference,ai,ui,testing,monitoring}"]
+        StackCommands["🏗️ Stack Commands<br/>make start-{core,inference,ai,ui,testing,monitoring}<br/>make stop-{core,inference,ai,ui,testing,monitoring}<br/>make stop-all, stop-dev, stop-staging, stop-prod<br/>make restart-{core,inference,ai,ui,testing,monitoring}"]
         NetworkCommands["🌐 Network Commands<br/>make check-network-conflicts<br/>make validate-networks, check-network-health<br/>make cleanup-networks"]
         RetentionCommands["📊 Retention Commands<br/>make retention-{status,cleanup,test}<br/>make retention-cleanup-service<br/>make retention-schedule"]
         BackupCommands["💾 Backup Commands<br/>make backup-{status,full,list,verify}<br/>make backup-service, backup-schedule<br/>make backup-restore"]
@@ -280,7 +280,7 @@ flowchart TD
     GPUFound -->|No| CPUOnly["💻 CPU-only mode"]
     
     ShowTopology --> ConfigureGPU["⚙️ make configure-gpu"]
-    ConfigureGPU --> SetEnvVars["🔧 Set Environment Variables:<br/>CUDA_VISIBLE_DEVICES=0,1<br/>VLLM_TENSOR_PARALLEL_SIZE=2<br/>GPU_COUNT=2"]
+    ConfigureGPU --> SetEnvVars["🔧 Set Environment Variables:<br/>CUDA_VISIBLE_DEVICES=0,1<br/>VLLM_TENSOR_PARALLEL_SIZE=2<br/>GPU_COUNT=2<br/>✅ Fixed GPU config display"]
     
     SetEnvVars --> StartGPU["🚀 make start-dev-gpu<br/>or make start-staging-gpu"]
     StartGPU --> GPURunning["✅ GPU Environment Running<br/>Optimized for RTX 3090s"]
@@ -435,17 +435,18 @@ flowchart TD
 | `make wipe` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (interactive) | ❌ | ✅ | ❌ |
 | `make reset` | ✅ | ✅ (dev) | ✅ | ✅ (dev) | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `make stop` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `make stop-all` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `make status` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `make logs` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `make help` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | `make help-extended` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-**Essential Commands (15 total)**: Focused on daily development tasks with streamlined interface including nuclear wipe  
+**Essential Commands (16 total)**: Focused on daily development tasks with streamlined interface including comprehensive stop commands and nuclear wipe  
 **Extended Commands (100+ total)**: All advanced functionality preserved including targeted wipe options via `make help-extended`
 
 ### Extended Commands Categories
 
-**Stack Management**: `make start-{core,inference,ai,ui,testing,monitoring}`, `make stop-*`, `make restart-*`  
+**Stack Management**: `make start-{core,inference,ai,ui,testing,monitoring}`, `make stop-*`, `make stop-all`, `make restart-*`  
 **Network Management**: `make check-network-conflicts`, `make validate-networks`, `make cleanup-networks`  
 **Nuclear Wipe**: `make wipe-nuclear` (complete destruction - type 'NUKE')  
 **Granular Wipe**: `make wipe-{core,inference,ai,ui,testing,monitoring}`, `make wipe-{db,cache,models,logs}`  
@@ -459,9 +460,10 @@ flowchart TD
 
 ```bash
 # Essential Commands (Default)
-make help              # Shows 15 essential commands
+make help              # Shows 16 essential commands
 make setup             # Complete setup
 make start-dev-gpu     # GPU development
+make stop-all          # Stop ALL services from ALL compose files
 make wipe-nuclear      # Nuclear wipe (complete destruction)
 
 # Extended Commands (On Demand)
@@ -695,7 +697,7 @@ make serve-allure-report     # Serve report on localhost:8080
 **Diagram Version**: 5.0 (Nuclear Wipe System + Targeted Wipe Options + Essential/Extended Commands)  
 **Last Updated**: January 2025  
 **Compatible With**: Enhanced LLM Multimodal Stack  
-**Essential Commands**: 15 (streamlined for daily use)  
+**Essential Commands**: 16 (streamlined for daily use)  
 **Extended Commands**: 100+ (accessible via `make help-extended`)  
 **Total Stacks**: 6 (core, inference, ai, ui, testing, monitoring)  
 **Total Networks**: 6 (isolated stack networks + external)  

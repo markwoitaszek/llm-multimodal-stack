@@ -64,6 +64,12 @@ make detect-gpu        # Detect RTX 3090s and NVLink topology
 make configure-gpu     # Configure optimal GPU settings
 ```
 
+**✅ GPU Configuration Fixes Applied:**
+- Fixed GPU configuration display showing correct values (CUDA_VISIBLE_DEVICES: 0,1, GPU_COUNT: 2)
+- Enhanced GPU script to ensure proper environment file synchronization
+- Eliminated duplicate GPU configuration script execution
+- Fixed missing GPU_COUNT variable in environment files
+
 ## 🌍 Available Environments
 
 ### 1. Development Environment
@@ -244,6 +250,22 @@ JWT_SECRET=<generated_secret>
 
 ## 🧹 Environment Management
 
+### Comprehensive Stop Commands
+
+**✅ Enhanced Stop Functionality:**
+- **`make stop`** - Basic stop (main compose file only)
+- **`make stop-all`** - **NEW** - Stops ALL services from ALL compose files (recommended)
+- **`make stop-dev`** - Stop development environment only
+- **`make stop-staging`** - Stop staging environment only  
+- **`make stop-prod`** - Stop production environment only
+- **`make stop-gpu`** - Stop GPU services only
+
+**Benefits of `make stop-all`:**
+- Handles all 15+ compose files in the system
+- Includes automatic cleanup of orphaned containers and networks
+- Prevents issues with services running from multiple compose files
+- Provides clear output showing what's being stopped at each step
+
 ### Comprehensive Environment Reset
 
 ```bash
@@ -307,8 +329,11 @@ make wipe-logs         # Log volumes only
 # Clean up containers and volumes
 make clean
 
-# Stop all services
-make stop
+# Stop services (choose appropriate command)
+make stop                   # Stop main services (basic)
+make stop-all               # Stop ALL services from ALL compose files (recommended)
+make stop-staging           # Stop staging environment only
+make stop-dev               # Stop development environment only
 
 # View logs
 make logs
@@ -420,7 +445,11 @@ make start-dev-gpu          # Start development with GPU support
 make start-staging-gpu      # Start staging with GPU support
 make detect-gpu             # Detect GPU configuration
 make configure-gpu          # Configure GPU for optimal performance
-make stop                   # Stop all running services
+make stop                   # Stop main services (basic)
+make stop-all               # Stop ALL services from ALL compose files
+make stop-dev               # Stop development environment
+make stop-staging           # Stop staging environment
+make stop-prod              # Stop production environment
 make wipe-nuclear           # Nuclear wipe (complete destruction - type 'NUKE')
 make reset                  # Nuclear reset (wipe + setup)
 make status                 # Show status of all services
@@ -491,7 +520,7 @@ make status
 make logs
 
 # Stop when done
-make stop
+make stop-all               # Stop ALL services (recommended)
 ```
 
 ### GPU Development Workflow
@@ -633,7 +662,7 @@ make validate-security
 **Last Updated**: January 2025  
 **Compatible With**: Streamlined Makefile + Nuclear Wipe + Essential/Extended Commands  
 **Schema Version**: Unified compose schema v1.0  
-**Essential Commands**: 15 (streamlined for daily use)  
+**Essential Commands**: 16 (streamlined for daily use)  
 **Extended Commands**: 100+ (accessible via `make help-extended`)  
 **Wipe Modes**: 4 (nuclear, targeted, detailed preview, legacy deprecated)  
 **Targeted Wipe Options**: 12+ (stack-specific and data-type specific)
