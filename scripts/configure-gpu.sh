@@ -104,6 +104,12 @@ configure_multi_gpu() {
     write_gpu_env ".env.staging" "multi"
     write_gpu_env ".env.prod" "multi"
     
+    # Ensure .env is copied from .env.staging for staging environment
+    if [ -f ".env.staging" ]; then
+        cp .env.staging .env
+        echo -e "${GREEN}✅ Copied .env.staging to .env for staging environment${NC}"
+    fi
+    
     echo -e "${YELLOW}Recommended Docker Compose command:${NC}"
     echo "  make start-staging-gpu  # or make start-prod-gpu"
     echo
@@ -143,6 +149,12 @@ configure_single_gpu() {
     write_gpu_env ".env" "single"
     write_gpu_env ".env.staging" "single"
     write_gpu_env ".env.prod" "single"
+    
+    # Ensure .env is copied from .env.staging for staging environment
+    if [ -f ".env.staging" ]; then
+        cp .env.staging .env
+        echo -e "${GREEN}✅ Copied .env.staging to .env for staging environment${NC}"
+    fi
     
     echo -e "${YELLOW}Recommended Docker Compose command:${NC}"
     echo "  make start-staging-gpu  # or make start-prod-gpu"

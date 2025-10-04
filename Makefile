@@ -1,7 +1,7 @@
 # Comprehensive Makefile for LLM Multimodal Stack
 # Combines streamlined essential commands with all extended options
 
-.PHONY: help help-essential help-extended setup start-dev start-staging start-dev-gpu start-staging-gpu stop wipe wipe-confirm reset status logs clean
+.PHONY: help help-essential help-extended setup start-dev start-staging start-dev-gpu start-staging-gpu stop stop-all stop-dev stop-staging stop-prod stop-gpu force-stop wipe wipe-confirm reset status logs clean
 
 # Default target - shows essential commands
 help:
@@ -16,7 +16,11 @@ help:
 	@echo "  start-staging-gpu  Start staging with GPU support"
 	@echo ""
 	@echo "🔧 Management Commands:"
-	@echo "  stop               Stop all running services"
+	@echo "  stop               Stop main services (basic)"
+	@echo "  stop-all           Stop ALL services from ALL compose files"
+	@echo "  stop-dev           Stop development environment"
+	@echo "  stop-staging       Stop staging environment"
+	@echo "  stop-prod          Stop production environment"
 	@echo "  wipe-nuclear       💥 NUCLEAR wipe (complete destruction - type 'NUKE')"
 	@echo "  reset              Nuclear reset (wipe + setup)"
 	@echo "  status             Show service status"
@@ -44,7 +48,11 @@ help-extended:
 	@echo "  start-staging-gpu  Start staging with GPU support"
 	@echo ""
 	@echo "🔧 Management Commands:"
-	@echo "  stop               Stop all running services"
+	@echo "  stop               Stop main services (basic)"
+	@echo "  stop-all           Stop ALL services from ALL compose files"
+	@echo "  stop-dev           Stop development environment"
+	@echo "  stop-staging       Stop staging environment"
+	@echo "  stop-prod          Stop production environment"
 	@echo "  wipe-nuclear       💥 NUCLEAR wipe (complete destruction - type 'NUKE')"
 	@echo "  reset              Nuclear reset (wipe + setup)"
 	@echo "  status             Show service status"
@@ -200,14 +208,14 @@ start-staging: generate-compose setup-secrets-staging validate-credentials-stagi
 	@echo "✅ Staging environment started"
 
 # Development with GPU support
-start-dev-gpu: detect-gpu configure-gpu start-dev
+start-dev-gpu: configure-gpu start-dev
 	@echo "🎮 GPU-enabled development environment started"
 	@echo "📊 GPU Configuration:"
 	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
 	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
 
 # Staging with GPU support
-start-staging-gpu: detect-gpu configure-gpu
+start-staging-gpu: configure-gpu
 	@echo "🚀 Starting staging environment with GPU support..."
 	@$(MAKE) generate-compose
 	@$(MAKE) setup-secrets-staging
@@ -215,8 +223,8 @@ start-staging-gpu: detect-gpu configure-gpu
 	docker compose -f compose.yml -f compose.staging.yml up -d
 	@echo "✅ Staging environment with GPU started"
 	@echo "📊 GPU Configuration:"
-	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env.staging 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
-	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env.staging 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	@echo "   CUDA_VISIBLE_DEVICES: $$(grep '^CUDA_VISIBLE_DEVICES=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
+	@echo "   GPU_COUNT: $$(grep '^GPU_COUNT=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not set')"
 
 # GPU detection
 detect-gpu:
@@ -228,11 +236,60 @@ configure-gpu:
 	@echo "🎮 Configuring GPU for optimal performance..."
 	@scripts/configure-gpu.sh auto
 
-# Stop all services
+# Stop all services (basic - only main compose file)
 stop:
-	@echo "🛑 Stopping all services..."
+	@echo "🛑 Stopping main services..."
 	docker compose down
-	@echo "✅ All services stopped"
+	@echo "✅ Main services stopped"
+
+# Stop ALL services from ALL compose files (comprehensive)
+stop-all:
+	@echo "🛑 Stopping ALL services from ALL compose files..."
+	@echo "📋 Stopping main services..."
+	@docker compose down 2>/dev/null || true
+	@echo "📋 Stopping staging services..."
+	@docker compose -f compose.yml -f compose.staging.yml down 2>/dev/null || true
+	@echo "📋 Stopping production services..."
+	@docker compose -f compose.yml -f compose.production.yml down 2>/dev/null || true
+	@echo "📋 Stopping development services..."
+	@docker compose -f compose.yml -f compose.development.yml down 2>/dev/null || true
+	@echo "📋 Stopping GPU services..."
+	@docker compose -f compose.yml -f compose.gpu.yml down 2>/dev/null || true
+	@echo "📋 Stopping monitoring services..."
+	@docker compose -f compose.monitoring.yml down 2>/dev/null || true
+	@docker compose -f compose.elk.yml down 2>/dev/null || true
+	@docker compose -f compose.logging.yml down 2>/dev/null || true
+	@echo "📋 Stopping testing services..."
+	@docker compose -f compose.testing.yml down 2>/dev/null || true
+	@echo "📋 Stopping stack-based services..."
+	@docker compose -f compose.core.yml down 2>/dev/null || true
+	@docker compose -f compose.inference.yml down 2>/dev/null || true
+	@docker compose -f compose.ai.yml down 2>/dev/null || true
+	@docker compose -f compose.ui.yml down 2>/dev/null || true
+	@docker compose -f compose.services.yml down 2>/dev/null || true
+	@docker compose -f compose.n8n-monitoring.yml down 2>/dev/null || true
+	@echo "🧹 Cleaning up orphaned containers..."
+	@docker container prune -f 2>/dev/null || true
+	@echo "🧹 Cleaning up orphaned networks..."
+	@docker network prune -f 2>/dev/null || true
+	@echo "✅ ALL services stopped and cleaned up"
+	@echo "💡 Use 'make status' to verify all services are stopped"
+
+# Force stop all containers (emergency - kills everything)
+force-stop:
+	@echo "🚨 FORCE STOPPING ALL CONTAINERS..."
+	@echo "⚠️  This will forcefully kill ALL containers without graceful shutdown"
+	@echo "📋 Force killing all multimodal containers..."
+	@docker ps -q --filter "name=multimodal" | xargs -r docker kill 2>/dev/null || true
+	@echo "📋 Force killing all containers from compose files..."
+	@docker ps -q --filter "label=com.docker.compose.project=llm-multimodal-stack" | xargs -r docker kill 2>/dev/null || true
+	@echo "📋 Removing all containers..."
+	@docker ps -aq --filter "name=multimodal" | xargs -r docker rm -f 2>/dev/null || true
+	@docker ps -aq --filter "label=com.docker.compose.project=llm-multimodal-stack" | xargs -r docker rm -f 2>/dev/null || true
+	@echo "🧹 Cleaning up networks..."
+	@docker network prune -f 2>/dev/null || true
+	@echo "✅ FORCE STOP completed"
+	@echo "💡 Use 'make status' to verify all services are stopped"
 
 # Nuclear wipe with interactive confirmation - COMPLETE ENVIRONMENT DESTRUCTION
 wipe-nuclear:
@@ -506,33 +563,57 @@ start-ui: generate-compose
 # Stack Stop Commands
 stop-core:
 	@echo "🛑 Stopping core infrastructure stack..."
-	@docker compose -f compose.core.yml down
+	@docker compose -f compose.core.yml down 2>/dev/null || true
 	@echo "✅ Core infrastructure stack stopped"
 
 stop-inference:
 	@echo "🛑 Stopping inference stack..."
-	@docker compose -f compose.inference.yml down
+	@docker compose -f compose.inference.yml down 2>/dev/null || true
 	@echo "✅ Inference stack stopped"
 
 stop-ai:
 	@echo "🛑 Stopping AI services stack..."
-	@docker compose -f compose.ai.yml down
+	@docker compose -f compose.ai.yml down 2>/dev/null || true
 	@echo "✅ AI services stack stopped"
 
 stop-ui:
 	@echo "🛑 Stopping UI and workflow stack..."
-	@docker compose -f compose.ui.yml down
+	@docker compose -f compose.ui.yml down 2>/dev/null || true
 	@echo "✅ UI and workflow stack stopped"
 
 stop-testing:
 	@echo "🛑 Stopping testing stack..."
-	@docker compose -f compose.testing.yml down
+	@docker compose -f compose.testing.yml down 2>/dev/null || true
 	@echo "✅ Testing stack stopped"
 
 stop-monitoring:
 	@echo "🛑 Stopping monitoring stack..."
-	@docker compose -f compose.monitoring.yml down
+	@docker compose -f compose.monitoring.yml down 2>/dev/null || true
+	@docker compose -f compose.elk.yml down 2>/dev/null || true
+	@docker compose -f compose.logging.yml down 2>/dev/null || true
+	@docker compose -f compose.n8n-monitoring.yml down 2>/dev/null || true
 	@echo "✅ Monitoring stack stopped"
+
+# Environment-specific stop commands
+stop-dev:
+	@echo "🛑 Stopping development environment..."
+	@docker compose -f compose.yml -f compose.development.yml down 2>/dev/null || true
+	@echo "✅ Development environment stopped"
+
+stop-staging:
+	@echo "🛑 Stopping staging environment..."
+	@docker compose -f compose.yml -f compose.staging.yml down 2>/dev/null || true
+	@echo "✅ Staging environment stopped"
+
+stop-prod:
+	@echo "🛑 Stopping production environment..."
+	@docker compose -f compose.yml -f compose.production.yml down 2>/dev/null || true
+	@echo "✅ Production environment stopped"
+
+stop-gpu:
+	@echo "🛑 Stopping GPU services..."
+	@docker compose -f compose.yml -f compose.gpu.yml down 2>/dev/null || true
+	@echo "✅ GPU services stopped"
 
 # Stack Restart Commands
 restart-core:
